@@ -37,3 +37,40 @@ typedef uintptr_t umm;
 #else
 #define Assert(Expression)
 #endif
+
+struct game_button_state
+{
+	b32 EndedDown;
+};
+
+// TODO: finilize
+struct game_controller_input
+{
+	union
+	{
+		game_button_state Button[4];
+
+		struct
+		{
+			
+		};
+	};
+};
+
+enum game_mouse_buttons
+{
+	PlatformMouseButton_Left,
+	PlatformMouseButton_Right,
+	PlatformMouseButton_Middle,
+	PlatformMouseButton_Extended0,
+	PlatformMouseButton_Extended1,
+
+	PlatformMouseButton_Count,
+};
+
+struct game_input
+{
+	game_controller_input Controller;
+	game_button_state MouseButtons[PlatformMouseButton_Count];
+	f32 MouseX, MouseY, MouseZ;
+};

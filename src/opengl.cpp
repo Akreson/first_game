@@ -227,6 +227,9 @@ OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode
 		Assert(!"Shader validation failed")
 	}
 
+	glDeleteShader(VertexShaderID);
+	glDeleteShader(FragmentShaderID);
+
 	return ProgramID;
 }
 

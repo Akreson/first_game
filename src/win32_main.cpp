@@ -69,6 +69,15 @@ Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM  LParam
 	return Result;
 }
 
+inline void
+Win32ProcessButtonState(game_button_state *Button, b32 IsDown)
+{
+	if (Button->EndedDown != IsDown)
+	{
+		Button->EndedDown = IsDown;
+	}
+}
+
 void
 ToggleFullscreen(HWND Window)
 {
@@ -101,8 +110,9 @@ ToggleFullscreen(HWND Window)
 	}
 }
 
+// TODO: Set Keys
 void
-Win32ProcessMessage(void)
+Win32ProcessMessage(game_input *GameInput)
 {
 	MSG Message;
 
@@ -110,11 +120,34 @@ Win32ProcessMessage(void)
 	{
 		switch (Message.message)
 		{
+			/*case WM_QUIT:
+			{
+				GlobalRunning = false;
+			} break;*/
+
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_KEYUP:
+			{
+				u32 VKCode = (u32)Message.wParam;
+				b32 AltIsDown = Message.lParam & (1 << 29);
+				b32 IsDown = ((Message.lParam & (1 << 31)) == 0);
+				b32 WasDown = ((Message.lParam & (1 << 30)) != 0);
+
+				switch (VKCode)
+				{
+					case 'P':
+					{
+					} break;
+				}
+			} break;
+
 			default:
 			{
 				TranslateMessage(&Message);
 				DispatchMessage(&Message);
-			}
+			} break;
 		}
 	}
 }
@@ -353,13 +386,38 @@ WinMain(HINSTANCE Instance,
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
 			ShowWindow(Window, SW_SHOW);
 
-			s32 a = 0;
+			game_input GameInput = {};
+
 			while (GlobalRunning)
 			{
-				Win32ProcessMessage();
+				// NOTE: Input Process
 
-				if (a < 10000) --a;
-				else if (a > -10000) ++a;
+				Win32ProcessMessage(&GameInput);
+
+				POINT MouseP;
+				GetCursorPos(&MouseP);
+				ScreenToClient(Window, &MouseP);
+				GameInput.MouseX = (f32)MouseP.x;
+				GameInput.MouseY = (f32)(1920 - MouseP.y); // TODO: Change width be not hardcode
+				GameInput.MouseZ = 0; // TODO: Support mousewheel
+
+
+				DWORD Win32MappedMouseID[] =
+				{
+					VK_LBUTTON,
+					VK_RBUTTON,
+					VK_MBUTTON,
+					VK_XBUTTON1,
+					VK_XBUTTON2,
+				};
+
+				for (u32 ButtonIndex = 0;
+					ButtonIndex < PlatformMouseButton_Count;
+					++ButtonIndex)
+				{
+					Win32ProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
+						GetKeyState(Win32MappedMouseID[ButtonIndex]) & (1 << 15));
+				}
 			}
 		}
 	}
