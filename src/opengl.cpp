@@ -31,6 +31,9 @@
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
 
+#define GL_ARRAY_BUFFER                   0x8892
+#define GL_STATIC_DRAW                    0x88E4
+
 typedef char GLchar;
 typedef size_t GLsizeiptr;
 
@@ -65,8 +68,9 @@ typedef void type_glDeleteVertexArrays(GLsizei n, const GLuint *arrays);
 typedef void type_glGenVertexArrays(GLsizei n, GLuint *arrays);
 
 typedef void type_glGenBuffers(GLsizei n, GLuint * buffers);
-typedef void type_glDeleteBuffers(GLsizei n, const GLuint * buffers);
+typedef void type_glBindBuffer(GLenum target, GLuint buffer);
 typedef void type_glBufferData(GLenum target, GLsizeiptr size, const GLvoid * data, GLenum usage);
+typedef void type_glDeleteBuffers(GLsizei n, const GLuint * buffers);
 
 typedef void type_glBindFramebuffer(GLenum target, GLuint framebuffer);
 typedef void type_glGenFramebuffers(GLsizei n, GLuint *framebuffers);
@@ -117,8 +121,9 @@ OpenGLGlobalVariable(glDeleteVertexArrays);
 OpenGLGlobalVariable(glGenVertexArrays);
 
 OpenGLGlobalVariable(glGenBuffers);
-OpenGLGlobalVariable(glDeleteBuffers);
+OpenGLGlobalVariable(glBindBuffer);
 OpenGLGlobalVariable(glBufferData);
+OpenGLGlobalVariable(glDeleteBuffers);
 
 OpenGLGlobalVariable(glBindFramebuffer);
 OpenGLGlobalVariable(glGenFramebuffers);
@@ -147,11 +152,17 @@ struct opengl_info
 	b32 GL_EXT_framebuffer_object;
 };
 
+struct opengl_render_info
+{
+	GLuint ProgramID;
+};
+
+global_variable opengl_render_info OpenGL;
+
 float vertices[] = {
-	// positions         // colors
-	0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // bottom right
-	-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,  // bottom left
-	0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f   // top 
+	-0.5f, -0.5f, 0.0f, // left  
+	0.5f, -0.5f, 0.0f, // right 
+	0.0f, 0.5f, 0.0f  // top   
 };
 
 internal opengl_info
@@ -241,16 +252,11 @@ OpenGLInit()
 	)FOO";
 	
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec3 aPos;
-	layout (location = 1) in vec3 aColor;
-
-	out vec3 ourColor;
-
-	void main()
-	{
-		gl_Position = vec4(aPos, 1.0);
-		ourColor = aColor;
-	}
+    layout (location = 0) in vec3 aPos;
+    void main()
+    {
+		gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    }
 	)FOO";
 	
 	const char *FragmentCode = R"FOO(
@@ -260,9 +266,9 @@ OpenGLInit()
 
 	void main()
 	{
-		FragColor = vec4(ourColor, 1.0f);
+		FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
 	}	
 	)FOO";
 
-	GLuint ProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	OpenGL.ProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
 }
