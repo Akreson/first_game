@@ -438,18 +438,15 @@ WinMain(HINSTANCE Instance,
 					Win32ProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
 						GetKeyState(Win32MappedMouseID[ButtonIndex]) & (1 << 15));
 				}
-
+				
+				// NOTE: Render Test
 				glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 				glClear(GL_COLOR_BUFFER_BIT);
 
-				// draw our first triangle
 				glUseProgram(OpenGL.ProgramID);
-				glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+				glBindVertexArray(VAO);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
-				// glBindVertexArray(0); // no need to unbind it every time 
 
-				// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-				// -------------------------------------------------------------------------------
 				HDC DeviceContext = GetDC(Window);
 				SwapBuffers(DeviceContext);
 			}
