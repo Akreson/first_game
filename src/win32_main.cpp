@@ -4,6 +4,9 @@
 #include "platform.h"
 #include "string.h"
 
+// TODO: Set as different translation unit and compile as dll?
+#include "editor_game.cpp"
+
 #include "opengl.cpp"
 
 // TODO: Delete form platform layer
@@ -382,14 +385,13 @@ WinMain(HINSTANCE Instance,
 
 		if (Window)
 		{
-			//ToggleFullscreen(Window)
+			//ToggleFullscreen(Window);
 			GlobalRunning = true;
 			HDC WindowDC = GetDC(Window);
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
 			ShowWindow(Window, SW_SHOW);
 
 			game_input GameInput = {};
-
 
 			GLuint VBO, VAO;
 			glGenVertexArrays(1, &VAO);
