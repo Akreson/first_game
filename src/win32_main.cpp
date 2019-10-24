@@ -1,6 +1,10 @@
 #include <Windows.h>
 #include <gl/gl.h>
 
+// NOTE: Incude for test. Must be remove later
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "platform.h"
 #include "string.h"
 
@@ -156,6 +160,59 @@ Win32ProcessMessage(game_input *GameInput)
 	}
 }
 
+
+// TODO: Cange memory location to pre-allocated memory
+
+struct debug_read_file
+{
+	void *Content;
+	u32 Size;
+};
+
+debug_read_file
+Win32ReadFile(const char *FileName)
+{
+	debug_read_file Result;
+	HANDLE FileHandle = CreateFile(FileName, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+
+	if (FileHandle != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER FileSize;
+		if (GetFileSizeEx(FileHandle, &FileSize))
+		{
+			Result.Size = (u32)FileSize.QuadPart;
+			Result.Content = VirtualAlloc(0, FileSize.QuadPart, MEM_COMMIT, PAGE_READWRITE);
+			if (Result.Content)
+			{
+				DWORD BytesRead;
+				if (!ReadFile(FileHandle, Result.Content, Result.Size, &BytesRead, 0) &&
+					(BytesRead != Result.Size))
+				{
+					VirtualFree(Result.Content, 0, MEM_RELEASE);
+					// TODO: Handle error
+				}
+			}
+			else
+			{
+				Assert(0);
+				// TODO: Handle error
+			}
+		}
+		else
+		{
+			Assert(0);
+			// TODO: Handle error
+		}
+	}
+	else
+	{
+		Assert(0);
+		// TODO: Handle error
+	}
+
+	return Result;
+}
+
 void
 Win32SetPixelFormat(HDC WindowDC)
 {
@@ -309,6 +366,8 @@ Win32InitOpenGL(HDC WindowDC)
 		Win32LoadOpenGLFunction(glDetachShader);
 		Win32LoadOpenGLFunction(glUseProgram);
 
+		Win32LoadOpenGLFunction(glActiveTexture);
+
 		Win32LoadOpenGLFunction(glUniform1i);
 		Win32LoadOpenGLFunction(glUniform2i);
 		Win32LoadOpenGLFunction(glUniform3i);
@@ -323,6 +382,8 @@ Win32InitOpenGL(HDC WindowDC)
 		Win32LoadOpenGLFunction(glUniformMatrix2fv);
 		Win32LoadOpenGLFunction(glUniformMatrix3fv);
 		Win32LoadOpenGLFunction(glUniformMatrix4fv);
+
+		Win32LoadOpenGLFunction(glGetUniformLocation);
 
 		Win32LoadOpenGLFunction(glBindVertexArray);
 		Win32LoadOpenGLFunction(glDeleteVertexArrays);
@@ -390,25 +451,50 @@ WinMain(HINSTANCE Instance,
 			HDC WindowDC = GetDC(Window);
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
 			ShowWindow(Window, SW_SHOW);
-
+			
 			game_input GameInput = {};
+
+			//
+			// NOTE: Some OpenGL init
+			//
+			// TODO: Remove
+			//
+
+			debug_read_file FontAssetFile = Win32ReadFile("data//font.edg");
+			bitmap_info *FontBitmapInfo = (bitmap_info *)FontAssetFile.Content;
 
 			GLuint VBO, VAO;
 			glGenVertexArrays(1, &VAO);
 			glGenBuffers(1, &VBO);
-			// bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+
 			glBindVertexArray(VAO);
 
 			glBindBuffer(GL_ARRAY_BUFFER, VBO);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 			glEnableVertexAttribArray(0);
 
-			// note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+			glEnableVertexAttribArray(1);
 
 			glBindVertexArray(0);
+
+			GLuint FontTextureIndex;
+			glGenTextures(1, &FontTextureIndex);
+			glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, FontBitmapInfo->Width, FontBitmapInfo->Height,
+				0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)((u8 *)FontAssetFile.Content + sizeof(bitmap_info)));
+
+			glUseProgram(OpenGL.ProgramID);
+
+			glUniform1i(glGetUniformLocation(OpenGL.ProgramID, "Texture1"), 0);
 
 			while (GlobalRunning)
 			{
@@ -445,9 +531,13 @@ WinMain(HINSTANCE Instance,
 				glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 				glClear(GL_COLOR_BUFFER_BIT);
 
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
+
 				glUseProgram(OpenGL.ProgramID);
+
 				glBindVertexArray(VAO);
-				glDrawArrays(GL_TRIANGLES, 0, 3);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
 
 				HDC DeviceContext = GetDC(Window);
 				SwapBuffers(DeviceContext);

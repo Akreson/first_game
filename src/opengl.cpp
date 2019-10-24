@@ -34,6 +34,23 @@
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STATIC_DRAW                    0x88E4
 
+#define GL_TEXTURE0                       0x84C0
+#define GL_TEXTURE1                       0x84C1
+#define GL_TEXTURE2                       0x84C2
+#define GL_TEXTURE3                       0x84C3
+#define GL_TEXTURE4                       0x84C4
+#define GL_TEXTURE5                       0x84C5
+#define GL_TEXTURE6                       0x84C6
+#define GL_TEXTURE7                       0x84C7
+#define GL_TEXTURE8                       0x84C8
+#define GL_TEXTURE9                       0x84C9
+#define GL_TEXTURE10                      0x84CA
+#define GL_TEXTURE11                      0x84CB
+#define GL_TEXTURE12                      0x84CC
+#define GL_TEXTURE13                      0x84CD
+#define GL_TEXTURE14                      0x84CE
+#define GL_TEXTURE15                      0x84CF
+
 typedef char GLchar;
 typedef size_t GLsizeiptr;
 
@@ -47,6 +64,8 @@ typedef void type_glDeleteShader(GLuint shader);
 typedef void type_glAttachShader(GLuint program, GLuint shader);
 typedef void type_glDetachShader(GLuint program, GLuint shader);
 typedef void type_glUseProgram(GLuint program);
+
+typedef void type_glActiveTexture(GLenum texture);
 
 typedef void type_glUniform1i(GLint location, GLint v0);
 typedef void type_glUniform2i(GLint location, GLint v0, GLint v1);
@@ -62,6 +81,8 @@ typedef void type_glUniform4fv(GLint location, GLsizei count, const GLfloat *val
 typedef void type_glUniformMatrix2fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void type_glUniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void type_glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+
+typedef GLint type_glGetUniformLocation(GLuint program,	const GLchar *name);
 
 typedef void type_glBindVertexArray(GLuint array);
 typedef void type_glDeleteVertexArrays(GLsizei n, const GLuint *arrays);
@@ -101,6 +122,8 @@ OpenGLGlobalVariable(glAttachShader);
 OpenGLGlobalVariable(glDetachShader);
 OpenGLGlobalVariable(glUseProgram);
 
+OpenGLGlobalVariable(glActiveTexture);
+
 OpenGLGlobalVariable(glUniform1i);
 OpenGLGlobalVariable(glUniform2i);
 OpenGLGlobalVariable(glUniform3i);
@@ -115,6 +138,8 @@ OpenGLGlobalVariable(glUniform4fv);
 OpenGLGlobalVariable(glUniformMatrix2fv);
 OpenGLGlobalVariable(glUniformMatrix3fv);
 OpenGLGlobalVariable(glUniformMatrix4fv);
+
+OpenGLGlobalVariable(glGetUniformLocation);
 
 OpenGLGlobalVariable(glBindVertexArray);
 OpenGLGlobalVariable(glDeleteVertexArrays);
@@ -160,9 +185,14 @@ struct opengl_render_info
 global_variable opengl_render_info OpenGL;
 
 float vertices[] = {
-	-0.5f, -0.5f, 0.0f, // left  
-	0.5f, -0.5f, 0.0f, // right 
-	0.0f, 0.5f, 0.0f  // top   
+	// first triangle
+	0.5f, 0.5f, 0.0f, 1.0f, 1.0f,// top right
+	0.5f, -0.5f, 0.0f, 1.0f, 0.0f,// bottom right
+	-0.5f, 0.5f, 0.0f,  0.0f, 1.0f,// top left 
+	// second triangle
+	0.5f, -0.5f, 0.0f,  1.0f, 0.0f,// bottom right
+	-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
+	-0.5f, 0.5f, 0.0f, 0.0f, 1.0f // top left
 };
 
 internal opengl_info
@@ -253,20 +283,27 @@ OpenGLInit()
 	
 	const char *VertexCode = R"FOO(
     layout (location = 0) in vec3 aPos;
+	layout (location = 1) in vec2 aTextCoord;
+
+	out TextCoord;
+	
     void main()
     {
-		gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+		gl_Position = vec4(aPos, 1.0);
+		TextCoord = vec2(aTextCoord);
     }
 	)FOO";
 	
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	in vec3 ourColor;
+	in vec3 TextCoord;
+
+	uniform smapler2D Texture1;
 
 	void main()
 	{
-		FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+		FragColor = texture(Texture1, TextCoord);
 	}	
 	)FOO";
 

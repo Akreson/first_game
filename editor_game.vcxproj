@@ -96,6 +96,13 @@
     <Link>
       <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;shell32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>$(ProjectDIr)font_asset_build.bat</Command>
+    </PostBuildEvent>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -126,6 +133,13 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;shell32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>$(ProjectDIr)font_asset_build.bat</Command>
+    </PostBuildEvent>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\win32_main.cpp" />

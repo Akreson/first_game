@@ -74,3 +74,10 @@ struct game_input
 	game_button_state MouseButtons[PlatformMouseButton_Count];
 	f32 MouseX, MouseY, MouseZ;
 };
+
+// TODO: Change location
+struct bitmap_info
+{
+	u16 Width;
+	u16 Height;
+};

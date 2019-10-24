@@ -18,7 +18,6 @@ struct entire_file
 int
 main(int a, char **b)
 {
-
 	FILE *FileHandler = fopen("DevData//liberation-mono.regular.ttf", "rb");
 
 	if (FileHandler)
@@ -70,6 +69,10 @@ main(int a, char **b)
 		free(TTFFile.Content);
 
 		FILE *DestFile = fopen("data//font.edg", "wb");
+
+		bitmap_info FontBitmapInfo = {Width, Height};
+
+		fwrite((void *)&FontBitmapInfo, sizeof(bitmap_info), 1, DestFile);
 		fwrite(DestMem, DestBitmapSize, 1, DestFile);
 		fclose(DestFile);
 	}
