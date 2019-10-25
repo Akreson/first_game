@@ -403,11 +403,18 @@ Win32InitOpenGL(HDC WindowDC)
 		Win32LoadOpenGLFunction(glGetShaderInfoLog);
 		Win32LoadOpenGLFunction(glValidateProgram);
 
+		Win32LoadOpenGLFunction(glDebugMessageCallback);
+
 		if (wglSwapIntervalEXT)
 		{
 			wglSwapIntervalEXT(1);
 		}
 	}
+
+#ifdef DEVELOP_MODE
+	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
+#endif
+	OpenGLInit();
 
 	return OpenGLRC;
 }
@@ -425,7 +432,6 @@ WinMain(HINSTANCE Instance,
 	WindowClass.hInstance = Instance;
 	WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
 	WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-	//WindowClass.lpszMenuName;
 	WindowClass.lpszClassName = "CrossPlaneWindow";
 
 	if (RegisterClass(&WindowClass))

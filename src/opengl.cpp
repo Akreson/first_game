@@ -53,6 +53,14 @@
 
 typedef char GLchar;
 typedef size_t GLsizeiptr;
+typedef void (APIENTRY *DEBUGPROC)(
+	GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* message,
+	const void* userParam);
 
 typedef GLuint type_glCreateProgram(void);
 typedef void type_glDeleteProgram(GLuint program);
@@ -108,6 +116,8 @@ typedef void type_glGetProgramiv(GLuint program, GLenum pname, GLint *params);
 typedef void type_glGetProgramInfoLog(GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
 typedef void type_glGetShaderInfoLog(GLuint shader, GLsizei maxLength, GLsizei *length,	GLchar *infoLog);
 typedef void type_glValidateProgram(GLuint program);
+
+typedef void type_glDebugMessageCallback(DEBUGPROC callback, void * userParam);
 
 #define OpenGLGlobalVariable(Name) global_variable type_##Name *Name;
 
@@ -166,6 +176,8 @@ OpenGLGlobalVariable(glGetProgramInfoLog);
 OpenGLGlobalVariable(glGetShaderInfoLog);
 OpenGLGlobalVariable(glValidateProgram);
 
+OpenGLGlobalVariable(glDebugMessageCallback);
+
 struct opengl_info
 {
 	char *Vendor;
@@ -194,6 +206,19 @@ float vertices[] = {
 	-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
 	-0.5f, 0.5f, 0.0f, 0.0f, 1.0f // top left
 };
+
+void OpenGLMessageDebugCallback(
+	GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* message,
+	const void* userParam)
+{
+	// TODO: More log information?
+	Assert(0)
+}
 
 internal opengl_info
 OpenGLGetInfo()
@@ -285,7 +310,7 @@ OpenGLInit()
     layout (location = 0) in vec3 aPos;
 	layout (location = 1) in vec2 aTextCoord;
 
-	out TextCoord;
+	out vec2 TextCoord;
 	
     void main()
     {
@@ -297,9 +322,9 @@ OpenGLInit()
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	in vec3 TextCoord;
+	in vec2 TextCoord;
 
-	uniform smapler2D Texture1;
+	uniform sampler2D Texture1;
 
 	void main()
 	{

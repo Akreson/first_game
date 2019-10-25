@@ -37,7 +37,7 @@ main(int a, char **b)
 
 		stbtt_InitFont(&FontInfo, (u8 *)TTFFile.Content, 0);
 		Scale = stbtt_ScaleForPixelHeight(&FontInfo, 120.0f);
-		u8 *MonoBitmap = stbtt_GetCodepointBitmap(&FontInfo, 0, Scale, 'A',
+		u8 *MonoBitmap = stbtt_GetCodepointBitmap(&FontInfo, 0, Scale, 'C',
 			&Width, &Height, &XOffset, &YOffset);
 		int Pitch = Width*BITMAP_BYTES_PER_PIXEL;
 		int DestBitmapSize = Height*Pitch;
