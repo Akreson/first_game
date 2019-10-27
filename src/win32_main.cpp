@@ -414,6 +414,7 @@ Win32InitOpenGL(HDC WindowDC)
 #ifdef DEVELOP_MODE
 	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
 #endif
+
 	OpenGLInit();
 
 	return OpenGLRC;

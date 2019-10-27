@@ -38,6 +38,18 @@ typedef uintptr_t umm;
 #define Assert(Expression)
 #endif
 
+inline void
+ZeroSize(u64 Size, void *Ptr)
+{
+	u8 *Byte = (u8 *)Ptr;
+	while (Size--)
+	{
+		*Byte++ = 0;
+	}
+}
+
+#define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))
+
 struct game_button_state
 {
 	b32 EndedDown;
@@ -78,6 +90,19 @@ struct game_input
 // TODO: Change location
 struct bitmap_info
 {
+	void *Memory;
+	void *TextureHandler;
+	f32 WidthOverHeight;
 	u16 Width;
 	u16 Height;
+};
+
+struct font_asset_info
+{
+	s16 *UnicodeMap; // NOTE: -1 mean for this unicode code glyph doesn't exist
+	s16 *KernelTable;
+	s16 *GlyphAdvance;
+	bitmap_info *Glyphs;
+	u32 LastUnicodeCode;
+	u32 GlyphCount;
 };
