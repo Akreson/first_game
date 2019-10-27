@@ -102,7 +102,7 @@ main(int a, char **b)
 					if (SecondKerningPairIndex != -1)
 					{
 						FontAsset->KerningTable[SecondKerningPairIndex*FontAsset->GlyphCount + FirstKerningIndex] =
-							stbtt_GetCodepointKernAdvance(&FontInfo, FirstUnicodeCode, KerningPairIndex);
+							stbtt_GetCodepointKernAdvance(&FontInfo, UnicodeIndex, KerningPairIndex);
 					}
 				}
 			}
