@@ -31,6 +31,7 @@ typedef uint32_t b32;
 typedef uintptr_t umm;
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define OffsetOf(Instance, Member) ((size_t)&(((Instance *)0)->Member))
 
 #if DEVELOP_MODE
 #define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
@@ -90,19 +91,35 @@ struct game_input
 // TODO: Change location
 struct bitmap_info
 {
-	void *Memory;
 	void *TextureHandler;
+	void *Memory;
 	f32 WidthOverHeight;
 	u16 Width;
 	u16 Height;
 };
 
+// TODO: replace patching?
 struct font_asset_info
 {
-	s16 *UnicodeMap; // NOTE: -1 mean for this unicode code glyph doesn't exist
-	s16 *KernelTable;
-	s16 *GlyphAdvance;
-	bitmap_info *Glyphs;
-	u32 LastUnicodeCode;
+	union
+	{
+		// NOTE: Only for pointer for letter patching
+		struct
+		{
+			s16 *UnicodeMap; // NOTE: -1 mean for this unicode code glyph doesn't exist
+			s16 *KerningTable;
+			s16 *GlyphAdvance;
+			bitmap_info *Glyphs; // NOTE: Must be last
+		};
+
+		void *Refs;
+	};
+
 	u32 GlyphCount;
+	u32 LastUnicodeCode;
+	s16 AscenderHeight;
+	s16 DescenderHeight;
+	s16 LineGap;
 };
+
+#define MAX_REFS_METRICS_COUNT (OffsetOf(font_asset_info, Glyphs)/sizeof(void*))
