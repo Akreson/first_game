@@ -181,7 +181,7 @@ main(int a, char **b)
 			RefsIndex < MAX_REFS_METRICS_COUNT;
 			++RefsIndex)
 		{
-			FontAsset->Refs = (void *)((u8 *)FontAsset->Refs - (u8 *)FontAsset);
+			FontAsset->Refs[RefsIndex] = (umm *)((u8 *)FontAsset->Refs[RefsIndex] - (u8 *)FontAsset);
 		}
 
 		FILE *DestFile = fopen("data//font.edg", "wb");

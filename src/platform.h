@@ -112,7 +112,7 @@ struct font_asset_info
 			bitmap_info *Glyphs; // NOTE: Must be last
 		};
 
-		void *Refs;
+		umm **Refs;
 	};
 
 	u32 GlyphCount;
