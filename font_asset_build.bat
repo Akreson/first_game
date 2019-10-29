@@ -7,4 +7,4 @@ set PathToBinary=..\Debug\bin\
 
 IF EXIST data\font.edg del data\font.edg
 
-%PathToBinary%FontAssetBuild.exe
+%PathToBinary%FontAssetBuild.exe FontPath

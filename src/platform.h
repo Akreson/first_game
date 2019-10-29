@@ -103,6 +103,8 @@ struct font_asset_info
 {
 	union
 	{
+		void *Refs;
+
 		// NOTE: Only for pointer for letter patching
 		struct
 		{
@@ -112,14 +114,13 @@ struct font_asset_info
 			bitmap_info *Glyphs; // NOTE: Must be last
 		};
 
-		umm **Refs;
 	};
 
 	u32 GlyphCount;
-	u32 LastUnicodeCode;
+	u32 OnePastLastUnicodeCode;
 	s16 AscenderHeight;
 	s16 DescenderHeight;
 	s16 LineGap;
 };
 
-#define MAX_REFS_METRICS_COUNT (OffsetOf(font_asset_info, Glyphs)/sizeof(void*))
+#define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs)/sizeof(void*))

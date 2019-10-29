@@ -58,11 +58,14 @@ FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 
 // TODO: Multiple font?
 // TODO: premultiply alpha?
-// TODO: Use u16 for glyph index and set 0 index as unused?
+// TODO: Use u16 for glyph index and set 0 index as unused
+
+const char *FontFileName = "DevData//liberation-mono.regular.ttf";
+
 int
-main(int a, char **b)
+main(int argc, char **args)
 {
-	FILE *FileHandler = fopen("DevData//liberation-mono.regular.ttf", "rb");
+	FILE *FileHandler = fopen(FontFileName, "rb");
 
 	if (FileHandler)
 	{
@@ -79,11 +82,12 @@ main(int a, char **b)
 
 		u32 FirstUnicodeCode = '!';
 		u32	LastUnicodeCode = '~';
-		u32 GlyphCount = LastUnicodeCode - FirstUnicodeCode;
+		u32 GlyphCount = (LastUnicodeCode - FirstUnicodeCode) + 1;
+		u32 OnePastLastUnicodeCode = LastUnicodeCode + 1;
 
 		u32 AllocateMemorySize = 
 			(sizeof(font_asset_info) +
-			(sizeof(s16)*LastUnicodeCode) +
+			(sizeof(s16)*OnePastLastUnicodeCode) +
 			(sizeof(s16)*GlyphCount*GlyphCount) +
 			(sizeof(u16)*GlyphCount) + 
 			(sizeof(bitmap_info)*GlyphCount));
@@ -92,23 +96,27 @@ main(int a, char **b)
 		ZeroSize(AllocateMemorySize, (void *)FontAsset);
 
 		FontAsset->UnicodeMap = (s16 *)((u8 *)FontAsset + sizeof(font_asset_info));
-		FontAsset->KerningTable = (s16 *)((u8 *)FontAsset->UnicodeMap + (sizeof(s16)*LastUnicodeCode));
+		FontAsset->KerningTable = (s16 *)((u8 *)FontAsset->UnicodeMap + (sizeof(s16)*OnePastLastUnicodeCode));
 		FontAsset->GlyphAdvance = (s16 *)((u8 *)FontAsset->KerningTable + (sizeof(s16)*GlyphCount*GlyphCount));
 		FontAsset->Glyphs = (bitmap_info *)((u8 *)FontAsset->GlyphAdvance + (sizeof(u16)*GlyphCount));
+		FontAsset->OnePastLastUnicodeCode = OnePastLastUnicodeCode;
 
-		MemSets16(-1, sizeof(s16)*LastUnicodeCode, FontAsset->UnicodeMap);
-
-		FontAsset->LastUnicodeCode = LastUnicodeCode;
+		MemSets16(-1, FontAsset->OnePastLastUnicodeCode, FontAsset->UnicodeMap);
 
 		stbtt_InitFont(&FontInfo, (u8 *)TTFFile.Content, 0);
+		f32 Scale = stbtt_ScaleForPixelHeight(&FontInfo, 120.0f);
+
 		// NOTE: Excpect vertical metric be less than s16
 		stbtt_GetFontVMetrics(&FontInfo, (int *)&FontAsset->AscenderHeight,
 			(int *)&FontAsset->DescenderHeight, (int *)&FontAsset->LineGap);
-		f32 Scale = stbtt_ScaleForPixelHeight(&FontInfo, 120.0f);
-		int lsb;
+
+		// NOTE: Store metrics in scale value
+		FontAsset->AscenderHeight = (s16)((f32)FontAsset->AscenderHeight*Scale);
+		FontAsset->DescenderHeight = (s16)((f32)FontAsset->DescenderHeight*Scale);
+		FontAsset->LineGap = (s16)((f32)FontAsset->LineGap*Scale);
 
 		for (u32 UnicodeIndex = FirstUnicodeCode;
-			UnicodeIndex <= FontAsset->LastUnicodeCode;
+			UnicodeIndex < FontAsset->OnePastLastUnicodeCode;
 			++UnicodeIndex)
 		{
 			u16 GlyphIndex = FontAsset->UnicodeMap[UnicodeIndex] = FontAsset->GlyphCount++;
@@ -121,21 +129,23 @@ main(int a, char **b)
 
 			GlyphBitmap->WidthOverHeight = (f32)GlyphBitmap->Width / (f32)GlyphBitmap->Height;
 
-			// NOTE: Excpect advanceWith be less than u16
-			stbtt_GetCodepointHMetrics(&FontInfo, UnicodeIndex, (int *)&FontAsset->GlyphAdvance[GlyphIndex], &lsb);
+			// NOTE: Excpect advanceWith be less than s16
+			int AdvanceWidth, lsb;
+			stbtt_GetCodepointHMetrics(&FontInfo, UnicodeIndex, &AdvanceWidth, &lsb);
+			FontAsset->GlyphAdvance[GlyphIndex] = (s16)((f32)AdvanceWidth * Scale);
 		}
 
 		Assert(FontAsset->GlyphCount == GlyphCount);
 
 		for (u32 UnicodeIndex = FirstUnicodeCode;
-			 UnicodeIndex <= FontAsset->LastUnicodeCode;
+			 UnicodeIndex <= FontAsset->OnePastLastUnicodeCode;
 			++UnicodeIndex)
 		{
 			s16 FirstKerningIndex = FontAsset->UnicodeMap[UnicodeIndex];
 			if (FirstKerningIndex != -1)
 			{
 				for (u32 KerningPairIndex = FirstUnicodeCode;
-					KerningPairIndex <= FontAsset->LastUnicodeCode;
+					KerningPairIndex <= FontAsset->OnePastLastUnicodeCode;
 					++KerningPairIndex)
 				{
 					s16 SecondKerningPairIndex = FontAsset->UnicodeMap[UnicodeIndex];
@@ -165,24 +175,26 @@ main(int a, char **b)
 			Index < FontAsset->GlyphCount;
 			++Index)
 		{
-			bitmap_info *Glyph = FontAsset->Glyphs + Index;
+			bitmap_info *GlyphBitmap = FontAsset->Glyphs + Index;
 			
-			FromMonoToRGBA(Glyph, DestMemory, &NextOffsetForBitmap);
-			//stbtt_FreeBitmap((unsigned char *)Glyph->Memory, 0);
+			FromMonoToRGBA(GlyphBitmap, DestMemory, &NextOffsetForBitmap);
+			stbtt_FreeBitmap((unsigned char *)GlyphBitmap->Memory, 0);
 
-			Glyph->Memory = (void *)OffsetForBitmap;
+			GlyphBitmap->Memory = (void *)OffsetForBitmap;
 			OffsetForBitmap += NextOffsetForBitmap;
 			DestMemory += NextOffsetForBitmap;
 		}
 
-		free(TTFFile.Content);
 
+		umm **PtrToMetrics = (umm **)&FontAsset->Refs;
 		for (u32 RefsIndex = 0;
-			RefsIndex < MAX_REFS_METRICS_COUNT;
+			RefsIndex <= MAX_REFS_METRICS_COUNT;
 			++RefsIndex)
 		{
-			FontAsset->Refs[RefsIndex] = (umm *)((u8 *)FontAsset->Refs[RefsIndex] - (u8 *)FontAsset);
+			PtrToMetrics[RefsIndex] = (umm *)((u8 *)PtrToMetrics[RefsIndex] - (u8 *)PtrToMetrics);
 		}
+
+ 		free(TTFFile.Content);
 
 		FILE *DestFile = fopen("data//font.edg", "wb");
 
@@ -192,7 +204,7 @@ main(int a, char **b)
 	}
 	else
 	{
-		printf("ERROR: Font file can't be open!");
+		Assert(0);
 	}
 
 	return 0;
