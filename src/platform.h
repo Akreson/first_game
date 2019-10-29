@@ -10,7 +10,7 @@
 #define Tau32 6.2831853071f
 
 #define KiB(Value) (Value * 1024)
-#define MiB(Value) (KiB(Value) * 1024))
+#define MiB(Value) (KiB(Value) * 1024)
 #define GiB(Value) (MiB(Value) * 1024)
 
 typedef uint64_t u64;
@@ -88,6 +88,12 @@ struct game_input
 	f32 MouseX, MouseY, MouseZ;
 };
 
+struct game_memory
+{
+	void *PermanentStorage;
+	u64 PermanentStorageSize;
+};
+
 // TODO: Change location
 struct bitmap_info
 {
@@ -108,9 +114,9 @@ struct font_asset_info
 		// NOTE: Only for pointer for letter patching
 		struct
 		{
-			s16 *UnicodeMap; // NOTE: -1 mean for this unicode code glyph doesn't exist
+			u16 *UnicodeMap; // NOTE: 0 mean for this unicode code glyph doesn't exist
 			s16 *KerningTable;
-			s16 *GlyphAdvance;
+			s16 *GlyphAdvance; // TODO: does this need?
 			bitmap_info *Glyphs; // NOTE: Must be last
 		};
 

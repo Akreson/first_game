@@ -182,6 +182,7 @@ Win32ReadFile(const char *FileName)
 		{
 			Result.Size = (u32)FileSize.QuadPart;
 			Result.Content = VirtualAlloc(0, FileSize.QuadPart, MEM_COMMIT, PAGE_READWRITE);
+
 			if (Result.Content)
 			{
 				DWORD BytesRead;
@@ -459,8 +460,12 @@ WinMain(HINSTANCE Instance,
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
 			ShowWindow(Window, SW_SHOW);
 			
+			game_memory GameMemory = {};
 			game_input GameInput = {};
 
+			GameMemory.PermanentStorageSize = MiB(10);
+			GameMemory.PermanentStorage = VirtualAlloc(0, GameMemory.PermanentStorageSize, MEM_COMMIT, PAGE_READWRITE);;
+	
 			//
 			// NOTE: Some OpenGL init
 			//
@@ -468,7 +473,11 @@ WinMain(HINSTANCE Instance,
 			//
 
 			debug_read_file FontAssetFile = Win32ReadFile("data//font.edg");
-			bitmap_info *FontBitmapInfo = (bitmap_info *)FontAssetFile.Content;
+			font_asset_info *FontAsset = (font_asset_info *)FontAssetFile.Content;
+			PatchFontData(FontAsset);
+
+			u32 GlyphIndex = GetGlyphFromCodePoint(FontAsset, 'B');
+			bitmap_info *FontGlyphBitmap = GetGlyphBitmap(FontAsset, GlyphIndex);
 
 			GLuint VBO, VAO;
 			glGenVertexArrays(1, &VAO);
@@ -496,8 +505,8 @@ WinMain(HINSTANCE Instance,
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, FontBitmapInfo->Width, FontBitmapInfo->Height,
-				0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)((u8 *)FontAssetFile.Content + sizeof(bitmap_info)));
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, FontGlyphBitmap->Width, FontGlyphBitmap->Height,
+				0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)FontGlyphBitmap->Memory);
 
 			glUseProgram(OpenGL.ProgramID);
 

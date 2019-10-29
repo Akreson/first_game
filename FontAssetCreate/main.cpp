@@ -16,17 +16,6 @@ struct entire_file
 };
 
 inline void
-MemSets16(s16 Value, u64 Size, void *Ptr)
-{
-	s16 *Memory = (s16 *)Ptr;
-
-	while (Size--)
-	{
-		*Memory++ = Value;
-	}
-}
-
-inline void
 FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 {
 	u32 Pitch = Glyph->Width * BITMAP_BYTES_PER_PIXEL;
@@ -95,13 +84,11 @@ main(int argc, char **args)
 		font_asset_info *FontAsset = (font_asset_info *)malloc(AllocateMemorySize);
 		ZeroSize(AllocateMemorySize, (void *)FontAsset);
 
-		FontAsset->UnicodeMap = (s16 *)((u8 *)FontAsset + sizeof(font_asset_info));
+		FontAsset->UnicodeMap = (u16 *)((u8 *)FontAsset + sizeof(font_asset_info));
 		FontAsset->KerningTable = (s16 *)((u8 *)FontAsset->UnicodeMap + (sizeof(s16)*OnePastLastUnicodeCode));
 		FontAsset->GlyphAdvance = (s16 *)((u8 *)FontAsset->KerningTable + (sizeof(s16)*GlyphCount*GlyphCount));
 		FontAsset->Glyphs = (bitmap_info *)((u8 *)FontAsset->GlyphAdvance + (sizeof(u16)*GlyphCount));
 		FontAsset->OnePastLastUnicodeCode = OnePastLastUnicodeCode;
-
-		MemSets16(-1, FontAsset->OnePastLastUnicodeCode, FontAsset->UnicodeMap);
 
 		stbtt_InitFont(&FontInfo, (u8 *)TTFFile.Content, 0);
 		f32 Scale = stbtt_ScaleForPixelHeight(&FontInfo, 120.0f);
