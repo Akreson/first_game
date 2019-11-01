@@ -421,6 +421,15 @@ Win32InitOpenGL(HDC WindowDC)
 	return OpenGLRC;
 }
 
+inline void
+Win32GetScreenDim(HWND Window, u32 *Width, u32 *Height)
+{
+	RECT ScreenDim;
+	GetWindowRect(Window, &ScreenDim);
+	*Width = ScreenDim.right - ScreenDim.left;
+	*Height = ScreenDim.bottom - ScreenDim.top;
+}
+
 int CALLBACK
 WinMain(HINSTANCE Instance,
 	HINSTANCE PrevInstance,
@@ -459,6 +468,9 @@ WinMain(HINSTANCE Instance,
 			HDC WindowDC = GetDC(Window);
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
 			ShowWindow(Window, SW_SHOW);
+
+			u32 ScreenWidth, ScreenHeight;
+			Win32GetScreenDim(Window, &ScreenWidth, &ScreenHeight);
 			
 			game_memory GameMemory = {};
 			game_input GameInput = {};
@@ -476,7 +488,7 @@ WinMain(HINSTANCE Instance,
 			font_asset_info *FontAsset = (font_asset_info *)FontAssetFile.Content;
 			PatchFontData(FontAsset);
 
-			u32 GlyphIndex = GetGlyphFromCodePoint(FontAsset, 'B');
+			u32 GlyphIndex = GetGlyphFromCodePoint(FontAsset, 'V');
 			bitmap_info *FontGlyphBitmap = GetGlyphBitmap(FontAsset, GlyphIndex);
 
 			GLuint VBO, VAO;
@@ -522,7 +534,7 @@ WinMain(HINSTANCE Instance,
 				GetCursorPos(&MouseP);
 				ScreenToClient(Window, &MouseP);
 				GameInput.MouseX = (f32)MouseP.x;
-				GameInput.MouseY = (f32)(1920 - MouseP.y); // TODO: Change width be not hardcode
+				GameInput.MouseY = (f32)(ScreenWidth - MouseP.y);
 				GameInput.MouseZ = 0; // TODO: Support mousewheel
 
 

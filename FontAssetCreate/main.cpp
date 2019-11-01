@@ -49,7 +49,7 @@ FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 // TODO: premultiply alpha?
 // TODO: Use u16 for glyph index and set 0 index as unused
 
-const char *FontFileName = "DevData//liberation-mono.regular.ttf";
+const char *FontFileName = "DevData//arial.ttf";
 
 int
 main(int argc, char **args)
@@ -125,21 +125,22 @@ main(int argc, char **args)
 		Assert(FontAsset->GlyphCount == GlyphCount);
 
 		for (u32 UnicodeIndex = FirstUnicodeCode;
-			 UnicodeIndex <= FontAsset->OnePastLastUnicodeCode;
+			 UnicodeIndex < FontAsset->OnePastLastUnicodeCode;
 			++UnicodeIndex)
 		{
 			s16 FirstKerningIndex = FontAsset->UnicodeMap[UnicodeIndex];
-			if (FirstKerningIndex != -1)
+			if (FirstKerningIndex)
 			{
 				for (u32 KerningPairIndex = FirstUnicodeCode;
-					KerningPairIndex <= FontAsset->OnePastLastUnicodeCode;
+					KerningPairIndex < FontAsset->OnePastLastUnicodeCode;
 					++KerningPairIndex)
 				{
-					s16 SecondKerningPairIndex = FontAsset->UnicodeMap[UnicodeIndex];
-					if (SecondKerningPairIndex != -1)
+					s16 SecondKerningPairIndex = FontAsset->UnicodeMap[KerningPairIndex];
+					if (SecondKerningPairIndex)
 					{
+						s32 KerningValue = stbtt_GetCodepointKernAdvance(&FontInfo, UnicodeIndex, KerningPairIndex);
 						FontAsset->KerningTable[SecondKerningPairIndex*FontAsset->GlyphCount + FirstKerningIndex] =
-							stbtt_GetCodepointKernAdvance(&FontInfo, UnicodeIndex, KerningPairIndex);
+							(s16)(Scale * (f32)KerningValue);
 					}
 				}
 			}
