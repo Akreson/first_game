@@ -6,6 +6,9 @@
 #include <stdlib.h>
 
 #include "platform.h"
+
+// TODO: Delete form platform layer
+#include "math.cpp"
 #include "string.h"
 
 // TODO: Set as different translation unit and compile as dll?
@@ -13,8 +16,6 @@
 
 #include "opengl.cpp"
 
-// TODO: Delete form platform layer
-#include "math.cpp"
 
 typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext,
 	const int *attribList);
@@ -392,6 +393,7 @@ Win32InitOpenGL(HDC WindowDC)
 		Win32LoadOpenGLFunction(glGenBuffers);
 		Win32LoadOpenGLFunction(glBindBuffer);
 		Win32LoadOpenGLFunction(glBufferData);
+		Win32LoadOpenGLFunction(glBufferSubData);
 		Win32LoadOpenGLFunction(glDeleteBuffers);
 
 		Win32LoadOpenGLFunction(glEnableVertexAttribArray);
@@ -484,45 +486,29 @@ WinMain(HINSTANCE Instance,
 			// TODO: Remove
 			//
 
+			// TODO: Move all OpenGL stuff to render
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 			debug_read_file FontAssetFile = Win32ReadFile("data//font.edg");
 			font_asset_info *FontAsset = (font_asset_info *)FontAssetFile.Content;
 			PatchFontData(FontAsset);
 
-			u32 GlyphIndex = GetGlyphFromCodePoint(FontAsset, 'V');
-			bitmap_info *FontGlyphBitmap = GetGlyphBitmap(FontAsset, GlyphIndex);
+			m4x4 Ortho = OrthographicProjection((f32)ScreenWidth, (f32)ScreenHeight);
+			glUseProgram(OpenGL.FontRenderProgram);
+			glUniformMatrix4fv(glGetUniformLocation(OpenGL.FontRenderProgram, "Projection"), 1, GL_FALSE, &Ortho.E[0][0]);
 
-			GLuint VBO, VAO;
-			glGenVertexArrays(1, &VAO);
-			glGenBuffers(1, &VBO);
+			glGenVertexArrays(1, &OpenGL.FontVAO);
+			glGenBuffers(1, &OpenGL.FontVBO);
 
-			glBindVertexArray(VAO);
+			glBindVertexArray(OpenGL.FontVAO);
 
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+			glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+			glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 			glEnableVertexAttribArray(0);
-
-			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-			glEnableVertexAttribArray(1);
-
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
-
-			GLuint FontTextureIndex;
-			glGenTextures(1, &FontTextureIndex);
-			glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
-
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, FontGlyphBitmap->Width, FontGlyphBitmap->Height,
-				0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)FontGlyphBitmap->Memory);
-
-			glUseProgram(OpenGL.ProgramID);
-
-			glUniform1i(glGetUniformLocation(OpenGL.ProgramID, "Texture1"), 0);
 
 			while (GlobalRunning)
 			{
@@ -559,13 +545,7 @@ WinMain(HINSTANCE Instance,
 				glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 				glClear(GL_COLOR_BUFFER_BIT);
 
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
-
-				glUseProgram(OpenGL.ProgramID);
-
-				glBindVertexArray(VAO);
-				glDrawArrays(GL_TRIANGLES, 0, 6);
+				OpenGLRenderText(FontAsset, (char *)"Hellow world", V3(0.5f, 0.0f, 0.5f), 0, (f32)ScreenHeight, 1.0f);
 
 				HDC DeviceContext = GetDC(Window);
 				SwapBuffers(DeviceContext);

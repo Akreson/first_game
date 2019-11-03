@@ -33,6 +33,7 @@
 
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STATIC_DRAW                    0x88E4
+#define GL_DYNAMIC_DRAW                   0x88E8
 
 #define GL_TEXTURE0                       0x84C0
 #define GL_TEXTURE1                       0x84C1
@@ -53,6 +54,7 @@
 
 typedef char GLchar;
 typedef size_t GLsizeiptr;
+typedef int* GLintptr;
 typedef void (APIENTRY *DEBUGPROC)(
 	GLenum source,
 	GLenum type,
@@ -99,6 +101,7 @@ typedef void type_glGenVertexArrays(GLsizei n, GLuint *arrays);
 typedef void type_glGenBuffers(GLsizei n, GLuint * buffers);
 typedef void type_glBindBuffer(GLenum target, GLuint buffer);
 typedef void type_glBufferData(GLenum target, GLsizeiptr size, const GLvoid * data, GLenum usage);
+typedef void type_glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid * data);
 typedef void type_glDeleteBuffers(GLsizei n, const GLuint * buffers);
 
 typedef void type_glBindFramebuffer(GLenum target, GLuint framebuffer);
@@ -158,6 +161,7 @@ OpenGLGlobalVariable(glGenVertexArrays);
 OpenGLGlobalVariable(glGenBuffers);
 OpenGLGlobalVariable(glBindBuffer);
 OpenGLGlobalVariable(glBufferData);
+OpenGLGlobalVariable(glBufferSubData);
 OpenGLGlobalVariable(glDeleteBuffers);
 
 OpenGLGlobalVariable(glBindFramebuffer);
@@ -192,6 +196,9 @@ struct opengl_info
 struct opengl_render_info
 {
 	GLuint ProgramID;
+	GLuint FontRenderProgram;
+	GLuint FontVAO;
+	GLuint FontVBO;
 };
 
 global_variable opengl_render_info OpenGL;
@@ -207,6 +214,17 @@ float vertices[] = {
 	-0.5f, 0.5f, 0.0f, 0.0f, 1.0f // top left
 };
 
+float _vertices[] = {
+	// first triangle
+	100.0f, 100.0f, 1.0f, 1.0f,// top right
+	100.0, 0, 1.0f, 0.0f,// bottom right
+	0, 100.0, 0.0f, 1.0f,// top left 
+	// second triangle
+	100.0, 0, 1.0f, 0.0f,// bottom right
+	0, 0, 0.0f, 0.0f, // bottom left
+	0, 100.0, 0.0f, 1.0f // top left
+};
+
 void OpenGLMessageDebugCallback(
 	GLenum source,
 	GLenum type,
@@ -218,6 +236,33 @@ void OpenGLMessageDebugCallback(
 {
 	// TODO: More log information?
 	Assert(0)
+}
+
+// TODO: Provide more options?
+void *
+AllocateTexture(u32 Width, u32 Height, void *Data)
+{
+	GLuint TextureIndex;
+	glGenTextures(1, &TextureIndex);
+	glBindTexture(GL_TEXTURE_2D, TextureIndex);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height,
+		0, GL_RGBA, GL_UNSIGNED_BYTE, Data);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return PointerFromU32(void, TextureIndex);
+}
+
+void
+DeallocateTexture(u32 Texture)
+{
+	glDeleteTextures(1, &Texture);
 }
 
 internal opengl_info
@@ -309,12 +354,12 @@ OpenGLInit()
 	const char *VertexCode = R"FOO(
     layout (location = 0) in vec3 aPos;
 	layout (location = 1) in vec2 aTextCoord;
-
+	uniform mat4 Projection;
 	out vec2 TextCoord;
 	
     void main()
     {
-		gl_Position = vec4(aPos, 1.0);
+		gl_Position = Projection * vec4(aPos, 1.0);
 		TextCoord = vec2(aTextCoord);
     }
 	)FOO";
@@ -332,5 +377,91 @@ OpenGLInit()
 	}	
 	)FOO";
 
-	OpenGL.ProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	const char *FontVertexCode =  R"FOO(
+	layout (location = 0) in vec4 vertex;
+	out vec2 TexCoords;
+	
+	uniform mat4 Projection;
+
+	void main()
+	{
+		gl_Position = Projection * vec4(vertex.xy, 0, 1.0);
+		TexCoords = vertex.zw;
+	}
+
+	)FOO";
+	const char *FontFragmentCode = R"FOO(
+	in vec2 TexCoords;	
+	out vec4 FragColor;
+
+	uniform sampler2D FontTexture;
+	uniform vec3 TextColor;
+	
+	void main()
+	{
+		vec4 TexTexel = texture(FontTexture, TexCoords);
+		TexTexel.xyz *= TextColor;
+		FragColor = TexTexel;
+	}
+	)FOO";
+
+	OpenGL.FontRenderProgram = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)FontVertexCode, (GLchar *)FontFragmentCode);
+}
+
+// TODO: get rid of border
+void
+OpenGLRenderText(font_asset_info *FontAsset, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
+{
+	glUseProgram(OpenGL.FontRenderProgram);
+	glUniform3f(glGetUniformLocation(OpenGL.FontRenderProgram, "TextColor"), TextColor.x, TextColor.y, TextColor.z);
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(OpenGL.FontVAO);
+
+	ScreenY -= FontAsset->AscenderHeight*Scale;
+
+	// TODO: Use codepoint?
+	u32 PrevGlyphIndex = 0;
+	for (;
+		*Text;
+		++Text)
+	{
+		u32 GlyphIndex = GetGlyphIndexFromCodePoint(FontAsset, *Text);
+		bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
+		u32 FontTextureIndex = U32FromPointer(Glyph->TextureHandler);
+
+		f32 Width = (f32)Glyph->Width * Scale;
+		f32 Height = (f32)Glyph->Height * Scale;
+
+		f32 Xpos = ScreenX;
+		f32 YPos = ScreenY;
+
+		float FontVertices[] = {
+			// first triangle
+			Xpos + Width, YPos + Height, 1.0f, 1.0f,// top right
+			Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
+			Xpos, YPos + Height, 0.0f, 1.0f,// top left 
+			// second triangle
+			Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
+			Xpos, YPos, 0.0f, 0.0f, // bottom left
+			Xpos, YPos + Height, 0.0f, 1.0f // top left
+		};
+
+		ScreenX += (f32)FontAsset->GlyphAdvance[GlyphIndex]*Scale;
+		if (PrevGlyphIndex)
+		{
+			ScreenX += (f32)FontAsset->KerningTable[PrevGlyphIndex*FontAsset->GlyphCount + GlyphIndex];
+		}
+
+		PrevGlyphIndex = GlyphIndex;
+
+		glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
+		glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(FontVertices), FontVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+	}
+
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }

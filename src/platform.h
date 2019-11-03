@@ -30,14 +30,16 @@ typedef uint32_t b32;
 
 typedef uintptr_t umm;
 
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
-#define OffsetOf(Instance, Member) ((size_t)&(((Instance *)0)->Member))
-
 #if DEVELOP_MODE
 #define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
 #else
 #define Assert(Expression)
 #endif
+
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define OffsetOf(Instance, Member) ((size_t)&(((Instance *)0)->Member))
+#define PointerFromU32(Type, Value) (Type *)((size_t)Value)
+#define U32FromPointer(Pointer) (u32)((size_t)(Pointer))
 
 inline void
 ZeroSize(u64 Size, void *Ptr)
@@ -98,7 +100,7 @@ struct game_memory
 struct bitmap_info
 {
 	void *TextureHandler;
-	void *Memory;
+	void *Data;
 	f32 WidthOverHeight;
 	u16 Width;
 	u16 Height;
@@ -124,9 +126,9 @@ struct font_asset_info
 
 	u32 GlyphCount;
 	u32 OnePastLastUnicodeCode;
-	s16 AscenderHeight;
-	s16 DescenderHeight;
-	s16 LineGap;
+	f32 AscenderHeight;
+	f32 DescenderHeight;
+	f32 LineGap;
 };
 
 #define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs)/sizeof(void*))
