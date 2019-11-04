@@ -15,6 +15,10 @@ struct entire_file
 	 u32 Size;
 };
 
+
+const char *FontFileName = "DevData//LiberationMono-Regular.ttf";
+const char *OutputPath = "data//font.edg";
+
 inline void
 FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 {
@@ -48,10 +52,7 @@ FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 // TODO: Multiple font?
 // TODO: premultiply alpha?
 // TODO: Use u16 for glyph index and set 0 index as unused
-
-const char *FontFileName = "DevData//LiberationMono-Regular.ttf";
-const char *OutputPath = "data//font.edg";
-
+// TODO: use 1 byte for bitmap?
 int
 main(int argc, char **args)
 {
@@ -70,7 +71,7 @@ main(int argc, char **args)
 		fread(TTFFile.Content, TTFFile.Size, 1, FileHandler);
 		fclose(FileHandler);
 
-		u32 FirstUnicodeCode = '!';
+		u32 FirstUnicodeCode = ' ';
 		u32	LastUnicodeCode = '~';
 		u32 GlyphCount = (LastUnicodeCode - FirstUnicodeCode) + 1;
 		u32 OnePastLastUnicodeCode = LastUnicodeCode + 1;
@@ -80,6 +81,7 @@ main(int argc, char **args)
 			(sizeof(s16)*OnePastLastUnicodeCode) +
 			(sizeof(s16)*GlyphCount*GlyphCount) +
 			(sizeof(u16)*GlyphCount) + 
+			(sizeof(f32)*GlyphCount) +
 			(sizeof(bitmap_info)*GlyphCount));
 		
 		font_asset_info *FontAsset = (font_asset_info *)malloc(AllocateMemorySize);
@@ -89,7 +91,8 @@ main(int argc, char **args)
 		// TODO: Collate table and advance;
 		FontAsset->KerningTable = (s16 *)((u8 *)FontAsset->UnicodeMap + (sizeof(s16)*OnePastLastUnicodeCode));
 		FontAsset->GlyphAdvance = (s16 *)((u8 *)FontAsset->KerningTable + (sizeof(s16)*GlyphCount*GlyphCount));
-		FontAsset->Glyphs = (bitmap_info *)((u8 *)FontAsset->GlyphAdvance + (sizeof(u16)*GlyphCount));
+		FontAsset->VerticalAdjast = (f32 *)((u8 *)FontAsset->GlyphAdvance + (sizeof(s16)*GlyphCount));
+		FontAsset->Glyphs = (bitmap_info *)((u8 *)FontAsset->VerticalAdjast + (sizeof(f32)*GlyphCount));
 		FontAsset->OnePastLastUnicodeCode = OnePastLastUnicodeCode;
 
 		stbtt_InitFont(&FontInfo, (u8 *)TTFFile.Content, 0);
@@ -112,11 +115,15 @@ main(int argc, char **args)
 			// TODO: Fix FirstUnicodeCode == 0, so it dont be used
 			u16 GlyphIndex = FontAsset->UnicodeMap[UnicodeIndex] = FontAsset->GlyphCount++;
 			bitmap_info *GlyphBitmap = FontAsset->Glyphs + GlyphIndex;
-			
+
 			// NOTE: Excpect width and height be less than u16
 			GlyphBitmap->Data =
 				(void *)stbtt_GetCodepointBitmap(&FontInfo, 0, Scale, UnicodeIndex,
 					(int *)&GlyphBitmap->Width, (int *)&GlyphBitmap->Height, 0, 0);
+			
+			int x0, x1, y0, y1;
+			stbtt_GetCodepointBitmapBox(&FontInfo, UnicodeIndex, Scale, Scale, &x0, &y0, &x1, &y1);
+			FontAsset->VerticalAdjast[GlyphIndex] = (f32)y1 / (f32)GlyphBitmap->Height;
 
 			GlyphBitmap->WidthOverHeight = (f32)GlyphBitmap->Width / (f32)GlyphBitmap->Height;
 
@@ -127,6 +134,9 @@ main(int argc, char **args)
 		}
 
 		Assert(FontAsset->GlyphCount == GlyphCount);
+
+		s32 KerningValue = stbtt_GetCodepointKernAdvance(&FontInfo, 'A', 'W');
+		s32 KerningValuea = stbtt_GetCodepointKernAdvance(&FontInfo, 'r', 'l');
 
 		for (u32 UnicodeIndex = FirstUnicodeCode;
 			 UnicodeIndex < FontAsset->OnePastLastUnicodeCode;

@@ -478,7 +478,7 @@ WinMain(HINSTANCE Instance,
 			game_input GameInput = {};
 
 			GameMemory.PermanentStorageSize = MiB(10);
-			GameMemory.PermanentStorage = VirtualAlloc(0, GameMemory.PermanentStorageSize, MEM_COMMIT, PAGE_READWRITE);;
+			GameMemory.PermanentStorage = VirtualAlloc(0, GameMemory.PermanentStorageSize, MEM_COMMIT, PAGE_READWRITE);
 	
 			//
 			// NOTE: Some OpenGL init
@@ -545,7 +545,7 @@ WinMain(HINSTANCE Instance,
 				glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 				glClear(GL_COLOR_BUFFER_BIT);
 
-				OpenGLRenderText(FontAsset, (char *)"Hellow world", V3(0.5f, 0.0f, 0.5f), 0, (f32)ScreenHeight, 1.0f);
+				OpenGLRenderText(FontAsset, (char *)"hellow world", V3(0.5f, 0.0f, 0.5f), 0, (f32)ScreenHeight, 0.5f);
 
 				HDC DeviceContext = GetDC(Window);
 				SwapBuffers(DeviceContext);

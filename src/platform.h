@@ -119,6 +119,7 @@ struct font_asset_info
 			u16 *UnicodeMap; // NOTE: 0 mean for this unicode code glyph doesn't exist
 			s16 *KerningTable;
 			s16 *GlyphAdvance; // TODO: does this need?
+			f32 *VerticalAdjast;
 			bitmap_info *Glyphs; // NOTE: Must be last
 		};
 

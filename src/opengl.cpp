@@ -427,25 +427,35 @@ OpenGLRenderText(font_asset_info *FontAsset, char *Text, v3 TextColor, f32 Scree
 		++Text)
 	{
 		u32 GlyphIndex = GetGlyphIndexFromCodePoint(FontAsset, *Text);
-		bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
-		u32 FontTextureIndex = U32FromPointer(Glyph->TextureHandler);
+		
+		if (*Text != ' ')
+		{
+			bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
+			u32 FontTextureIndex = U32FromPointer(Glyph->TextureHandler);
+			
+			f32 Width = (f32)Glyph->Width * Scale;
+			f32 Height = (f32)Glyph->Height * Scale;
 
-		f32 Width = (f32)Glyph->Width * Scale;
-		f32 Height = (f32)Glyph->Height * Scale;
+			f32 Xpos = ScreenX;
+			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex]*(f32)Glyph->Height);
 
-		f32 Xpos = ScreenX;
-		f32 YPos = ScreenY;
+			float FontVertices[] = {
+				// first triangle
+				Xpos + Width, YPos + Height, 1.0f, 1.0f,// top right
+				Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
+				Xpos, YPos + Height, 0.0f, 1.0f,// top left 
+				// second triangle
+				Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
+				Xpos, YPos, 0.0f, 0.0f, // bottom left
+				Xpos, YPos + Height, 0.0f, 1.0f // top left
+			};
 
-		float FontVertices[] = {
-			// first triangle
-			Xpos + Width, YPos + Height, 1.0f, 1.0f,// top right
-			Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
-			Xpos, YPos + Height, 0.0f, 1.0f,// top left 
-			// second triangle
-			Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
-			Xpos, YPos, 0.0f, 0.0f, // bottom left
-			Xpos, YPos + Height, 0.0f, 1.0f // top left
-		};
+			glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
+			glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(FontVertices), FontVertices);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
 
 		ScreenX += (f32)FontAsset->GlyphAdvance[GlyphIndex]*Scale;
 		if (PrevGlyphIndex)
@@ -454,12 +464,6 @@ OpenGLRenderText(font_asset_info *FontAsset, char *Text, v3 TextColor, f32 Scree
 		}
 
 		PrevGlyphIndex = GlyphIndex;
-
-		glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
-		glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(FontVertices), FontVertices);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
 	glBindVertexArray(0);
