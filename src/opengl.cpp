@@ -203,28 +203,6 @@ struct opengl_render_info
 
 global_variable opengl_render_info OpenGL;
 
-float vertices[] = {
-	// first triangle
-	0.5f, 0.5f, 0.0f, 1.0f, 1.0f,// top right
-	0.5f, -0.5f, 0.0f, 1.0f, 0.0f,// bottom right
-	-0.5f, 0.5f, 0.0f,  0.0f, 1.0f,// top left 
-	// second triangle
-	0.5f, -0.5f, 0.0f,  1.0f, 0.0f,// bottom right
-	-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
-	-0.5f, 0.5f, 0.0f, 0.0f, 1.0f // top left
-};
-
-float _vertices[] = {
-	// first triangle
-	100.0f, 100.0f, 1.0f, 1.0f,// top right
-	100.0, 0, 1.0f, 0.0f,// bottom right
-	0, 100.0, 0.0f, 1.0f,// top left 
-	// second triangle
-	100.0, 0, 1.0f, 0.0f,// bottom right
-	0, 0, 0.0f, 0.0f, // bottom left
-	0, 100.0, 0.0f, 1.0f // top left
-};
-
 void OpenGLMessageDebugCallback(
 	GLenum source,
 	GLenum type,
@@ -239,8 +217,7 @@ void OpenGLMessageDebugCallback(
 }
 
 // TODO: Provide more options?
-void *
-AllocateTexture(u32 Width, u32 Height, void *Data)
+PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
 {
 	GLuint TextureIndex;
 	glGenTextures(1, &TextureIndex);
@@ -259,10 +236,9 @@ AllocateTexture(u32 Width, u32 Height, void *Data)
 	return PointerFromU32(void, TextureIndex);
 }
 
-void
-DeallocateTexture(u32 Texture)
+PLATFORM_DEALLOCATE_TEXTURE(OpenGLDeallocateTexture)
 {
-	glDeleteTextures(1, &Texture);
+	glDeleteTextures(1, &TextureHandler);
 }
 
 internal opengl_info
@@ -405,7 +381,24 @@ OpenGLInit()
 	}
 	)FOO";
 
+#ifdef DEVELOP_MODE
+	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
+#endif
+
 	OpenGL.FontRenderProgram = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)FontVertexCode, (GLchar *)FontFragmentCode);
+	
+	glUseProgram(OpenGL.FontRenderProgram);
+	glGenVertexArrays(1, &OpenGL.FontVAO);
+	glGenBuffers(1, &OpenGL.FontVBO);
+
+	glBindVertexArray(OpenGL.FontVAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
 
 // TODO: get rid of border
@@ -468,4 +461,66 @@ OpenGLRenderText(font_asset_info *FontAsset, char *Text, v3 TextColor, f32 Scree
 
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void
+OpenGLRenderCommands(game_render_commands *Commands)
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	for (u32 BufferOffset = 0;
+		BufferOffset < Commands->PushBufferSize;
+		)
+	{
+		render_entry_header *Header = (render_entry_header *)Commands->PushBufferBase;
+		BufferOffset += sizeof(render_entry_header);
+
+		switch (Header->Type)
+		{
+			case RenderEntryType_render_entry_bitmap:
+			{
+				glUseProgram(OpenGL.FontRenderProgram);
+
+				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)(Commands->PushBufferBase + BufferOffset);
+				BufferOffset += sizeof(render_entry_bitmap);
+
+				u32 TextureIndex = U32FromPointer(BitmapEntry->Bitmap->TextureHandler);
+
+				v2 MinPos = BitmapEntry->Min;
+				v2 MaxPos = BitmapEntry->Max;
+
+				float Vertices[] = {
+					// first triangle
+					MaxPos.x, MaxPos.y, 1.0f, 1.0f,// top right
+					MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
+					MinPos.x, MaxPos.y, 0.0f, 1.0f,// top left 
+					// second triangle
+					MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
+					MinPos.x, MinPos.y, 0.0f, 0.0f, // bottom left
+					MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
+				};
+
+				glUniform3f(glGetUniformLocation(OpenGL.FontRenderProgram, "TextColor"),
+					BitmapEntry->Color.x, BitmapEntry->Color.y, BitmapEntry->Color.z);
+				glUniformMatrix4fv(glGetUniformLocation(OpenGL.FontRenderProgram, "Projection"), 1, GL_FALSE,
+					&Commands->Proj.E[0][0]);
+
+				glActiveTexture(GL_TEXTURE0);
+				glBindVertexArray(OpenGL.FontVAO);
+
+				glBindTexture(GL_TEXTURE_2D, TextureIndex);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertices), Vertices);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+
+				glBindVertexArray(0);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			} break;
+		}
+	}
 }

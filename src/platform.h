@@ -17,6 +17,7 @@ typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
+typedef size_t memory_index;
 
 typedef int64_t s64;
 typedef int32_t s32;
@@ -29,6 +30,61 @@ typedef double f64;
 typedef uint32_t b32;
 
 typedef uintptr_t umm;
+
+union v2
+{
+	f32 E[2];
+	struct
+	{
+		f32 x, y;
+	};
+};
+
+union v3
+{
+	f32 E[3];
+
+	struct
+	{
+		f32 x, y, z;
+	};
+
+	struct
+	{
+		v2 xy;
+		f32 _Ignored0;
+	};
+
+	struct
+	{
+		f32 _Ignored1;
+		v2 yz;
+	};
+};
+
+// TODO: Add _m128
+union v4
+{
+	f32 E[4];
+
+	struct
+	{
+		f32 x, y, z, w;
+	};
+
+	struct
+	{
+		v3 xyz;
+		f32 _Ignored0;
+	};
+};
+
+// NOTE: row-major
+// TODO: Add _m128
+union m4x4
+{
+	f32 E[4][4];
+};
 
 #if DEVELOP_MODE
 #define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
@@ -88,48 +144,59 @@ struct game_input
 	game_controller_input Controller;
 	game_button_state MouseButtons[PlatformMouseButton_Count];
 	f32 MouseX, MouseY, MouseZ;
+	f32 ScreenWidth, ScreenHeight;
 };
 
 struct game_memory
 {
-	void *PermanentStorage;
-	u64 PermanentStorageSize;
+	void *GameStorage;
+	u64 GameStorageSize;
+
+	void *EditorStorage;
+	u64 EditorStorageSize;
 };
 
-// TODO: Change location
-struct bitmap_info
+struct game_render_commands
 {
-	void *TextureHandler;
-	void *Data;
-	f32 WidthOverHeight;
-	u16 Width;
-	u16 Height;
+	u8 *PushBufferBase;
+	u32 PushBufferSize;
+	u32 MaxPushBufferSize;
+
+	// TODO: store more mat
+	m4x4 Proj;
 };
 
-// TODO: replace patching?
-struct font_asset_info
+struct platform_file_handler
 {
-	union
-	{
-		void *Refs;
-
-		// NOTE: Only for pointer for letter patching
-		struct
-		{
-			u16 *UnicodeMap; // NOTE: 0 mean for this unicode code glyph doesn't exist
-			s16 *KerningTable;
-			s16 *GlyphAdvance; // TODO: does this need?
-			f32 *VerticalAdjast;
-			bitmap_info *Glyphs; // NOTE: Must be last
-		};
-
-	};
-
-	u32 GlyphCount;
-	u32 OnePastLastUnicodeCode;
-	f32 AscenderHeight;
-	f32 DescenderHeight;
-	f32 LineGap;
+	b32 Errors;
+	void *Handler;
 };
 
-#define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs)/sizeof(void*))
+enum file_type
+{
+	FileType_FontFile,
+};
+
+#define PLATFORM_GET_FILE_HANDLER_FOR_FILE(name) platform_file_handler name(file_type FileType)
+typedef PLATFORM_GET_FILE_HANDLER_FOR_FILE(platform_get_file_handler_for_file);
+
+#define PLATFORM_READ_FILE(name) void name(platform_file_handler *FileHandler, u32 Size, void *Dest)
+typedef PLATFORM_READ_FILE(platform_read_file);
+
+#define PLATFORM_GET_FILE_SIZE(name) u32 name(platform_file_handler *FileHandler)
+typedef PLATFORM_GET_FILE_SIZE(platform_get_file_size);
+
+#define PLATFORM_ALLOCATE_TEXTURE(name) void *name(u32 Width, u32 Height, void *Data)
+typedef PLATFORM_ALLOCATE_TEXTURE(platform_allocate_texture);
+
+#define PLATFORM_DEALLOCATE_TEXTURE(name) void name(u32 TextureHandler)
+typedef PLATFORM_DEALLOCATE_TEXTURE(platform_deallocate_texture);
+
+struct platform_api
+{
+	platform_get_file_handler_for_file *GetFileHandlerForFile;
+	platform_read_file *ReadFile;
+	platform_get_file_size *GetFileSize;
+	platform_allocate_texture *AllocateTexture;
+	platform_deallocate_texture *DeallocateTexture;
+};

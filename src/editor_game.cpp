@@ -1,54 +1,62 @@
+#include "editor_game.h"
+#include "render_group.cpp"
+#include "asset.cpp"
 
-void* AllocateTexture(u32 Width, u32 Height, void *Data);
-
-inline void
-PatchFontData(font_asset_info *FontAsset)
+void
+RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
 {
-	umm **PtrToMetrics = (umm **)&FontAsset->Refs;
-	for (u32 RefsIndex = 0;
-		RefsIndex <= MAX_REFS_METRICS_COUNT;
-		++RefsIndex)
+	font_asset_info *FontAsset = Group->FontAsset;
+
+	ScreenY -= FontAsset->AscenderHeight*Scale;
+
+	// TODO: Use codepoint?
+	u32 PrevGlyphIndex = 0;
+	for (;
+		*Text;
+		++Text)
 	{
-		PtrToMetrics[RefsIndex] = (umm *)((u8 *)PtrToMetrics + (u64)PtrToMetrics[RefsIndex]);
+		u32 GlyphIndex = GetGlyphIndexFromCodePoint(FontAsset, *Text);
+
+		if (*Text != ' ')
+		{
+			bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
+
+			f32 Width = (f32)Glyph->Width * Scale;
+			f32 Height = (f32)Glyph->Height * Scale;
+
+			f32 XPos = ScreenX;
+			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height);
+
+			PushFont(Group, Glyph, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
+		}
+
+
+		ScreenX += (f32)FontAsset->GlyphAdvance[GlyphIndex] * Scale;
+		if (PrevGlyphIndex)
+		{
+			ScreenX += (f32)FontAsset->KerningTable[PrevGlyphIndex*FontAsset->GlyphCount + GlyphIndex];
+		}
+
+		PrevGlyphIndex = GlyphIndex;
 	}
-
-	for (u32 GlyphIndex = 0;
-		GlyphIndex < FontAsset->GlyphCount;
-		++GlyphIndex)
-	{
-		bitmap_info *GlyphBitmap = FontAsset->Glyphs + GlyphIndex;
-		GlyphBitmap->Data = (void *)((u8 *)PtrToMetrics + (u64)GlyphBitmap->Data);
-		// TODO: Allocate in other place?
-		GlyphBitmap->TextureHandler = AllocateTexture(GlyphBitmap->Width, GlyphBitmap->Height, GlyphBitmap->Data);
-	}
-}
-
-inline u32
-GetGlyphIndexFromCodePoint(font_asset_info *FontAsset, u32 CodePoint)
-{
-	u32 Result = 0;
-	if (CodePoint && CodePoint < FontAsset->OnePastLastUnicodeCode)
-	{
-		Result = FontAsset->UnicodeMap[CodePoint];
-	}
-
-	return Result;
-}
-
-inline bitmap_info *
-GetGlyphBitmap(font_asset_info *FontAsset, u32 GlyphIndex)
-{
-	bitmap_info *Result = 0;
-	if (GlyphIndex < FontAsset->GlyphCount)
-	{
-		Result = FontAsset->Glyphs + GlyphIndex;
-	}
-
-	return Result;
 }
 
 void
-UpdateAndRender(game_input *GameInput)
+UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
+	game_state *GameState = (game_state *)Memory->GameStorage;
+	if (!GameState->IsInit)
+	{
+		GameState->FontAsset = (font_asset_info *)((u8 *)Memory->GameStorage + sizeof(game_state));
+		LoadAsset((void *)GameState->FontAsset);
+		PatchFontData(GameState->FontAsset);
 
+		GameState->IsInit = true;
+	}
+
+	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
+
+	SetCameraTrasform(&RenderGroup, true);
+
+	RenderText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.0f, 0.5f), 0, RenderGroup.Height, 0.5f);
 }

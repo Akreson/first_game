@@ -78,6 +78,22 @@ Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM  LParam
 	return Result;
 }
 
+void *
+Win32AllocateMemory(memory_index Size)
+{
+	void *Result = VirtualAlloc(0, Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	return Result;
+}
+
+void
+Win32DeallocateMemory(void *Ptr)
+{
+	if (Ptr)
+	{
+		VirtualFree(Ptr, 0, MEM_RELEASE);
+	}
+}
+
 inline void
 Win32ProcessButtonState(game_button_state *Button, b32 IsDown)
 {
@@ -129,10 +145,10 @@ Win32ProcessMessage(game_input *GameInput)
 	{
 		switch (Message.message)
 		{
-			/*case WM_QUIT:
+			case WM_QUIT:
 			{
 				GlobalRunning = false;
-			} break;*/
+			} break;
 
 			case WM_SYSKEYDOWN:
 			case WM_SYSKEYUP:
@@ -171,7 +187,7 @@ struct debug_read_file
 };
 
 debug_read_file
-Win32ReadFile(const char *FileName)
+DEBUGWin32ReadFile(const char *FileName)
 {
 	debug_read_file Result;
 	HANDLE FileHandle = CreateFile(FileName, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
@@ -213,6 +229,68 @@ Win32ReadFile(const char *FileName)
 	}
 
 	return Result;
+}
+
+PLATFORM_GET_FILE_HANDLER_FOR_FILE(Win32GetFileHandlerForFile)
+{
+	platform_file_handler Result = {};
+	char *FileName = nullptr;
+
+	switch (FileType)
+	{
+		case FileType_FontFile:
+		{
+			FileName = (char *)"data//font.edg";
+		} break;
+	}
+
+	if (FileName)
+	{
+		HANDLE Handle = CreateFile(FileName, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+		if (Handle != INVALID_HANDLE_VALUE)
+		{
+			Result.Handler = (void *)Handle;
+		}
+	}
+
+	return Result;
+}
+
+PLATFORM_GET_FILE_SIZE(Win32GetFileSize)
+{
+	u32 Result = 0;
+
+	if (!FileHandler->Errors)
+	{
+		HANDLE Handle = (HANDLE)FileHandler->Handler;
+
+		LARGE_INTEGER FileSize;
+		if (GetFileSizeEx(Handle, &FileSize))
+		{
+			Result = (u32)FileSize.QuadPart;
+		}
+		else
+		{
+			FileHandler->Errors = true;
+		}
+	}
+
+	return Result;
+}
+
+PLATFORM_READ_FILE(Win32ReadFile)
+{
+	if (!FileHandler->Errors)
+	{
+		HANDLE Handle = (HANDLE)FileHandler->Handler;
+
+		DWORD BytesRead;
+		if (!ReadFile(Handle, Dest, Size, &BytesRead, 0) &&
+			(BytesRead != Size))
+		{
+			FileHandler->Errors = true;
+		}
+	}
 }
 
 void
@@ -414,10 +492,6 @@ Win32InitOpenGL(HDC WindowDC)
 		}
 	}
 
-#ifdef DEVELOP_MODE
-	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
-#endif
-
 	OpenGLInit();
 
 	return OpenGLRC;
@@ -430,6 +504,15 @@ Win32GetScreenDim(HWND Window, u32 *Width, u32 *Height)
 	GetWindowRect(Window, &ScreenDim);
 	*Width = ScreenDim.right - ScreenDim.left;
 	*Height = ScreenDim.bottom - ScreenDim.top;
+}
+
+void
+Win32DisplayRenderCommands(HWND Window, game_render_commands *RenderCommands)
+{
+	OpenGLRenderCommands(RenderCommands);
+
+	HDC DeviceContext = GetDC(Window);
+	SwapBuffers(DeviceContext);
 }
 
 int CALLBACK
@@ -477,38 +560,22 @@ WinMain(HINSTANCE Instance,
 			game_memory GameMemory = {};
 			game_input GameInput = {};
 
-			GameMemory.PermanentStorageSize = MiB(10);
-			GameMemory.PermanentStorage = VirtualAlloc(0, GameMemory.PermanentStorageSize, MEM_COMMIT, PAGE_READWRITE);
-	
-			//
-			// NOTE: Some OpenGL init
-			//
-			// TODO: Remove
-			//
+			u32 PushBufferSize = MiB(2);
+			void *PushBufferBase = Win32AllocateMemory(PushBufferSize);
 
-			// TODO: Move all OpenGL stuff to render
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			GameMemory.GameStorageSize = MiB(20);
+			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);
+			GameMemory.EditorStorageSize = MiB(20);
+			GameMemory.EditorStorage = Win32AllocateMemory(GameMemory.EditorStorageSize);
 
-			debug_read_file FontAssetFile = Win32ReadFile("data//font.edg");
-			font_asset_info *FontAsset = (font_asset_info *)FontAssetFile.Content;
-			PatchFontData(FontAsset);
+			GameInput.ScreenWidth = (f32)ScreenWidth;
+			GameInput.ScreenHeight = (f32)ScreenHeight;
 
-			m4x4 Ortho = OrthographicProjection((f32)ScreenWidth, (f32)ScreenHeight);
-			glUseProgram(OpenGL.FontRenderProgram);
-			glUniformMatrix4fv(glGetUniformLocation(OpenGL.FontRenderProgram, "Projection"), 1, GL_FALSE, &Ortho.E[0][0]);
-
-			glGenVertexArrays(1, &OpenGL.FontVAO);
-			glGenBuffers(1, &OpenGL.FontVBO);
-
-			glBindVertexArray(OpenGL.FontVAO);
-
-			glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-			glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-			glEnableVertexAttribArray(0);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
+			PlatformAPI.GetFileHandlerForFile = Win32GetFileHandlerForFile;
+			PlatformAPI.ReadFile = Win32ReadFile;
+			PlatformAPI.GetFileSize = Win32GetFileSize;
+			PlatformAPI.AllocateTexture = OpenGLAllocateTexture;
+			PlatformAPI.DeallocateTexture = OpenGLDeallocateTexture;
 
 			while (GlobalRunning)
 			{
@@ -522,7 +589,6 @@ WinMain(HINSTANCE Instance,
 				GameInput.MouseX = (f32)MouseP.x;
 				GameInput.MouseY = (f32)(ScreenWidth - MouseP.y);
 				GameInput.MouseZ = 0; // TODO: Support mousewheel
-
 
 				DWORD Win32MappedMouseID[] =
 				{
@@ -540,15 +606,15 @@ WinMain(HINSTANCE Instance,
 					Win32ProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
 						GetKeyState(Win32MappedMouseID[ButtonIndex]) & (1 << 15));
 				}
-				
-				// NOTE: Render Test
-				glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-				glClear(GL_COLOR_BUFFER_BIT);
 
-				OpenGLRenderText(FontAsset, (char *)"hellow world", V3(0.5f, 0.0f, 0.5f), 0, (f32)ScreenHeight, 0.5f);
+				// NOTE: Update and render
+				game_render_commands RenderCommands = {};
+				RenderCommands.PushBufferBase = (u8 *)PushBufferBase;
+				RenderCommands.MaxPushBufferSize = PushBufferSize;
 
-				HDC DeviceContext = GetDC(Window);
-				SwapBuffers(DeviceContext);
+				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
+
+				Win32DisplayRenderCommands(Window, &RenderCommands);
 			}
 		}
 	}

@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "..\src\platform.h"
+#include "..\src\asset.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION 
 #include "stb_truetype.h"
@@ -54,9 +55,16 @@ FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 // TODO: Use u16 for glyph index and set 0 index as unused
 // TODO: use 1 byte for bitmap?
 int
-main(int argc, char **args)
+main(int argc, char **argv)
 {
-	FILE *FileHandler = fopen(FontFileName, "rb");
+	const char *FontPath = FontFileName;
+
+	if (argv[1])
+	{
+		FontPath = argv[1];
+	}
+
+	FILE *FileHandler = fopen(FontPath, "rb");
 
 	if (FileHandler)
 	{
@@ -135,9 +143,6 @@ main(int argc, char **args)
 
 		Assert(FontAsset->GlyphCount == GlyphCount);
 
-		s32 KerningValue = stbtt_GetCodepointKernAdvance(&FontInfo, 'A', 'W');
-		s32 KerningValuea = stbtt_GetCodepointKernAdvance(&FontInfo, 'r', 'l');
-
 		for (u32 UnicodeIndex = FirstUnicodeCode;
 			 UnicodeIndex < FontAsset->OnePastLastUnicodeCode;
 			++UnicodeIndex)
@@ -206,6 +211,7 @@ main(int argc, char **args)
 	}
 	else
 	{
+		printf("ERROR: Cannot open file %s.\n", (char *)FontPath);
 		Assert(0);
 	}
 
