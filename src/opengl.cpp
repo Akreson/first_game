@@ -32,8 +32,16 @@
 #define GL_LINK_STATUS                    0x8B82
 
 #define GL_ARRAY_BUFFER                   0x8892
+
+#define GL_STREAM_DRAW                    0x88E0
+#define GL_STREAM_READ                    0x88E1
+#define GL_STREAM_COPY                    0x88E2
 #define GL_STATIC_DRAW                    0x88E4
+#define GL_STATIC_READ                    0x88E5
+#define GL_STATIC_COPY                    0x88E6
 #define GL_DYNAMIC_DRAW                   0x88E8
+#define GL_DYNAMIC_READ                   0x88E9
+#define GL_DYNAMIC_COPY                   0x88EA
 
 #define GL_TEXTURE0                       0x84C0
 #define GL_TEXTURE1                       0x84C1
@@ -195,10 +203,19 @@ struct opengl_info
 
 struct opengl_render_info
 {
-	GLuint ProgramID;
-	GLuint FontRenderProgram;
-	GLuint FontVAO;
-	GLuint FontVBO;
+	GLuint BitmapProgramID;
+	GLuint BitmapVAO;
+	GLuint BitmapVBO;
+
+	GLuint ModelProgramID;
+	GLuint ModelVAO;
+	GLuint ModelVBO;
+
+	GLuint BitmapRrogProjID;
+	GLuint BitmapRrogColorID;
+
+	GLuint ModelRrogProjID;
+	GLuint ModelRrogColorID;
 };
 
 global_variable opengl_render_info OpenGL;
@@ -326,56 +343,30 @@ OpenGLInit()
 	const char *HeaderCode = R"FOO(
 	#version 440	
 	)FOO";
-	
-	const char *VertexCode = R"FOO(
-    layout (location = 0) in vec3 aPos;
-	layout (location = 1) in vec2 aTextCoord;
-	uniform mat4 Projection;
-	out vec2 TextCoord;
-	
-    void main()
-    {
-		gl_Position = Projection * vec4(aPos, 1.0);
-		TextCoord = vec2(aTextCoord);
-    }
-	)FOO";
-	
-	const char *FragmentCode = R"FOO(
-	out vec4 FragColor;
 
-	in vec2 TextCoord;
-
-	uniform sampler2D Texture1;
-
-	void main()
-	{
-		FragColor = texture(Texture1, TextCoord);
-	}	
-	)FOO";
-
-	const char *FontVertexCode =  R"FOO(
+	const char *BitmapVertexCode =  R"FOO(
 	layout (location = 0) in vec4 vertex;
 	out vec2 TexCoords;
 	
-	uniform mat4 Projection;
+	uniform mat4 Proj;
 
 	void main()
 	{
-		gl_Position = Projection * vec4(vertex.xy, 0, 1.0);
+		gl_Position = Proj * vec4(vertex.xy, 0, 1.0);
 		TexCoords = vertex.zw;
 	}
 
 	)FOO";
-	const char *FontFragmentCode = R"FOO(
+	const char *BitmapFragmentCode = R"FOO(
 	in vec2 TexCoords;	
 	out vec4 FragColor;
 
-	uniform sampler2D FontTexture;
+	uniform sampler2D BitmapTexture;
 	uniform vec3 TextColor;
 	
 	void main()
 	{
-		vec4 TexTexel = texture(FontTexture, TexCoords);
+		vec4 TexTexel = texture(BitmapTexture, TexCoords);
 		TexTexel.xyz *= TextColor;
 		FragColor = TexTexel;
 	}
@@ -385,82 +376,49 @@ OpenGLInit()
 	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
 #endif
 
-	OpenGL.FontRenderProgram = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)FontVertexCode, (GLchar *)FontFragmentCode);
+	OpenGL.BitmapProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)BitmapVertexCode, (GLchar *)BitmapFragmentCode);
 	
-	glUseProgram(OpenGL.FontRenderProgram);
-	glGenVertexArrays(1, &OpenGL.FontVAO);
-	glGenBuffers(1, &OpenGL.FontVBO);
+	glUseProgram(OpenGL.BitmapProgramID);
+	glGenVertexArrays(1, &OpenGL.BitmapVAO);
+	glGenBuffers(1, &OpenGL.BitmapVBO);
 
-	glBindVertexArray(OpenGL.FontVAO);
+	glBindVertexArray(OpenGL.BitmapVAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-}
 
-// TODO: get rid of border
-void
-OpenGLRenderText(font_asset_info *FontAsset, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
-{
-	glUseProgram(OpenGL.FontRenderProgram);
-	glUniform3f(glGetUniformLocation(OpenGL.FontRenderProgram, "TextColor"), TextColor.x, TextColor.y, TextColor.z);
-	
-	glActiveTexture(GL_TEXTURE0);
-	glBindVertexArray(OpenGL.FontVAO);
 
-	ScreenY -= FontAsset->AscenderHeight*Scale;
+	const char *ModelVertexCode = R"FOO(
+	layout (location = 0) in vec3 aPos;
 
-	// TODO: Use codepoint?
-	u32 PrevGlyphIndex = 0;
-	for (;
-		*Text;
-		++Text)
+	uniform mat4 Proj;
+
+	void main()
 	{
-		u32 GlyphIndex = GetGlyphIndexFromCodePoint(FontAsset, *Text);
-		
-		if (*Text != ' ')
-		{
-			bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
-			u32 FontTextureIndex = U32FromPointer(Glyph->TextureHandler);
-			
-			f32 Width = (f32)Glyph->Width * Scale;
-			f32 Height = (f32)Glyph->Height * Scale;
-
-			f32 Xpos = ScreenX;
-			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex]*(f32)Glyph->Height);
-
-			float FontVertices[] = {
-				// first triangle
-				Xpos + Width, YPos + Height, 1.0f, 1.0f,// top right
-				Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
-				Xpos, YPos + Height, 0.0f, 1.0f,// top left 
-				// second triangle
-				Xpos + Width, YPos, 1.0f, 0.0f,// bottom right
-				Xpos, YPos, 0.0f, 0.0f, // bottom left
-				Xpos, YPos + Height, 0.0f, 1.0f // top left
-			};
-
-			glBindTexture(GL_TEXTURE_2D, FontTextureIndex);
-			glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(FontVertices), FontVertices);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-		}
-
-		ScreenX += (f32)FontAsset->GlyphAdvance[GlyphIndex]*Scale;
-		if (PrevGlyphIndex)
-		{
-			ScreenX += (f32)FontAsset->KerningTable[PrevGlyphIndex*FontAsset->GlyphCount + GlyphIndex];
-		}
-
-		PrevGlyphIndex = GlyphIndex;
+		gl_Position = Proj * vec4(aPos, 1.0f);
 	}
 
-	glBindVertexArray(0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	)FOO";
+	const char *ModelFragmentCode = R"FOO(
+	out vec4 FragColor;
+
+	uniform vec4 Color;
+
+	void main()
+	{
+		FragColor = Color;
+	}
+	)FOO";
+
+	OpenGL.ModelProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)ModelVertexCode, (GLchar *)ModelFragmentCode);
+
+	glUseProgram(OpenGL.ModelProgramID);
+	glGenVertexArrays(1, &OpenGL.ModelVAO);
+	glGenBuffers(1, &OpenGL.ModelVBO);
 }
 
 void
@@ -483,7 +441,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 		{
 			case RenderEntryType_render_entry_bitmap:
 			{
-				glUseProgram(OpenGL.FontRenderProgram);
+				glUseProgram(OpenGL.BitmapProgramID);
 
 				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)(Commands->PushBufferBase + BufferOffset);
 				BufferOffset += sizeof(render_entry_bitmap);
@@ -504,22 +462,46 @@ OpenGLRenderCommands(game_render_commands *Commands)
 					MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
 				};
 
-				glUniform3f(glGetUniformLocation(OpenGL.FontRenderProgram, "TextColor"),
+				glUniform3f(glGetUniformLocation(OpenGL.BitmapProgramID, "TextColor"),
 					BitmapEntry->Color.x, BitmapEntry->Color.y, BitmapEntry->Color.z);
-				glUniformMatrix4fv(glGetUniformLocation(OpenGL.FontRenderProgram, "Projection"), 1, GL_FALSE,
+				glUniformMatrix4fv(glGetUniformLocation(OpenGL.BitmapProgramID, "Proj"), 1, GL_FALSE,
 					&Commands->Proj.E[0][0]);
 
 				glActiveTexture(GL_TEXTURE0);
-				glBindVertexArray(OpenGL.FontVAO);
+				glBindVertexArray(OpenGL.BitmapVAO);
 
 				glBindTexture(GL_TEXTURE_2D, TextureIndex);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FontVBO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapVBO);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertices), Vertices);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 
 				glBindVertexArray(0);
 				glBindTexture(GL_TEXTURE_2D, 0);
+			} break;
+
+			case RenderEntryType_render_entry_model:
+			{
+				glUseProgram(OpenGL.ModelProgramID);
+
+				render_entry_model *ModelEntry = (render_entry_model *)(Commands->PushBufferBase + BufferOffset);
+				BufferOffset += sizeof(render_entry_model);
+
+				glUniform4f(glGetUniformLocation(OpenGL.ModelProgramID, "Color"),
+					ModelEntry->Color.x, ModelEntry->Color.y, ModelEntry->Color.z, ModelEntry->Color.w);
+				glUniformMatrix4fv(glGetUniformLocation(OpenGL.ModelProgramID, "Proj"), 1, GL_FALSE,
+					&Commands->Proj.E[0][0]);
+
+				glBindVertexArray(OpenGL.ModelVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.ModelVBO);
+				u32 SizeOfVertexData = ModelEntry->VertexCount * sizeof(f32);
+				glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, ModelEntry->Vertex, GL_STREAM_DRAW);
+				glEnableVertexAttribArray(0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
+
+				glDrawArrays(GL_TRIANGLES, 0, ModelEntry->VertexCount / 3);
+
+				glBindVertexArray(0);
 			} break;
 		}
 	}

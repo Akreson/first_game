@@ -41,6 +41,77 @@ RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Scree
 	}
 }
 
+float CubeVertices[] = {
+	// positions       
+	-0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f,
+	0.5f, 0.5f, -0.5f,
+	0.5f, 0.5f, -0.5f,
+	-0.5f, 0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+
+	-0.5f, -0.5f, 0.5f,
+	0.5f, -0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, -0.5f, 0.5f,
+
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, 0.5f,
+	-0.5f, 0.5f, 0.5f,
+
+	0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+
+	-0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, 0.5f,
+	0.5f, -0.5f, 0.5f,
+	-0.5f, -0.5f, 0.5f,
+	-0.5f, -0.5f, -0.5f,
+
+	-0.5f, 0.5f, -0.5f,
+	0.5f, 0.5f, -0.5f,
+	0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, -0.5f
+};
+
+inline void
+InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
+{
+	Arena->Base = Base;
+	Arena->Size = Size;
+	Arena->Used = 0;
+}
+
+inline void
+AddModel(game_editor_state *EditorState, f32 *VertexPtr, u32 VertexCount, v4 Color)
+{
+	model *Model = EditorState->Models + EditorState->ModelsCount++;
+	Assert(EditorState->ModelsCount < ArrayCount(EditorState->Models));
+	Model->Vertex = VertexPtr;
+	Model->VertexCount = VertexCount;
+	Model->Color = Color;
+}
+
+void
+AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f))
+{
+	f32 *Base = PushArray(&EditorState->EditorArena, f32, ArrayCount(CubeVertices));
+	AddModel(EditorState, Base, sizeof(CubeVertices) / sizeof(f32), Color);
+	Copy(sizeof(CubeVertices), Base, CubeVertices);
+}
+
 void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
@@ -51,12 +122,16 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		LoadAsset((void *)GameState->FontAsset);
 		PatchFontData(GameState->FontAsset);
 
+		InitArena(&GameState->EditorState.EditorArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 1.0f, 1.0f));
+
 		GameState->IsInit = true;
 	}
 
 	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
 
-	SetCameraTrasform(&RenderGroup, true);
+	SetCameraTrasform(&RenderGroup, 0.41f, false);
 
-	RenderText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.0f, 0.5f), 0, RenderGroup.Height, 0.5f);
+	//RenderText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.0f, 0.5f), 0, RenderGroup.Height, 0.5f);
+	PushModel(&RenderGroup, GameState->EditorState.Models);
 }

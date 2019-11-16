@@ -50,6 +50,7 @@ global_variable wgl_swap_interval_ext *wglSwapIntervalEXT;
 global_variable wgl_get_extension_string_ext *wglGetExtensionStringEXT;
 
 global_variable b32 GlobalRunning;
+global_variable u64 GlobalPerfCountFrequency;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 
 LRESULT
@@ -497,15 +498,6 @@ Win32InitOpenGL(HDC WindowDC)
 	return OpenGLRC;
 }
 
-inline void
-Win32GetScreenDim(HWND Window, u32 *Width, u32 *Height)
-{
-	RECT ScreenDim;
-	GetWindowRect(Window, &ScreenDim);
-	*Width = ScreenDim.right - ScreenDim.left;
-	*Height = ScreenDim.bottom - ScreenDim.top;
-}
-
 void
 Win32DisplayRenderCommands(HWND Window, game_render_commands *RenderCommands)
 {
@@ -515,12 +507,41 @@ Win32DisplayRenderCommands(HWND Window, game_render_commands *RenderCommands)
 	SwapBuffers(DeviceContext);
 }
 
+inline void
+Win32GetScreenDim(HWND Window, u32 *Width, u32 *Height)
+{
+	RECT ScreenDim;
+	GetWindowRect(Window, &ScreenDim);
+	*Width = ScreenDim.right - ScreenDim.left;
+	*Height = ScreenDim.bottom - ScreenDim.top;
+}
+
+inline LARGE_INTEGER
+Win32GetClock(void)
+{
+	LARGE_INTEGER Result;
+	QueryPerformanceCounter(&Result);
+
+	return(Result);
+}
+
+inline f32
+Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
+{
+	f32 Result = (f32)(End.QuadPart - Start.QuadPart) / GlobalPerfCountFrequency;
+	return Result;
+}
+
 int CALLBACK
 WinMain(HINSTANCE Instance,
 	HINSTANCE PrevInstance,
 	LPSTR commandLine,
 	int ShowCode)
 {
+	LARGE_INTEGER PerCountFrequencyResult;
+	QueryPerformanceFrequency(&PerCountFrequencyResult);
+	GlobalPerfCountFrequency = PerCountFrequencyResult.QuadPart;
+
 	WNDCLASSA WindowClass = {};
 
 	WindowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -577,6 +598,8 @@ WinMain(HINSTANCE Instance,
 			PlatformAPI.AllocateTexture = OpenGLAllocateTexture;
 			PlatformAPI.DeallocateTexture = OpenGLDeallocateTexture;
 
+			LARGE_INTEGER LastCounter = Win32GetClock();
+
 			while (GlobalRunning)
 			{
 				// NOTE: Input Process
@@ -615,6 +638,10 @@ WinMain(HINSTANCE Instance,
 				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
 
 				Win32DisplayRenderCommands(Window, &RenderCommands);
+
+				LARGE_INTEGER EndCounter = Win32GetClock();
+
+				f32 SecondsElapsed = Win32GetSecondsElapsed(LastCounter, EndCounter);
 			}
 		}
 	}

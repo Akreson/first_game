@@ -3,6 +3,7 @@
 enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
+	RenderEntryType_render_entry_model,
 };
 
 struct render_entry_header
