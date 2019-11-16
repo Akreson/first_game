@@ -508,12 +508,15 @@ Win32DisplayRenderCommands(HWND Window, game_render_commands *RenderCommands)
 }
 
 inline void
-Win32GetScreenDim(HWND Window, u32 *Width, u32 *Height)
+Win32GetScreenDim(HWND Window, f32 *Width, f32 *Height)
 {
 	RECT ScreenDim;
 	GetWindowRect(Window, &ScreenDim);
-	*Width = ScreenDim.right - ScreenDim.left;
-	*Height = ScreenDim.bottom - ScreenDim.top;
+	u32 iWidth = ScreenDim.right - ScreenDim.left;
+	u32 iHeight = ScreenDim.bottom - ScreenDim.top;
+
+	*Width = (f32)iWidth;
+	*Height = (f32)iHeight;
 }
 
 inline LARGE_INTEGER
@@ -575,7 +578,7 @@ WinMain(HINSTANCE Instance,
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
 			ShowWindow(Window, SW_SHOW);
 
-			u32 ScreenWidth, ScreenHeight;
+			f32 ScreenWidth, ScreenHeight;
 			Win32GetScreenDim(Window, &ScreenWidth, &ScreenHeight);
 			
 			game_memory GameMemory = {};
@@ -588,9 +591,6 @@ WinMain(HINSTANCE Instance,
 			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);
 			GameMemory.EditorStorageSize = MiB(20);
 			GameMemory.EditorStorage = Win32AllocateMemory(GameMemory.EditorStorageSize);
-
-			GameInput.ScreenWidth = (f32)ScreenWidth;
-			GameInput.ScreenHeight = (f32)ScreenHeight;
 
 			PlatformAPI.GetFileHandlerForFile = Win32GetFileHandlerForFile;
 			PlatformAPI.ReadFile = Win32ReadFile;
@@ -634,6 +634,7 @@ WinMain(HINSTANCE Instance,
 				game_render_commands RenderCommands = {};
 				RenderCommands.PushBufferBase = (u8 *)PushBufferBase;
 				RenderCommands.MaxPushBufferSize = PushBufferSize;
+				RenderCommands.ScreenDim = V2(ScreenWidth, ScreenHeight);
 
 				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
 

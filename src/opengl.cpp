@@ -434,7 +434,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 		BufferOffset < Commands->PushBufferSize;
 		)
 	{
-		render_entry_header *Header = (render_entry_header *)Commands->PushBufferBase;
+		render_entry_header *Header = (render_entry_header *)(Commands->PushBufferBase + BufferOffset);
 		BufferOffset += sizeof(render_entry_header);
 
 		switch (Header->Type)
@@ -465,7 +465,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glUniform3f(glGetUniformLocation(OpenGL.BitmapProgramID, "TextColor"),
 					BitmapEntry->Color.x, BitmapEntry->Color.y, BitmapEntry->Color.z);
 				glUniformMatrix4fv(glGetUniformLocation(OpenGL.BitmapProgramID, "Proj"), 1, GL_FALSE,
-					&Commands->Proj.E[0][0]);
+					&Commands->OrthoProj.E[0][0]);
 
 				glActiveTexture(GL_TEXTURE0);
 				glBindVertexArray(OpenGL.BitmapVAO);
@@ -490,7 +490,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glUniform4f(glGetUniformLocation(OpenGL.ModelProgramID, "Color"),
 					ModelEntry->Color.x, ModelEntry->Color.y, ModelEntry->Color.z, ModelEntry->Color.w);
 				glUniformMatrix4fv(glGetUniformLocation(OpenGL.ModelProgramID, "Proj"), 1, GL_FALSE,
-					&Commands->Proj.E[0][0]);
+					&Commands->PersProj.E[0][0]);
 
 				glBindVertexArray(OpenGL.ModelVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.ModelVBO);

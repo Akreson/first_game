@@ -21,6 +21,8 @@ struct memory_arena
 void *
 PushSize_(memory_arena *Arena, memory_index Size, u32 Alignment = 2)
 {
+	Assert(!((Alignment - 1) & Alignment));
+
 	u32 CurrentBasePtr = (memory_index)Arena->Base + Arena->Used;
 
 	u32 AlignMask = Alignment - 1;

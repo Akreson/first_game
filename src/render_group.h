@@ -20,10 +20,16 @@ struct render_entry_bitmap
 	v3 Color;
 };
 
+struct render_entry_model
+{
+	v4 Color;
+	f32 *Vertex;
+	u16 VertexCount;
+};
+
 struct render_group
 {
 	game_render_commands *Commands;
 	font_asset_info *FontAsset;
-	u32 LastProj;
-	f32 Width, Height;
+	v2 ScreenDim;
 };

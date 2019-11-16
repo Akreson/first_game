@@ -6,23 +6,16 @@ InitRenderGroup(game_render_commands *Commands, game_input *Input, font_asset_in
 
 	Result.Commands = Commands;
 	Result.FontAsset = FontAsset;
-	Result.Width = Input->ScreenWidth;
-	Result.Height = Input->ScreenHeight;
+	Result.ScreenDim = Commands->ScreenDim;
 
 	return Result;
 }
 
 void
-SetCameraTrasform(render_group *Group, f32 FocalLength, b32 Ortho)
+SetCameraTrasform(render_group *Group, f32 FocalLength)
 {
-	if (Ortho)
-	{
-		Group->Commands->Proj = OrthographicProjection(Group->Width, Group->Height);
-	}
-	else
-	{
-		Group->Commands->Proj = PerspectiveProjection(FocalLength, Group->Width / Group->Height);
-	}
+	Group->Commands->OrthoProj = OrthographicProjection(Group->ScreenDim.x, Group->ScreenDim.y);
+	Group->Commands->PersProj = PerspectiveProjection(FocalLength, Group->ScreenDim.x / Group->ScreenDim.y);
 }
 
 void *
@@ -61,13 +54,6 @@ PushFont(render_group *Group, bitmap_info *Glyph, v2 Min, v2 Max, v3 Color)
 	BitmapEntry->Max = Max;
 	BitmapEntry->Color = Color;
 }
-
-struct render_entry_model
-{
-	v4 Color;
-	f32 *Vertex;
-	u16 VertexCount;
-};
 
 internal void
 PushModel(render_group *Group, model *Model)

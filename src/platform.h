@@ -144,7 +144,6 @@ struct game_input
 	game_controller_input Controller;
 	game_button_state MouseButtons[PlatformMouseButton_Count];
 	f32 MouseX, MouseY, MouseZ;
-	f32 ScreenWidth, ScreenHeight;
 };
 
 struct game_memory
@@ -158,12 +157,15 @@ struct game_memory
 
 struct game_render_commands
 {
+	m4x4 PersProj;
+	m4x4 OrthoProj;
+
+	v2 ScreenDim;
 	u8 *PushBufferBase;
 	u32 PushBufferSize;
 	u32 MaxPushBufferSize;
 
 	// TODO: store more mat
-	m4x4 Proj;
 };
 
 struct platform_file_handler
