@@ -95,20 +95,21 @@ InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 }
 
 inline void
-AddModel(game_editor_state *EditorState, f32 *VertexPtr, u32 VertexCount, v4 Color)
+AddModel(game_editor_state *EditorState, f32 *VertexPtr, u32 VertexCount, v4 Color, v3 Offset)
 {
 	model *Model = EditorState->Models + EditorState->ModelsCount++;
 	Assert(EditorState->ModelsCount < ArrayCount(EditorState->Models));
 	Model->Vertex = VertexPtr;
 	Model->VertexCount = VertexCount;
 	Model->Color = Color;
+	Model->Offset = Offset;
 }
 
 void
-AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f))
+AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3(0))
 {
 	f32 *Base = PushArray(&EditorState->EditorArena, f32, ArrayCount(CubeVertices));
-	AddModel(EditorState, Base, sizeof(CubeVertices) / sizeof(f32), Color);
+	AddModel(EditorState, Base, sizeof(CubeVertices) / sizeof(f32), Color, Offset);
 	Copy(sizeof(CubeVertices), Base, CubeVertices);
 }
 
@@ -126,6 +127,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		InitArena(&GameState->EditorState.EditorArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 1.0f, 1.0f));
+		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));
 		EditorState->CameraOffset = V3(0, 0, -3);
 
 		GameState->IsInit = true;
@@ -171,6 +173,12 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
-	PushModel(&RenderGroup, EditorState->Models);
+	for (u32 ModelIndex = 0;
+		ModelIndex < EditorState->ModelsCount;
+		++ModelIndex)
+	{
+		PushModel(&RenderGroup, &EditorState->Models[ModelIndex]);
+	}
+
 	RenderText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.5f);
 }

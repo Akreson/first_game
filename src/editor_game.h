@@ -47,6 +47,7 @@ struct game_world_state
 struct model
 {
 	v4 Color;
+	v3 Offset;
 	f32 *Vertex;
 	u16 VertexCount;
 };

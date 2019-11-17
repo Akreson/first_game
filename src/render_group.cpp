@@ -73,4 +73,5 @@ PushModel(render_group *Group, model *Model)
 	ModelEntry->Color = Model->Color;
 	ModelEntry->Vertex = Model->Vertex;
 	ModelEntry->VertexCount = Model->VertexCount;
+	ModelEntry->Offset = Model->Offset;
 }

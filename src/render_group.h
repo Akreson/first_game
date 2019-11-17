@@ -23,6 +23,7 @@ struct render_entry_bitmap
 struct render_entry_model
 {
 	v4 Color;
+	v3 Offset;
 	f32 *Vertex;
 	u16 VertexCount;
 };

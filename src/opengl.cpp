@@ -405,10 +405,11 @@ OpenGLInit()
 	layout (location = 0) in vec3 aPos;
 
 	uniform mat4 Proj;
+	uniform mat4 ModelTransform;
 
 	void main()
 	{
-		gl_Position = Proj * vec4(aPos, 1.0f);
+		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
 	}
 
 	)FOO";
@@ -496,10 +497,15 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_model *ModelEntry = (render_entry_model *)(Commands->PushBufferBase + BufferOffset);
 				BufferOffset += sizeof(render_entry_model);
 
+				m4x4 ModelTransform = Identity();
+				Translate(&ModelTransform, ModelEntry->Offset);
+
 				glUniform4f(glGetUniformLocation(OpenGL.ModelProgramID, "Color"),
 					ModelEntry->Color.x, ModelEntry->Color.y, ModelEntry->Color.z, ModelEntry->Color.w);
 				glUniformMatrix4fv(glGetUniformLocation(OpenGL.ModelProgramID, "Proj"), 1, GL_FALSE,
 					&Commands->PersProj.E[0][0]);
+				glUniformMatrix4fv(glGetUniformLocation(OpenGL.ModelProgramID, "ModelTransform"), 1, GL_FALSE,
+					&ModelTransform.E[0][0]);
 
 				glBindVertexArray(OpenGL.ModelVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.ModelVBO);
