@@ -116,6 +116,8 @@ void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
 	game_state *GameState = (game_state *)Memory->GameStorage;
+	game_editor_state *EditorState = &GameState->EditorState;
+
 	if (!GameState->IsInit)
 	{
 		GameState->FontAsset = (font_asset_info *)((u8 *)Memory->GameStorage + sizeof(game_state));
@@ -124,14 +126,51 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		InitArena(&GameState->EditorState.EditorArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 1.0f, 1.0f));
+		EditorState->CameraOffset = V3(0, 0, -3);
 
 		GameState->IsInit = true;
 	}
 
 	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
 
-	SetCameraTrasform(&RenderGroup, 0.41f);
+	v3 CameraOffset = EditorState->CameraOffset;
 
-	PushModel(&RenderGroup, GameState->EditorState.Models);
+	if (Input)
+	{
+		v2 Mouse = {};
+		Mouse.x = Input->MouseX;
+		Mouse.y = Input->MouseY;
+		
+		v2 dMouse = {};
+		
+		if ((GameState->LastMouseP.x != 0) && (GameState->LastMouseP.y != 0))
+		{
+			dMouse = Mouse - GameState->LastMouseP;
+
+			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
+			{
+				f32 RotationSpeed = Pi32 * 0.001f;
+				EditorState->CameraOrbit += dMouse.x * RotationSpeed;
+				EditorState->CameraPitch += dMouse.y * RotationSpeed;
+			}
+
+			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
+			{
+				f32 ZoomSpeed = (CameraOffset.z + EditorState->CameraDolly) * 0.005f;
+				EditorState->CameraDolly -= dMouse.y*ZoomSpeed;
+			}
+		}
+
+		GameState->LastMouseP = Mouse;
+	}
+
+	m4x4 CameraR = YRotation(EditorState->CameraOrbit) * XRotation(EditorState->CameraPitch);
+	CameraOffset.z += EditorState->CameraDolly;
+
+	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOffset);
+
+	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
+
+	PushModel(&RenderGroup, EditorState->Models);
 	RenderText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.5f);
 }

@@ -53,6 +53,11 @@ struct model
 
 struct game_editor_state
 {
+	v3 CameraOffset;
+	f32 CameraOrbit;
+	f32 CameraPitch;
+	f32 CameraDolly;
+
 	memory_arena EditorArena;
 	model Models[16];
 	u16 ModelsCount;
@@ -61,10 +66,13 @@ struct game_editor_state
 struct game_state
 {
 	b32 IsInit;
+	
+	game_mode GameMode;
+
+	v2 LastMouseP;
 
 	font_asset_info *FontAsset;
 
-	game_mode GameMode;
 	game_world_state WorldState;
 
 #ifdef DEVELOP_MODE

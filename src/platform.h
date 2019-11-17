@@ -6,9 +6,6 @@
 #define internal static
 #define global_variable static
 
-#define Pi32 3.14159265359f
-#define Tau32 6.2831853071f
-
 #define KiB(Value) (Value * 1024)
 #define MiB(Value) (KiB(Value) * 1024)
 #define GiB(Value) (MiB(Value) * 1024)
@@ -144,6 +141,7 @@ struct game_input
 	game_controller_input Controller;
 	game_button_state MouseButtons[PlatformMouseButton_Count];
 	f32 MouseX, MouseY, MouseZ;
+	b32 AltDown, ShiftDown, CtrlDown, TabDown;
 };
 
 struct game_memory

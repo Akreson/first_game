@@ -201,6 +201,12 @@ struct opengl_info
 	b32 GL_EXT_framebuffer_object;
 };
 
+struct opengl_framebuffer
+{
+	GLuint ID;
+	GLuint TextureID;
+};
+
 struct opengl_render_info
 {
 	GLuint BitmapProgramID;
@@ -216,6 +222,9 @@ struct opengl_render_info
 
 	GLuint ModelRrogProjID;
 	GLuint ModelRrogColorID;
+
+	opengl_framebuffer ColorFramBuff;
+	opengl_framebuffer DepthFrameBuff;
 };
 
 global_variable opengl_render_info OpenGL;

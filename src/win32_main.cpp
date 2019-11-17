@@ -167,6 +167,14 @@ Win32ProcessMessage(game_input *GameInput)
 					{
 					} break;
 				}
+
+				if (IsDown)
+				{
+					if ((VKCode == VK_F4) && AltIsDown)
+					{
+						GlobalRunning = false;
+					}
+				}
 			} break;
 
 			default:
@@ -609,9 +617,15 @@ WinMain(HINSTANCE Instance,
 				POINT MouseP;
 				GetCursorPos(&MouseP);
 				ScreenToClient(Window, &MouseP);
+				// TODO: Store in normalize form?
 				GameInput.MouseX = (f32)MouseP.x;
 				GameInput.MouseY = (f32)(ScreenWidth - MouseP.y);
 				GameInput.MouseZ = 0; // TODO: Support mousewheel
+
+				GameInput.AltDown = GetKeyState(VK_MENU) & (1 << 15);
+				GameInput.ShiftDown = GetKeyState(VK_SHIFT) & (1 << 15);
+				GameInput.CtrlDown = GetKeyState(VK_CONTROL) & (1 << 15);
+				GameInput.TabDown = GetKeyState(VK_TAB) & (1 << 15);
 
 				DWORD Win32MappedMouseID[] =
 				{

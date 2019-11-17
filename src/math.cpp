@@ -1,4 +1,10 @@
 
+// TODO: Don't use std math lib
+#include <math.h>
+
+#define Pi32 3.14159265359f
+#define Tau32 6.2831853071f
+
 inline v2
 V2(f32 x, f32 y)
 {
@@ -48,6 +54,15 @@ V4(f32 XYZW)
 	return Result;
 }
 
+inline v2
+operator-(v2 A, v2 B)
+{
+	v2 Result;
+	Result.x = A.x - B.x;
+	Result.y = A.y - B.y;
+	return Result;
+}
+
 inline m4x4
 operator*(m4x4 A, m4x4 B)
 {
@@ -64,6 +79,31 @@ operator*(m4x4 A, m4x4 B)
 			}
 		}
 	}
+
+	return Result;
+}
+
+inline v3
+operator*(v3 A, m4x4 B)
+{
+	v3 Result;
+	Result.x = A.x*B.E[0][0] + A.y*B.E[1][0] + A.z*B.E[2][0];
+	Result.y = A.x*B.E[0][1] + A.y*B.E[1][1] + A.z*B.E[2][1];
+	Result.z = A.x*B.E[0][2] + A.y*B.E[1][2] + A.z*B.E[2][2];
+
+	return Result;
+}
+
+inline m4x4
+Identity(void)
+{
+	m4x4 Result =
+	{{
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	}};
 
 	return Result;
 }
@@ -100,18 +140,77 @@ PerspectiveProjection(f32 FocalLength, f32 WidthOverHeight)
 
 	f32 ZRange = Far - Near;
 
-	f32 a = 1.0f / FocalLength * WidthOverHeight;
-	f32 b = 1.0f / FocalLength;
+	f32 a = 1.0f / FocalLength;
+	f32 b = 1.0f / FocalLength * WidthOverHeight;
 	f32 c = -(Near + Far) / ZRange;
 	f32 d = -(2.0f * Far * Near) / ZRange;
 
 	m4x4 Result = 
 	{{
-			a, 0, 0,  0,
-			0, b, 0,  0,
-			0, 0, c, -1,
-			0, 0, d,  0
+		{a, 0, 0,  0},
+		{0, b, 0,  0},
+		{0, 0, c, -1},
+		{0, 0, d,  0}
 	}};
 
 	return Result;
+}
+
+// TODO: Use quat for rotation?
+inline m4x4
+XRotation(f32 Angle)
+{
+	f32 c = cosf(Angle);
+	f32 s = sinf(Angle);
+
+	m4x4 Result =
+	{{
+		{ 1,  0, 0, 0},
+		{ 0,  c, s, 0},
+		{ 0, -s, c, 0},
+		{ 0,  0, 0, 1}
+	}};
+
+	return Result;
+}
+
+inline m4x4
+YRotation(f32 Angle)
+{
+	f32 c = cosf(Angle);
+	f32 s = sinf(Angle);
+
+	m4x4 Result =
+	{{
+		{c, 0, -s, 0},
+		{0, 1,  0, 0},
+		{s, 0,  c, 0},
+		{0, 0,  0, 1}
+	}};
+
+	return Result;
+}
+
+inline m4x4
+ZRotation(f32 Angle)
+{
+	f32 c = cosf(Angle);
+	f32 s = sinf(Angle);
+
+	m4x4 Result =
+	{{
+		{ c, s, 0, 0},
+		{-s, c, 0, 0},
+		{ 0, 0, 1, 0},
+		{ 0, 0, 0, 1}
+	}};
+
+	return Result;
+}
+
+inline void
+Translate(m4x4 *A, v3 B)
+{
+	v3 *TraslationPart = (v3 *)&A->E[3][0];
+	*TraslationPart = B;
 }
