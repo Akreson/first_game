@@ -317,6 +317,11 @@ Win32SetPixelFormat(HDC WindowDC)
 			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 			WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
 			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+	/*		WGL_RED_BITS_ARB, 8,
+			WGL_GREEN_BITS_ARB, 8,
+			WGL_BLUE_BITS_ARB, 8,
+			WGL_ALPHA_BITS_ARB, 8,
+			WGL_DEPTH_BITS_ARB, 24, */
 			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
 			0
 		};
@@ -580,7 +585,7 @@ WinMain(HINSTANCE Instance,
 
 		if (Window)
 		{
-			//ToggleFullscreen(Window);
+			ToggleFullscreen(Window);
 			GlobalRunning = true;
 			HDC WindowDC = GetDC(Window);
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
@@ -594,6 +599,9 @@ WinMain(HINSTANCE Instance,
 
 			u32 PushBufferSize = MiB(2);
 			void *PushBufferBase = Win32AllocateMemory(PushBufferSize);
+			u32 VertexBufferSize = MiB(5);
+			void *VertexBuffer = Win32AllocateMemory(VertexBufferSize);
+
 
 			GameMemory.GameStorageSize = MiB(20);
 			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);
@@ -646,9 +654,11 @@ WinMain(HINSTANCE Instance,
 
 				// NOTE: Update and render
 				game_render_commands RenderCommands = {};
+				RenderCommands.ScreenDim = V2(ScreenWidth, ScreenHeight);
 				RenderCommands.PushBufferBase = (u8 *)PushBufferBase;
 				RenderCommands.MaxPushBufferSize = PushBufferSize;
-				RenderCommands.ScreenDim = V2(ScreenWidth, ScreenHeight);
+				RenderCommands.MaxVertexBufferSize = VertexBufferSize;
+				RenderCommands.VertexBufferBase = (f32 *)VertexBuffer;
 
 				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
 

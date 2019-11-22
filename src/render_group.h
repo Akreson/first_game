@@ -4,6 +4,7 @@ enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
 	RenderEntryType_render_entry_model,
+	RenderEntryType_render_entry_model_face
 };
 
 struct render_entry_header
@@ -24,8 +25,16 @@ struct render_entry_model
 {
 	v4 Color;
 	v3 Offset;
-	f32 *Vertex;
+	v3 *Vertex;
 	u16 VertexCount;
+};
+
+struct render_entry_model_face
+{
+	v4 Color;
+	v3 Offset; // TODO: Remove?
+	u32 VertexBufferOffset;
+	//v3 BaricentricCoord;
 };
 
 struct render_group

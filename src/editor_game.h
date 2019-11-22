@@ -44,11 +44,28 @@ struct game_world_state
 {
 };
 
+// TODO: Model vertex never be bigger than U16_MAX_VALUE?
+struct model_face
+{
+	union
+	{
+		u16 VertexID[4];
+		struct
+		{
+			u16 V1, V2, V3, V4;
+		};
+	};
+};
+
+// NOTE: Triangle specifed in conter-clokwise order
+// TODO: Add edge info!!
 struct model
 {
 	v4 Color;
 	v3 Offset;
-	f32 *Vertex;
+	v3 *Vertex;
+	model_face *Faces;
+	u16 FaceCount;
 	u16 VertexCount;
 };
 

@@ -3,7 +3,13 @@
 #define WGL_ACCELERATION_ARB                    0x2003
 #define WGL_SUPPORT_OPENGL_ARB                  0x2010
 #define WGL_DOUBLE_BUFFER_ARB                   0x2011
+
 #define WGL_PIXEL_TYPE_ARB                      0x2013
+#define WGL_RED_BITS_ARB                        0x2015
+#define WGL_GREEN_BITS_ARB                      0x2017
+#define WGL_BLUE_BITS_ARB                       0x2019
+#define WGL_ALPHA_BITS_ARB                      0x201B
+#define WGL_DEPTH_BITS_ARB                      0x2022
 
 #define WGL_NO_ACCELERATION_ARB                 0x2025
 #define WGL_GENERIC_ACCELERATION_ARB            0x2026
@@ -213,15 +219,19 @@ struct opengl_render_info
 	GLuint BitmapVAO;
 	GLuint BitmapVBO;
 
-	GLuint ModelProgramID;
-	GLuint ModelVAO;
-	GLuint ModelVBO;
+	GLuint VertexBufferVAO;
+	GLuint VertexBufferVBO;
 
-	GLuint BitmapRrogProjID;
-	GLuint BitmapRrogColorID;
+	GLuint ModelProgramID; //
+	GLuint ModelVAO; // TODO: Delete?
+	GLuint ModelVBO; //
 
-	GLuint ModelRrogProjID;
-	GLuint ModelRrogColorID;
+	GLuint BitmapColorID;
+	GLuint BitmapProjID;
+
+	GLuint ModelColorID;
+	GLuint ModelProjID;
+	GLuint ModelTransformID;
 
 	opengl_framebuffer ColorFramBuff;
 	opengl_framebuffer DepthFrameBuff;
@@ -371,12 +381,12 @@ OpenGLInit()
 	out vec4 FragColor;
 
 	uniform sampler2D BitmapTexture;
-	uniform vec3 TextColor;
+	uniform vec3 Color;
 	
 	void main()
 	{
 		vec4 TexTexel = texture(BitmapTexture, TexCoords);
-		TexTexel.xyz *= TextColor;
+		TexTexel.xyz *= Color;
 		FragColor = TexTexel;
 	}
 	)FOO";
@@ -400,6 +410,8 @@ OpenGLInit()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
+	OpenGL.BitmapColorID = glGetUniformLocation(OpenGL.BitmapProgramID, "Color");
+	OpenGL.BitmapProjID = glGetUniformLocation(OpenGL.BitmapProgramID, "Proj");
 
 	const char *ModelVertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
@@ -429,16 +441,33 @@ OpenGLInit()
 	glUseProgram(OpenGL.ModelProgramID);
 	glGenVertexArrays(1, &OpenGL.ModelVAO);
 	glGenBuffers(1, &OpenGL.ModelVBO);
+
+	OpenGL.ModelColorID = glGetUniformLocation(OpenGL.ModelProgramID, "Color");
+	OpenGL.ModelProjID = glGetUniformLocation(OpenGL.ModelProgramID, "Proj");
+	OpenGL.ModelTransformID = glGetUniformLocation(OpenGL.ModelProgramID, "ModelTransform");
+
+	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
+	glGenBuffers(1, &OpenGL.VertexBufferVBO);
 }
 
 void
 OpenGLRenderCommands(game_render_commands *Commands)
 {
+	//glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glBindVertexArray(OpenGL.VertexBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
+
+	u32 SizeOfVertexData = Commands->VertexCount * sizeof(f32);
+	glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER,0);
+	glBindVertexArray(0);
 
 	for (u32 BufferOffset = 0;
 		BufferOffset < Commands->PushBufferSize;
@@ -472,10 +501,9 @@ OpenGLRenderCommands(game_render_commands *Commands)
 					MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
 				};
 
-				glUniform3f(glGetUniformLocation(OpenGL.BitmapProgramID, "TextColor"),
+				glUniform3f(OpenGL.BitmapColorID,
 					BitmapEntry->Color.x, BitmapEntry->Color.y, BitmapEntry->Color.z);
-				glUniformMatrix4fv(glGetUniformLocation(OpenGL.BitmapProgramID, "Proj"), 1, GL_FALSE,
-					&Commands->OrthoProj.E[0][0]);
+				glUniformMatrix4fv(OpenGL.BitmapProjID, 1, GL_FALSE, &Commands->OrthoProj.E[0][0]);
 
 				glActiveTexture(GL_TEXTURE0);
 				glBindVertexArray(OpenGL.BitmapVAO);
@@ -490,6 +518,33 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindTexture(GL_TEXTURE_2D, 0);
 			} break;
 
+			// TODO: Batch all model faces?
+			case RenderEntryType_render_entry_model_face:
+			{
+				glUseProgram(OpenGL.ModelProgramID);
+
+				render_entry_model_face *FaceEntry = (render_entry_model_face *)(Commands->PushBufferBase + BufferOffset);
+				BufferOffset += sizeof(render_entry_model_face);
+
+				m4x4 ModelTransform = Identity();
+				Translate(&ModelTransform, FaceEntry->Offset);
+
+				glUniform4f(OpenGL.ModelColorID,
+					FaceEntry->Color.r, FaceEntry->Color.g, FaceEntry->Color.b, FaceEntry->Color.a);
+				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.E[0][0]);
+				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
+
+				glBindVertexArray(OpenGL.VertexBufferVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
+
+				u32 OffsetInBytes = FaceEntry->VertexBufferOffset * sizeof(f32);
+
+				glEnableVertexAttribArray(0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
+
+				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 3, 6);
+			} break;
+
 			case RenderEntryType_render_entry_model:
 			{
 				glUseProgram(OpenGL.ModelProgramID);
@@ -500,17 +555,15 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				m4x4 ModelTransform = Identity();
 				Translate(&ModelTransform, ModelEntry->Offset);
 
-				glUniform4f(glGetUniformLocation(OpenGL.ModelProgramID, "Color"),
-					ModelEntry->Color.x, ModelEntry->Color.y, ModelEntry->Color.z, ModelEntry->Color.w);
-				glUniformMatrix4fv(glGetUniformLocation(OpenGL.ModelProgramID, "Proj"), 1, GL_FALSE,
-					&Commands->PersProj.E[0][0]);
-				glUniformMatrix4fv(glGetUniformLocation(OpenGL.ModelProgramID, "ModelTransform"), 1, GL_FALSE,
-					&ModelTransform.E[0][0]);
+				glUniform4f(OpenGL.ModelColorID,
+					ModelEntry->Color.r, ModelEntry->Color.g, ModelEntry->Color.b, ModelEntry->Color.a);
+				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.E[0][0]);
+				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
 
 				glBindVertexArray(OpenGL.ModelVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.ModelVBO);
-				u32 SizeOfVertexData = ModelEntry->VertexCount * sizeof(f32);
-				glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, ModelEntry->Vertex, GL_STREAM_DRAW);
+				u32 SizeOfVertexData = ModelEntry->VertexCount * sizeof(v3);
+				glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, (GLvoid *)ModelEntry->Vertex, GL_STREAM_DRAW);
 				glEnableVertexAttribArray(0);
 				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
 

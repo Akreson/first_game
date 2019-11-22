@@ -71,6 +71,11 @@ union v4
 
 	struct
 	{
+		f32 r, g, b, a;
+	};
+
+	struct
+	{
 		v3 xyz;
 		f32 _Ignored0;
 	};
@@ -162,6 +167,10 @@ struct game_render_commands
 	u8 *PushBufferBase;
 	u32 PushBufferSize;
 	u32 MaxPushBufferSize;
+
+	f32 *VertexBufferBase;
+	u32 VertexCount;
+	u32 MaxVertexBufferSize;
 
 	// TODO: store more mat
 };

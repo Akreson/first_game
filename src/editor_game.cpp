@@ -48,7 +48,7 @@ float CubeVertices[] = {
 };
 
 void
-RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
+OuputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
 {
 	font_asset_info *FontAsset = Group->FontAsset;
 
@@ -94,23 +94,48 @@ InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 	Arena->Used = 0;
 }
 
-inline void
-AddModel(game_editor_state *EditorState, f32 *VertexPtr, u32 VertexCount, v4 Color, v3 Offset)
+inline model *
+AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
 {
 	model *Model = EditorState->Models + EditorState->ModelsCount++;
 	Assert(EditorState->ModelsCount < ArrayCount(EditorState->Models));
-	Model->Vertex = VertexPtr;
-	Model->VertexCount = VertexCount;
 	Model->Color = Color;
 	Model->Offset = Offset;
+
+	return Model;
+}
+
+void
+GeneratingCube(memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
+{
+	Model->VertexCount = 8;
+	Model->FaceCount = 6;
+	v3 *Vertex = Model->Vertex = PushArray(Arena, v3, Model->VertexCount);
+
+	Vertex[0] = V3(-HalfDim, -HalfDim, HalfDim);
+	Vertex[1] = V3(HalfDim, -HalfDim, HalfDim);
+	Vertex[2] = V3(HalfDim, HalfDim, HalfDim);
+	Vertex[3] = V3(-HalfDim, HalfDim, HalfDim);
+
+	Vertex[4] = V3(HalfDim, -HalfDim, -HalfDim);
+	Vertex[5] = V3(-HalfDim, -HalfDim, -HalfDim);
+	Vertex[6] = V3(-HalfDim, HalfDim, -HalfDim);
+	Vertex[7] = V3(HalfDim, HalfDim, -HalfDim);
+
+	model_face *Faces = Model->Faces = PushArray(Arena, model_face, Model->FaceCount);
+	Faces[0] = {0, 1, 2, 3};
+	Faces[1] = {4, 5, 6, 7};
+	Faces[2] = {1, 4, 7, 2};
+	Faces[3] = {5, 0, 3, 6};
+	Faces[4] = {0, 1, 4, 5};
+	Faces[5] = {3, 2, 7, 6};
 }
 
 void
 AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3(0))
 {
-	f32 *Base = PushArray(&EditorState->EditorArena, f32, ArrayCount(CubeVertices));
-	AddModel(EditorState, Base, sizeof(CubeVertices) / sizeof(f32), Color, Offset);
-	Copy(sizeof(CubeVertices), Base, CubeVertices);
+	model *Model = AddModel(EditorState, Color, Offset);
+	GeneratingCube(&EditorState->EditorArena, Model);
 }
 
 void
@@ -143,11 +168,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Mouse.x = Input->MouseX;
 		Mouse.y = Input->MouseY;
 		
-		v2 dMouse = {};
-		
 		if ((GameState->LastMouseP.x != 0) && (GameState->LastMouseP.y != 0))
 		{
-			dMouse = Mouse - GameState->LastMouseP;
+			v2 dMouse = Mouse - GameState->LastMouseP;
 
 			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 			{
@@ -177,8 +200,15 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		ModelIndex < EditorState->ModelsCount;
 		++ModelIndex)
 	{
-		PushModel(&RenderGroup, &EditorState->Models[ModelIndex]);
+		model *Model = EditorState->Models + ModelIndex;
+		for (u32 FaceIndex = 0;
+			FaceIndex < Model->FaceCount;
+			++FaceIndex)
+		{
+			model_face *Face = Model->Faces + FaceIndex;
+			PushModelFace(&RenderGroup, Model->Vertex, Face, Model->Color, Model->Offset);
+		}
 	}
 
-	RenderText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.5f);
+	OuputText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
 }
