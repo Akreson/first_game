@@ -10,6 +10,8 @@
 #define WGL_BLUE_BITS_ARB                       0x2019
 #define WGL_ALPHA_BITS_ARB                      0x201B
 #define WGL_DEPTH_BITS_ARB                      0x2022
+#define WGL_COLOR_BITS_ARB                      0x2014
+#define WGL_STENCIL_BITS_ARB                    0x2023
 
 #define WGL_NO_ACCELERATION_ARB                 0x2025
 #define WGL_GENERIC_ACCELERATION_ARB            0x2026
@@ -65,6 +67,13 @@
 #define GL_TEXTURE13                      0x84CD
 #define GL_TEXTURE14                      0x84CE
 #define GL_TEXTURE15                      0x84CF
+
+#define GL_FRAMEBUFFER                    0x8D40
+#define GL_DEPTH_ATTACHMENT               0x8D00
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+#define GL_RENDERBUFFER                   0x8D41
+#define GL_DEPTH24_STENCIL8               0x88F0
+#define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 
 typedef char GLchar;
 typedef size_t GLsizeiptr;
@@ -124,6 +133,11 @@ typedef void type_glFramebufferTexture2D(GLenum target, GLenum attachment, GLenu
 typedef void type_glDeleteFramebuffers(GLsizei n, GLuint *framebuffers);
 typedef GLenum type_glCheckFramebufferStatus(GLenum target);
 
+typedef void type_glGenRenderbuffers(GLsizei n,	GLuint *renderbuffers);
+typedef void type_glBindRenderbuffer(GLenum target,	GLuint renderbuffer);
+typedef void type_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
+typedef void type_glFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+
 typedef void type_glEnableVertexAttribArray(GLuint index);
 typedef void type_glDisableVertexAttribArray(GLuint index);
 typedef void type_glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
@@ -178,15 +192,20 @@ OpenGLGlobalVariable(glBufferData);
 OpenGLGlobalVariable(glBufferSubData);
 OpenGLGlobalVariable(glDeleteBuffers);
 
+OpenGLGlobalVariable(glEnableVertexAttribArray);
+OpenGLGlobalVariable(glDisableVertexAttribArray);
+OpenGLGlobalVariable(glVertexAttribPointer);
+
 OpenGLGlobalVariable(glBindFramebuffer);
 OpenGLGlobalVariable(glGenFramebuffers);
 OpenGLGlobalVariable(glFramebufferTexture2D);
 OpenGLGlobalVariable(glDeleteFramebuffers);
 OpenGLGlobalVariable(glCheckFramebufferStatus);
 
-OpenGLGlobalVariable(glEnableVertexAttribArray);
-OpenGLGlobalVariable(glDisableVertexAttribArray);
-OpenGLGlobalVariable(glVertexAttribPointer);
+OpenGLGlobalVariable(glGenRenderbuffers);
+OpenGLGlobalVariable(glBindRenderbuffer);
+OpenGLGlobalVariable(glRenderbufferStorage);
+OpenGLGlobalVariable(glFramebufferRenderbuffer);
 
 OpenGLGlobalVariable(glGetShaderiv);
 OpenGLGlobalVariable(glGetProgramiv);
@@ -205,12 +224,6 @@ struct opengl_info
 	char *Extension;
 
 	b32 GL_EXT_framebuffer_object;
-};
-
-struct opengl_framebuffer
-{
-	GLuint ID;
-	GLuint TextureID;
 };
 
 struct opengl_render_info
@@ -233,8 +246,13 @@ struct opengl_render_info
 	GLuint ModelProjID;
 	GLuint ModelTransformID;
 
-	opengl_framebuffer ColorFramBuff;
-	opengl_framebuffer DepthFrameBuff;
+
+	GLuint FrameBufferDisplayProgramID;
+	GLuint FrameBuffer;
+	GLuint FrameBufferText;
+	GLuint DepthRBO;
+	GLuint FrameBufferVAO;
+	GLuint FrameBufferVBO;
 };
 
 global_variable opengl_render_info OpenGL;
@@ -356,6 +374,17 @@ OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode
 	return ProgramID;
 }
 
+float quadVertices[] = {
+		// positions   // texCoords
+	-1.0f, 1.0f, 0.0f, 1.0f,
+	-1.0f, -1.0f, 0.0f, 0.0f,
+	1.0f, -1.0f, 1.0f, 0.0f,
+
+	-1.0f, 1.0f, 0.0f, 1.0f,
+	1.0f, -1.0f, 1.0f, 0.0f,
+	1.0f, 1.0f, 1.0f, 1.0f
+};
+
 internal void
 OpenGLInit()
 {
@@ -415,24 +444,38 @@ OpenGLInit()
 
 	const char *ModelVertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
+	layout (location = 1) in vec3 aBarCoord;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
+	out vec3 BarCoord;
+
 	void main()
 	{
+		BarCoord = aBarCoord;
 		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
 	}
 
 	)FOO";
+	// TODO: Set model color?
 	const char *ModelFragmentCode = R"FOO(
 	out vec4 FragColor;
 
 	uniform vec4 Color;
 
+	in vec3 BarCoord;
+
+	float edgeFactor(){
+		vec3 dBarCoord = fwidth(BarCoord);
+		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*1.5, BarCoord);
+		return min(min(a3.x, a3.y), a3.z);
+	}
+
 	void main()
 	{
-		FragColor = Color;
+		float Factor = edgeFactor();
+		FragColor = vec4(vec3(Factor), 1.0);
 	}
 	)FOO";
 
@@ -448,12 +491,73 @@ OpenGLInit()
 
 	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
+
+	// TEST
+	// TODO: Remove
+	glGenFramebuffers(1, &OpenGL.FrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.FrameBuffer);
+
+	glGenTextures(1, &OpenGL.FrameBufferText);
+	glBindTexture(GL_TEXTURE_2D, OpenGL.FrameBufferText);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1980, 1080, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, OpenGL.FrameBufferText, 0);
+
+	glGenRenderbuffers(1, &OpenGL.DepthRBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, OpenGL.DepthRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1980, 1080);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, OpenGL.DepthRBO);
+
+	glGenVertexArrays(1, &OpenGL.FrameBufferVAO);
+	glGenBuffers(1, &OpenGL.FrameBufferVBO);
+	glBindVertexArray(OpenGL.FrameBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FrameBufferVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	const char *FrameBufferDisplayVertexCode = R"FOO(
+	layout (location = 0) in vec2 aPos;
+	layout (location = 1) in vec2 aTexCoords;
+
+	out vec2 TexCoords;
+
+	void main()
+	{
+		TexCoords = aTexCoords;
+		gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0); 
+	}  
+	)FOO";
+	const char *FrameBufferDisplayFragmentCode = R"FOO(
+	out vec4 FragColor;
+
+	in vec2 TexCoords;
+
+	uniform sampler2D screenTexture;
+
+	void main()
+	{
+		vec3 col = texture(screenTexture, TexCoords).rgb;
+		FragColor = vec4(col, 1.0);
+	} 
+	)FOO";
+
+	OpenGL.FrameBufferDisplayProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)FrameBufferDisplayVertexCode,
+		(GLchar *)FrameBufferDisplayFragmentCode);
 }
 
 void
 OpenGLRenderCommands(game_render_commands *Commands)
 {
-	//glEnable(GL_DEPTH_TEST);
+	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.FrameBuffer);
+
+	glDepthMask(true);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_DEPTH_TEST);
+
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -540,9 +644,11 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				u32 OffsetInBytes = FaceEntry->VertexBufferOffset * sizeof(f32);
 
 				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
+				glEnableVertexAttribArray(1);
+				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)(sizeof(f32) * 3));
 
-				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 3, 6);
+				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 6, 6);
 			} break;
 
 			case RenderEntryType_render_entry_model:
@@ -565,7 +671,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				u32 SizeOfVertexData = ModelEntry->VertexCount * sizeof(v3);
 				glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, (GLvoid *)ModelEntry->Vertex, GL_STREAM_DRAW);
 				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
 
 				glDrawArrays(GL_TRIANGLES, 0, ModelEntry->VertexCount / 3);
 
@@ -573,4 +679,14 @@ OpenGLRenderCommands(game_render_commands *Commands)
 			} break;
 		}
 	}
+
+	glUseProgram(OpenGL.FrameBufferDisplayProgramID);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDisable(GL_DEPTH_TEST);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glBindVertexArray(OpenGL.FrameBufferVAO);
+	glBindTexture(GL_TEXTURE_2D, OpenGL.FrameBufferText);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

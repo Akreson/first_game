@@ -313,16 +313,16 @@ Win32SetPixelFormat(HDC WindowDC)
 	{
 		int AttribList[] =
 		{
-			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
 			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
 			WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
 			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-	/*		WGL_RED_BITS_ARB, 8,
+			WGL_RED_BITS_ARB, 8,
 			WGL_GREEN_BITS_ARB, 8,
 			WGL_BLUE_BITS_ARB, 8,
 			WGL_ALPHA_BITS_ARB, 8,
-			WGL_DEPTH_BITS_ARB, 24, */
-			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+			WGL_DEPTH_BITS_ARB, 24,
 			0
 		};
 
@@ -336,8 +336,10 @@ Win32SetPixelFormat(HDC WindowDC)
 		SuggestedPixelFormat.nVersion = 1;
 		SuggestedPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER | PFD_DRAW_TO_WINDOW;
 		SuggestedPixelFormat.iPixelType = PFD_TYPE_RGBA;
+		SuggestedPixelFormat.iLayerType = PFD_MAIN_PLANE;
 		SuggestedPixelFormat.cColorBits = 32;
 		SuggestedPixelFormat.cAlphaBits = 8;
+		SuggestedPixelFormat.cDepthBits = 24;
 
 		SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &SuggestedPixelFormat);
 	}
@@ -443,6 +445,11 @@ Win32InitOpenGL(HDC WindowDC)
 			Win32LoadOpenGLFunction(glFramebufferTexture2D);
 			Win32LoadOpenGLFunction(glDeleteFramebuffers);
 			Win32LoadOpenGLFunction(glCheckFramebufferStatus);
+
+			Win32LoadOpenGLFunction(glGenRenderbuffers);
+			Win32LoadOpenGLFunction(glBindRenderbuffer);
+			Win32LoadOpenGLFunction(glRenderbufferStorage);
+			Win32LoadOpenGLFunction(glFramebufferRenderbuffer);
 		}
 		else
 		{
@@ -589,6 +596,7 @@ WinMain(HINSTANCE Instance,
 			GlobalRunning = true;
 			HDC WindowDC = GetDC(Window);
 			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
+
 			ShowWindow(Window, SW_SHOW);
 
 			f32 ScreenWidth, ScreenHeight;
@@ -601,7 +609,6 @@ WinMain(HINSTANCE Instance,
 			void *PushBufferBase = Win32AllocateMemory(PushBufferSize);
 			u32 VertexBufferSize = MiB(5);
 			void *VertexBuffer = Win32AllocateMemory(VertexBufferSize);
-
 
 			GameMemory.GameStorageSize = MiB(20);
 			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);

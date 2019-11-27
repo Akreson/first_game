@@ -2,51 +2,6 @@
 #include "render_group.cpp"
 #include "asset.cpp"
 
-float CubeVertices[] = {
-	// positions       
-	-0.5f, -0.5f, -0.5f,
-	0.5f, -0.5f, -0.5f,
-	0.5f, 0.5f, -0.5f,
-	0.5f, 0.5f, -0.5f,
-	-0.5f, 0.5f, -0.5f,
-	-0.5f, -0.5f, -0.5f,
-
-	-0.5f, -0.5f, 0.5f,
-	0.5f, -0.5f, 0.5f,
-	0.5f, 0.5f, 0.5f,
-	0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f, 0.5f,
-	-0.5f, -0.5f, 0.5f,
-
-	-0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f, -0.5f,
-	-0.5f, -0.5f, -0.5f,
-	-0.5f, -0.5f, -0.5f,
-	-0.5f, -0.5f, 0.5f,
-	-0.5f, 0.5f, 0.5f,
-
-	0.5f, 0.5f, 0.5f,
-	0.5f, 0.5f, -0.5f,
-	0.5f, -0.5f, -0.5f,
-	0.5f, -0.5f, -0.5f,
-	0.5f, -0.5f, 0.5f,
-	0.5f, 0.5f, 0.5f,
-
-	-0.5f, -0.5f, -0.5f,
-	0.5f, -0.5f, -0.5f,
-	0.5f, -0.5f, 0.5f,
-	0.5f, -0.5f, 0.5f,
-	-0.5f, -0.5f, 0.5f,
-	-0.5f, -0.5f, -0.5f,
-
-	-0.5f, 0.5f, -0.5f,
-	0.5f, 0.5f, -0.5f,
-	0.5f, 0.5f, 0.5f,
-	0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f, -0.5f
-};
-
 void
 OuputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
 {
@@ -151,7 +106,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		PatchFontData(GameState->FontAsset);
 
 		InitArena(&GameState->EditorState.EditorArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
-		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 1.0f, 1.0f));
+
+		AddCubeModel(&GameState->EditorState, V4(0.5f, 0.0f, 1.0f, 1.0f));
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));
 		EditorState->CameraOffset = V3(0, 0, -3);
 
