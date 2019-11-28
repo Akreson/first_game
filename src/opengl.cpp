@@ -246,13 +246,13 @@ struct opengl_render_info
 	GLuint ModelProjID;
 	GLuint ModelTransformID;
 
-
-	GLuint FrameBufferDisplayProgramID;
+	
+	/*GLuint FrameBufferDisplayProgramID;
 	GLuint FrameBuffer;
 	GLuint FrameBufferText;
 	GLuint DepthRBO;
 	GLuint FrameBufferVAO;
-	GLuint FrameBufferVBO;
+	GLuint FrameBufferVBO;*/
 };
 
 global_variable opengl_render_info OpenGL;
@@ -492,68 +492,12 @@ OpenGLInit()
 	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
 
-	// TEST
-	// TODO: Remove
-	glGenFramebuffers(1, &OpenGL.FrameBuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.FrameBuffer);
-
-	glGenTextures(1, &OpenGL.FrameBufferText);
-	glBindTexture(GL_TEXTURE_2D, OpenGL.FrameBufferText);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1980, 1080, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, OpenGL.FrameBufferText, 0);
-
-	glGenRenderbuffers(1, &OpenGL.DepthRBO);
-	glBindRenderbuffer(GL_RENDERBUFFER, OpenGL.DepthRBO);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1980, 1080);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, OpenGL.DepthRBO);
-
-	glGenVertexArrays(1, &OpenGL.FrameBufferVAO);
-	glGenBuffers(1, &OpenGL.FrameBufferVBO);
-	glBindVertexArray(OpenGL.FrameBufferVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.FrameBufferVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-	const char *FrameBufferDisplayVertexCode = R"FOO(
-	layout (location = 0) in vec2 aPos;
-	layout (location = 1) in vec2 aTexCoords;
-
-	out vec2 TexCoords;
-
-	void main()
-	{
-		TexCoords = aTexCoords;
-		gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0); 
-	}  
-	)FOO";
-	const char *FrameBufferDisplayFragmentCode = R"FOO(
-	out vec4 FragColor;
-
-	in vec2 TexCoords;
-
-	uniform sampler2D screenTexture;
-
-	void main()
-	{
-		vec3 col = texture(screenTexture, TexCoords).rgb;
-		FragColor = vec4(col, 1.0);
-	} 
-	)FOO";
-
-	OpenGL.FrameBufferDisplayProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)FrameBufferDisplayVertexCode,
-		(GLchar *)FrameBufferDisplayFragmentCode);
+	// NOTE: use framebuffer in future
 }
 
 void
 OpenGLRenderCommands(game_render_commands *Commands)
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.FrameBuffer);
-
 	glDepthMask(true);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_DEPTH_TEST);
@@ -679,14 +623,4 @@ OpenGLRenderCommands(game_render_commands *Commands)
 			} break;
 		}
 	}
-
-	glUseProgram(OpenGL.FrameBufferDisplayProgramID);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glDisable(GL_DEPTH_TEST);
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	glBindVertexArray(OpenGL.FrameBufferVAO);
-	glBindTexture(GL_TEXTURE_2D, OpenGL.FrameBufferText);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

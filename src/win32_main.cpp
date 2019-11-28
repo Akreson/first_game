@@ -322,11 +322,11 @@ Win32SetPixelFormat(HDC WindowDC)
 			WGL_GREEN_BITS_ARB, 8,
 			WGL_BLUE_BITS_ARB, 8,
 			WGL_ALPHA_BITS_ARB, 8,
-			WGL_DEPTH_BITS_ARB, 24,
+			WGL_DEPTH_BITS_ARB, 16,
 			0
 		};
 
-		SuggestedPixelFormatIndex = wglChoosePixelFormatARB(WindowDC, AttribList, 0, 1,
+		wglChoosePixelFormatARB(WindowDC, AttribList, 0, 1,
 			&SuggestedPixelFormatIndex, &NumFormats);
 	}
 
@@ -346,7 +346,10 @@ Win32SetPixelFormat(HDC WindowDC)
 
 	DescribePixelFormat(WindowDC, SuggestedPixelFormatIndex, sizeof(SuggestedPixelFormat),
 		&SuggestedPixelFormat);
-	SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat);
+	if (!SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat))
+	{
+		Assert(0);
+	}
 }
 
 internal void
