@@ -374,17 +374,6 @@ OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode
 	return ProgramID;
 }
 
-float quadVertices[] = {
-		// positions   // texCoords
-	-1.0f, 1.0f, 0.0f, 1.0f,
-	-1.0f, -1.0f, 0.0f, 0.0f,
-	1.0f, -1.0f, 1.0f, 0.0f,
-
-	-1.0f, 1.0f, 0.0f, 1.0f,
-	1.0f, -1.0f, 1.0f, 0.0f,
-	1.0f, 1.0f, 1.0f, 1.0f
-};
-
 internal void
 OpenGLInit()
 {
@@ -566,7 +555,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindTexture(GL_TEXTURE_2D, 0);
 			} break;
 
-			// TODO: Batch all model faces?
+			// TODO: Batch all model(s) faces?
 			case RenderEntryType_render_entry_model_face:
 			{
 				glUseProgram(OpenGL.ModelProgramID);
