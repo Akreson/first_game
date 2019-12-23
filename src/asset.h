@@ -19,7 +19,7 @@ struct font_asset_info
 		// NOTE: Only for pointer for letter patching
 		struct
 		{
-			u16 *UnicodeMap; // NOTE: 0 mean for this unicode code glyph doesn't exist
+			u16 *UnicodeMap;
 			s16 *KerningTable;
 			s16 *GlyphAdvance; // TODO: does this need?
 			f32 *VerticalAdjast;

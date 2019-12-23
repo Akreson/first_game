@@ -3,7 +3,7 @@
 #include "asset.cpp"
 
 void
-OuputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
+OutputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
 {
 	font_asset_info *FontAsset = Group->FontAsset;
 
@@ -25,17 +25,12 @@ OuputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Screen
 			f32 Height = (f32)Glyph->Height * Scale;
 
 			f32 XPos = ScreenX;
-			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height);
+			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height * Scale);
 
 			PushFont(Group, Glyph, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
 		}
 
-
-		ScreenX += (f32)FontAsset->GlyphAdvance[GlyphIndex] * Scale;
-		if (PrevGlyphIndex)
-		{
-			ScreenX += (f32)FontAsset->KerningTable[PrevGlyphIndex*FontAsset->GlyphCount + GlyphIndex];
-		}
+		ScreenX += GetHorizontalAdvance(FontAsset, PrevGlyphIndex, GlyphIndex, Scale);
 
 		PrevGlyphIndex = GlyphIndex;
 	}
@@ -166,5 +161,5 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		}
 	}
 
-	OuputText(&RenderGroup, (char *)"hellow world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
+	OutputText(&RenderGroup, (char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
 }

@@ -16,7 +16,6 @@ struct entire_file
 	 u32 Size;
 };
 
-
 const char *FontFileName = "DevData//LiberationMono-Regular.ttf";
 const char *OutputPath = "data//font.edg";
 
@@ -192,7 +191,7 @@ main(int argc, char **argv)
 			DestMemory += NextOffsetForBitmap;
 		}
 
-
+		// NOTE: Store offset for later patching
 		umm **PtrToMetrics = (umm **)&FontAsset->Refs;
 		for (u32 RefsIndex = 0;
 			RefsIndex <= MAX_REFS_METRICS_COUNT;

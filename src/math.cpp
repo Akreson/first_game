@@ -224,6 +224,6 @@ ZRotation(f32 Angle)
 inline void
 Translate(m4x4 *A, v3 B)
 {
-	v3 *TraslationPart = (v3 *)&A->E[3][0];
-	*TraslationPart = B;
+	v3 *TranslationPart = (v3 *)&A->E[3][0];
+	*TranslationPart = B;
 }

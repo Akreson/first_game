@@ -44,6 +44,19 @@ GetGlyphBitmap(font_asset_info *FontAsset, u32 GlyphIndex)
 	return Result;
 }
 
+inline f32
+GetHorizontalAdvance(font_asset_info *FontAsset, u32 PrevGlyphIndex, u32 GlyphIndex, f32 Scale)
+{
+	u16 Advance = FontAsset->GlyphAdvance[GlyphIndex];
+	if (PrevGlyphIndex)
+	{
+		Advance += FontAsset->KerningTable[PrevGlyphIndex*FontAsset->GlyphCount + GlyphIndex];
+	}
+
+	f32 Result = (f32)Advance * Scale;
+	return Result;
+}
+
 void
 LoadAsset(void *Dest)
 {
