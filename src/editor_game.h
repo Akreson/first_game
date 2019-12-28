@@ -18,15 +18,32 @@ struct memory_arena
 	u8 *Base;
 };
 
-void *
-PushSize_(memory_arena *Arena, memory_index Size, u32 Alignment = 2)
+struct page_memory_arena
+{
+	void *Base;
+	u32 *AllocStatus; // NOTE: One bit status 0 - used, 1 - unused (for now)
+	s16 *UsedStatus; // per page, must be signed
+	u16 PageCount;
+	u16 UnusedSpace;
+};
+
+inline u32
+GetAlignmentOffset(memory_index Ptr, u32 Alignment)
 {
 	Assert(!((Alignment - 1) & Alignment));
 
-	u32 CurrentBasePtr = (memory_index)Arena->Base + Arena->Used;
-
 	u32 AlignMask = Alignment - 1;
-	u32 AlignOffset = Alignment - (CurrentBasePtr & AlignMask);
+	u32 AlignOffset = Alignment - (Ptr & AlignMask);
+
+	return AlignOffset;
+}
+
+void *
+PushSize_(memory_arena *Arena, memory_index Size, u32 Alignment = 4)
+{
+	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
+
+	u32 AlignOffset = GetAlignmentOffset(CurrentArenaPtr, Alignment);
 
 	u32 TotalAddedSize = Size + AlignOffset;
 
@@ -38,13 +55,37 @@ PushSize_(memory_arena *Arena, memory_index Size, u32 Alignment = 2)
 	return Result;
 }
 
+#define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ##__VA_ARGS__)
+#define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ##__VA_ARGS__)
 #define PushArray(Arena, type, Count, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ##__VA_ARGS__)
+
+inline void
+InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(2))
+{
+	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX));
+
+	page_memory_arena *PageArena = nullptr;
+	
+	u32 PageCount = PageArenaSize / PageSize;
+	Assert(PageCount);
+
+	u32 PagesPerAllocStatusBlock = sizeof(*PageArena->AllocStatus) * 8;
+	u32 AllocStatusBlocksCount = PageCount / PagesPerAllocStatusBlock;// *sizeof(*PageArena->AllocStatus);
+
+	if ((PageCount - (AllocStatusBlocksCount * PagesPerAllocStatusBlock))) AllocStatusBlocksCount++;
+
+	PageArena = PushStruct(Arena, page_memory_arena);
+	PageArena->AllocStatus = PushArray(Arena, u32, AllocStatusBlocksCount, sizeof(*PageArena->AllocStatus));
+	PageArena->UsedStatus = PushArray(Arena, s16, PageCount, sizeof(*PageArena->UsedStatus));
+	PageArena->Base = PushSize(Arena, PageArenaSize, PageSize);
+	PageArena->PageCount = PageCount;
+}
 
 struct game_world_state
 {
 };
 
-// TODO: Model vertex never be bigger than U16_MAX_VALUE?
+// TODO: Model vertex count never be bigger than U16_MAX_VALUE?
 struct model_face
 {
 	union
@@ -76,7 +117,7 @@ struct game_editor_state
 	f32 CameraPitch;
 	f32 CameraDolly;
 
-	memory_arena EditorArena;
+	memory_arena EditorMainArena;
 	model Models[16];
 	u16 ModelsCount;
 };

@@ -584,6 +584,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 6, 6);
 			} break;
 
+			// TODO: Remove
 			case RenderEntryType_render_entry_model:
 			{
 				glUseProgram(OpenGL.ModelProgramID);

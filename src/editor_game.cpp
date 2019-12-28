@@ -85,7 +85,7 @@ void
 AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3(0))
 {
 	model *Model = AddModel(EditorState, Color, Offset);
-	GeneratingCube(&EditorState->EditorArena, Model);
+	GeneratingCube(&EditorState->EditorMainArena, Model);
 }
 
 void
@@ -100,7 +100,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		LoadAsset((void *)GameState->FontAsset);
 		PatchFontData(GameState->FontAsset);
 
-		InitArena(&GameState->EditorState.EditorArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		InitArena(&GameState->EditorState.EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0.0f, 1.0f, 1.0f));
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));
