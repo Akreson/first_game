@@ -106,6 +106,13 @@ union m4x4
 #define PointerFromU32(Type, Value) (Type *)((size_t)Value)
 #define U32FromPointer(Pointer) (u32)((size_t)(Pointer))
 
+inline b32
+IsPowerOf2(u32 Value)
+{
+	b32 Result = !(Value & (Value - 1));
+	return Result;
+}
+
 inline void
 ZeroSize(u64 Size, void *Ptr)
 {

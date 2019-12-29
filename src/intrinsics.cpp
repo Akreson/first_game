@@ -1,4 +1,3 @@
-#include <intrin.h>
 
 inline u32
 FindLeastSignificantSetBit(u32 Source)
@@ -15,6 +14,6 @@ FindLeastSignificantSetBit(u32 Source)
 inline u32
 CountOfSetBits(u32 Value)
 {
-	u32 Result = 0;// _popcnt(Value);
+	u32 Result = __popcnt(Value);
 	return Result;
 }

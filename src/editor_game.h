@@ -61,12 +61,23 @@ MemSet(u32 *Dest, u32 Size, u32 Value)
 }
 
 inline u32
-GetAlignmentOffset(memory_index Ptr, u32 Alignment)
+GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 {
 	Assert(!((Alignment - 1) & Alignment));
 
 	u32 AlignMask = Alignment - 1;
 	u32 AlignOffset = Alignment - (Ptr & AlignMask);
+
+	return AlignOffset;
+}
+
+inline u32
+GetAlignmentOffsetBack(memory_index Ptr, u32 Alignment)
+{
+	Assert(!((Alignment - 1) & Alignment));
+
+	u32 AlignMask = Alignment - 1;
+	u32 AlignOffset = Ptr & AlignMask;
 
 	return AlignOffset;
 }
@@ -80,7 +91,7 @@ PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
 {
 	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
 
-	u32 AlignOffset = GetAlignmentOffset(CurrentArenaPtr, Alignment);
+	u32 AlignOffset = GetAlignmentOffsetForwad(CurrentArenaPtr, Alignment);
 
 	u32 TotalAddedSize = Size + AlignOffset;
 
@@ -95,15 +106,26 @@ PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
 inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 {
+	Assert(IsPowerOf2(PageSize));
+	Assert(((umm)PageBase & (PageSize - 1)));
+
+	u32 AlignOffset = GetAlignmentOffsetBack((memory_index)Ptr, PageSize);
+	u8 *AlignPtr = (u8 *)Ptr - AlignOffset;
+
 	u32 ShiftValue = FindLeastSignificantSetBit(PageSize);
-	u32 Result = (u8 *)Ptr - (u8 *)PageBase;
+	
+	u32 Result = (u8 *)AlignPtr - (u8 *)PageBase;
+
+	return Result;
 }
 
+// TODO: Complete!!!
 void *
 PushSize_(page_memory_arena *Arena, memory_index Size, void *Dest, u8 *Source)
 {
-	////////////////
 	u32 PageIndex = GetPageIndex(Dest, Arena->Base, Arena->PageSize);
+
+	return nullptr;
 }
 
 inline void
@@ -114,10 +136,13 @@ InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 	Arena->Used = 0;
 }
 
+// TODO: Use struct for holding page alloc or use pointer and calc needed metadata
+// on allocation side?
 inline void
 InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(4))
 {
-	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX));
+	// TODO: Should be power of 2?
+	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX) && IsPowerOf2(PageSize));
 
 	page_memory_arena *PageArena = nullptr;
 	
