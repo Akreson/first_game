@@ -4,6 +4,12 @@
 #include <stddef.h>
 #include <limits.h>
 
+#if _MSC_VER
+#include <intrin.h>
+#else
+#error "Unsuported compiler"
+#endif
+
 #define internal static
 #define global_variable static
 

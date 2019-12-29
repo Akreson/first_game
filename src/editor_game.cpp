@@ -36,14 +36,6 @@ OutputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Scree
 	}
 }
 
-inline void
-InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
-{
-	Arena->Base = Base;
-	Arena->Size = Size;
-	Arena->Used = 0;
-}
-
 inline model *
 AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
 {
@@ -96,11 +88,13 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 	if (!GameState->IsInit)
 	{
-		GameState->FontAsset = (font_asset_info *)((u8 *)Memory->GameStorage + sizeof(game_state));
-		LoadAsset((void *)GameState->FontAsset);
-		PatchFontData(GameState->FontAsset);
+		InitArena(&GameState->GameArena, Memory->GameStorageSize - sizeof(game_state),
+			((u8 *)Memory->GameStorage + sizeof(game_state)));
+
+		LoadAsset(GameState);
 
 		InitArena(&GameState->EditorState.EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		InitPageArena(&GameState->EditorState.EditorMainArena, MiB(5));
 
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0.0f, 1.0f, 1.0f));
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));

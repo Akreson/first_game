@@ -1,5 +1,6 @@
 #pragma once
 
+#include "intrinsics.cpp"
 #include "asset.h"
 #include "render_group.h"
 
@@ -18,14 +19,46 @@ struct memory_arena
 	u8 *Base;
 };
 
+#define MAX_PAGE_USED SHRT_MAX
 struct page_memory_arena
 {
 	void *Base;
-	u32 *AllocStatus; // NOTE: One bit status 0 - used, 1 - unused (for now)
+	u32 *AllocStatus; // NOTE: One bit status: 0 - used, 1 - unused (for now)
 	s16 *UsedStatus; // per page, must be signed
+	u32 PageSize;
 	u16 PageCount;
 	u16 UnusedSpace;
 };
+
+inline void
+Copy(memory_index Size, void *DestBase, void *SourceBase)
+{
+	u8 *Source = (u8 *)SourceBase;
+	u8 *Dest = (u8 *)DestBase;
+
+	while (Size--)
+	{
+		*Dest++ = *Source++;
+	}
+}
+
+inline void
+MemSet(u8 *Dest, u32 Size, u8 Value)
+{
+	while (Size--)
+	{
+		*Dest++ = Value;
+	}
+}
+
+inline void
+MemSet(u32 *Dest, u32 Size, u32 Value)
+{
+	while (Size--)
+	{
+		*Dest++ = Value;
+	}
+}
 
 inline u32
 GetAlignmentOffset(memory_index Ptr, u32 Alignment)
@@ -38,8 +71,12 @@ GetAlignmentOffset(memory_index Ptr, u32 Alignment)
 	return AlignOffset;
 }
 
+#define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ##__VA_ARGS__)
+#define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ##__VA_ARGS__)
+#define PushArray(Arena, type, Count, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ##__VA_ARGS__)
+
 void *
-PushSize_(memory_arena *Arena, memory_index Size, u32 Alignment = 4)
+PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
 {
 	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
 
@@ -55,12 +92,30 @@ PushSize_(memory_arena *Arena, memory_index Size, u32 Alignment = 4)
 	return Result;
 }
 
-#define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ##__VA_ARGS__)
-#define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ##__VA_ARGS__)
-#define PushArray(Arena, type, Count, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ##__VA_ARGS__)
+inline u32
+GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
+{
+	u32 ShiftValue = FindLeastSignificantSetBit(PageSize);
+	u32 Result = (u8 *)Ptr - (u8 *)PageBase;
+}
+
+void *
+PushSize_(page_memory_arena *Arena, memory_index Size, void *Dest, u8 *Source)
+{
+	////////////////
+	u32 PageIndex = GetPageIndex(Dest, Arena->Base, Arena->PageSize);
+}
 
 inline void
-InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(2))
+InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
+{
+	Arena->Base = Base;
+	Arena->Size = Size;
+	Arena->Used = 0;
+}
+
+inline void
+InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(4))
 {
 	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX));
 
@@ -70,7 +125,7 @@ InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(2))
 	Assert(PageCount);
 
 	u32 PagesPerAllocStatusBlock = sizeof(*PageArena->AllocStatus) * 8;
-	u32 AllocStatusBlocksCount = PageCount / PagesPerAllocStatusBlock;// *sizeof(*PageArena->AllocStatus);
+	u32 AllocStatusBlocksCount = PageCount / PagesPerAllocStatusBlock;
 
 	if ((PageCount - (AllocStatusBlocksCount * PagesPerAllocStatusBlock))) AllocStatusBlocksCount++;
 
@@ -78,12 +133,12 @@ InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(2))
 	PageArena->AllocStatus = PushArray(Arena, u32, AllocStatusBlocksCount, sizeof(*PageArena->AllocStatus));
 	PageArena->UsedStatus = PushArray(Arena, s16, PageCount, sizeof(*PageArena->UsedStatus));
 	PageArena->Base = PushSize(Arena, PageArenaSize, PageSize);
+	PageArena->PageSize = PageSize;
 	PageArena->PageCount = PageCount;
-}
+	PageArena->UnusedSpace = (u16)((umm)PageArena->Base - (umm)PageArena->UsedStatus);
 
-struct game_world_state
-{
-};
+	MemSet(PageArena->AllocStatus, AllocStatusBlocksCount, ULONG_MAX);
+}
 
 // TODO: Model vertex count never be bigger than U16_MAX_VALUE?
 struct model_face
@@ -93,7 +148,7 @@ struct model_face
 		u16 VertexID[4];
 		struct
 		{
-			u16 V1, V2, V3, V4;
+			u16 V0, V1, V2, V3;
 		};
 	};
 };
@@ -102,12 +157,17 @@ struct model_face
 // TODO: Add edge info!!
 struct model
 {
-	v4 Color;
-	v3 Offset;
 	v3 *Vertex;
 	model_face *Faces;
+	v4 Color;
+	v3 Offset; // TODO: Store in origin of model space or already in world space offset?
 	u16 FaceCount;
 	u16 VertexCount;
+};
+
+struct game_world_state
+{
+
 };
 
 struct game_editor_state
@@ -118,7 +178,8 @@ struct game_editor_state
 	f32 CameraDolly;
 
 	memory_arena EditorMainArena;
-	model Models[16];
+	page_memory_arena ModelsDataArena;
+	model Models[32];
 	u16 ModelsCount;
 };
 
@@ -132,23 +193,13 @@ struct game_state
 
 	font_asset_info *FontAsset;
 
+	memory_arena GameArena;
+
 	game_world_state WorldState;
 
 #ifdef DEVELOP_MODE
 	game_editor_state EditorState;
 #endif
 };
-
-inline void
-Copy(memory_index Size, void *DestBase, void *SourceBase)
-{
-	u8 *Source = (u8 *)SourceBase;
-	u8 *Dest = (u8 *)DestBase;
-
-	while (Size--)
-	{
-		*Dest++ = *Source++;
-	}
-}
 
 global_variable platform_api PlatformAPI;

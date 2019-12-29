@@ -59,9 +59,12 @@ GetHorizontalAdvance(font_asset_info *FontAsset, u32 PrevGlyphIndex, u32 GlyphIn
 }
 
 void
-LoadAsset(void *Dest)
+LoadAsset(game_state *GameState)
 {
 	platform_file_handler FileHandler = PlatformAPI.GetFileHandlerForFile(FileType_FontFile);
 	u32 ReadSize = PlatformAPI.GetFileSize(&FileHandler);
-	PlatformAPI.ReadFile(&FileHandler, ReadSize, Dest);
+
+	GameState->FontAsset = (font_asset_info *)PushSize(&GameState->GameArena, ReadSize);
+	PlatformAPI.ReadFile(&FileHandler, ReadSize, GameState->FontAsset);
+	PatchFontData(GameState->FontAsset);
 }
