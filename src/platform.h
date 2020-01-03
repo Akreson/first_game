@@ -35,6 +35,12 @@ typedef uint32_t b32;
 
 typedef uintptr_t umm;
 
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define OffsetOf(Instance, Member) ((size_t)&(((Instance *)0)->Member))
+#define PointerFromU32(Type, Value) (Type *)((size_t)Value)
+#define U32FromPointer(Pointer) (u32)((size_t)(Pointer))
+#define ResetBit(Value, BitNum) (Value ^ (1 << BitNum))
+
 union v2
 {
 	f32 E[2];
@@ -101,26 +107,40 @@ union m4x4
 #define Assert(Expression)
 #endif
 
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
-#define OffsetOf(Instance, Member) ((size_t)&(((Instance *)0)->Member))
-#define PointerFromU32(Type, Value) (Type *)((size_t)Value)
-#define U32FromPointer(Pointer) (u32)((size_t)(Pointer))
-
-inline b32
-IsPowerOf2(u32 Value)
+inline void
+Copy(memory_index Size, void *DestBase, void *SourceBase)
 {
-	b32 Result = !(Value & (Value - 1));
-	return Result;
+	u8 *Source = (u8 *)SourceBase;
+	u8 *Dest = (u8 *)DestBase;
+
+	while (Size--)
+	{
+		*Dest++ = *Source++;
+	}
 }
 
 inline void
-ZeroSize(u64 Size, void *Ptr)
+MemSet(u8 *Dest, u32 Size, u8 Value)
 {
-	u8 *Byte = (u8 *)Ptr;
 	while (Size--)
 	{
-		*Byte++ = 0;
+		*Dest++ = Value;
 	}
+}
+
+inline void
+MemSet(u32 *Dest, u32 Size, u32 Value)
+{
+	while (Size--)
+	{
+		*Dest++ = Value;
+	}
+}
+
+inline void
+ZeroSize(void *Ptr, u32 Size)
+{
+	MemSet((u8 *)Ptr, Size, 0);
 }
 
 #define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))

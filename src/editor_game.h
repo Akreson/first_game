@@ -19,51 +19,25 @@ struct memory_arena
 	u8 *Base;
 };
 
-#define MAX_PAGE_USED SHRT_MAX
+//TODO: Combine AllocStatus and PoolAllocInfo??
 struct page_memory_arena
 {
 	void *Base;
 	u32 *AllocStatus; // NOTE: One bit status: 0 - used, 1 - unused (for now)
 	s16 *UsedStatus; // per page, must be signed
+	s16 *PoolAllocInfo;//
 	u32 PageSize;
+	u32 AllocStatusBlocksCount;
 	u16 PageCount;
 	u16 UnusedSpace;
 };
 
-inline void
-Copy(memory_index Size, void *DestBase, void *SourceBase)
-{
-	u8 *Source = (u8 *)SourceBase;
-	u8 *Dest = (u8 *)DestBase;
-
-	while (Size--)
-	{
-		*Dest++ = *Source++;
-	}
-}
-
-inline void
-MemSet(u8 *Dest, u32 Size, u8 Value)
-{
-	while (Size--)
-	{
-		*Dest++ = Value;
-	}
-}
-
-inline void
-MemSet(u32 *Dest, u32 Size, u32 Value)
-{
-	while (Size--)
-	{
-		*Dest++ = Value;
-	}
-}
+#define PAGES_PER_ALLOC_STATUC_BLOCK (sizeof(*((page_memory_arena *)0)->AllocStatus) * 8)
 
 inline u32
 GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 {
-	Assert(!((Alignment - 1) & Alignment));
+	Assert(!(Alignment & (Alignment - 1)));
 
 	u32 AlignMask = Alignment - 1;
 	u32 AlignOffset = Alignment - (Ptr & AlignMask);
@@ -74,12 +48,26 @@ GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 inline u32
 GetAlignmentOffsetBack(memory_index Ptr, u32 Alignment)
 {
-	Assert(!((Alignment - 1) & Alignment));
+	Assert(!(Alignment & (Alignment - 1)));
 
 	u32 AlignMask = Alignment - 1;
 	u32 AlignOffset = Ptr & AlignMask;
 
 	return AlignOffset;
+}
+
+inline b32
+IsAligned(void *Ptr, u32 Alignment)
+{
+	b32 Result = (umm)Ptr & (Alignment - 1);
+	return Result;
+}
+
+inline b32
+IsPowerOf2(u32 Value)
+{
+	b32 Result = !(Value & (Value - 1));
+	return Result;
 }
 
 #define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ##__VA_ARGS__)
@@ -107,7 +95,7 @@ inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 {
 	Assert(IsPowerOf2(PageSize));
-	Assert(((umm)PageBase & (PageSize - 1)));
+	Assert(IsAligned(PageBase, PageSize));
 
 	u32 AlignOffset = GetAlignmentOffsetBack((memory_index)Ptr, PageSize);
 	u8 *AlignPtr = (u8 *)Ptr - AlignOffset;
@@ -115,15 +103,70 @@ GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 	u32 ShiftValue = FindLeastSignificantSetBit(PageSize);
 	
 	u32 Result = (u8 *)AlignPtr - (u8 *)PageBase;
+	Result >>= ShiftValue;
 
 	return Result;
 }
 
+b32
+FindSequentialFreePages()
+{
+
+}
+
+// TODO: Find way to distribute block search for prevent segmentation?
+u32
+FindFreePages(page_memory_arena *Arena, u32 Count)
+{
+	Assert(Count);
+
+	u32 *AllocStatus = Arena->AllocStatus;
+
+	for (u32 BlockIndex = 0;
+		BlockIndex < Arena->AllocStatusBlocksCount;
+		++BlockIndex)
+	{
+		u32 PageBlock = AllocStatus[BlockIndex];
+		u32 FreePagesInBlock = CountOfSetBits(PageBlock);
+
+		if (FreePagesInBlock >= Count)
+		{
+			u32 PageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
+
+			u32 Sequence = 1;
+
+			while ((FreePagesInBlock >= Count) || (Sequence == Count))
+			{
+				///////////////
+			}
+		}
+	}
+}
+
+inline u32
+InitPagePool(page_memory_arena *Arena)
+{
+	u32 FreePage = FindFreePages(Arena, 1);
+
+
+}
+
 // TODO: Complete!!!
 void *
-PushSize_(page_memory_arena *Arena, memory_index Size, void *Dest, u8 *Source)
+PushSize_(page_memory_arena *Arena, memory_index Size, void *Dest, void *Source)
 {
-	u32 PageIndex = GetPageIndex(Dest, Arena->Base, Arena->PageSize);
+	//Assert((umm)Dest >= (umm)Arena->Base);
+	//Assert((umm)Dest < ((umm)Arena->Base + (umm)(Arena->PageSize * Arena->PageCount)));
+
+	if (Dest)
+	{
+		u32 PageIndex = GetPageIndex(Dest, Arena->Base, Arena->PageSize);
+	}
+	else
+	{
+		u32 PageIndex = InitPagePool(Arena);
+	}
+
 
 	return nullptr;
 }
@@ -141,7 +184,6 @@ InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 inline void
 InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(4))
 {
-	// TODO: Should be power of 2?
 	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX) && IsPowerOf2(PageSize));
 
 	page_memory_arena *PageArena = nullptr;
@@ -149,20 +191,22 @@ InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(4))
 	u32 PageCount = PageArenaSize / PageSize;
 	Assert(PageCount);
 
-	u32 PagesPerAllocStatusBlock = sizeof(*PageArena->AllocStatus) * 8;
-	u32 AllocStatusBlocksCount = PageCount / PagesPerAllocStatusBlock;
+	u32 AllocStatusBlocksCount = PageCount / PAGES_PER_ALLOC_STATUC_BLOCK;
 
-	if ((PageCount - (AllocStatusBlocksCount * PagesPerAllocStatusBlock))) AllocStatusBlocksCount++;
+	if ((PageCount - (AllocStatusBlocksCount * PAGES_PER_ALLOC_STATUC_BLOCK))) AllocStatusBlocksCount++;
 
 	PageArena = PushStruct(Arena, page_memory_arena);
 	PageArena->AllocStatus = PushArray(Arena, u32, AllocStatusBlocksCount, sizeof(*PageArena->AllocStatus));
 	PageArena->UsedStatus = PushArray(Arena, s16, PageCount, sizeof(*PageArena->UsedStatus));
+	PageArena->PoolAllocInfo = PushArray(Arena, s16, PageCount, sizeof(*PageArena->PoolAllocInfo));
 	PageArena->Base = PushSize(Arena, PageArenaSize, PageSize);
 	PageArena->PageSize = PageSize;
 	PageArena->PageCount = PageCount;
+	PageArena->AllocStatusBlocksCount = AllocStatusBlocksCount;
 	PageArena->UnusedSpace = (u16)((umm)PageArena->Base - (umm)PageArena->UsedStatus);
 
 	MemSet(PageArena->AllocStatus, AllocStatusBlocksCount, ULONG_MAX);
+	ZeroSize(PageArena->PoolAllocInfo, PageCount*sizeof(*PageArena->PoolAllocInfo));
 }
 
 // TODO: Model vertex count never be bigger than U16_MAX_VALUE?
