@@ -32,7 +32,13 @@ struct page_memory_arena
 	u16 UnusedSpace;
 };
 
-#define PAGES_PER_ALLOC_STATUC_BLOCK (sizeof(*((page_memory_arena *)0)->AllocStatus) * 8)
+enum PageStatus
+{
+	PageStatus_Used,
+	PageStatus_Unused
+};
+
+#define PAGES_PER_ALLOC_STATUS_BLOCK (sizeof(*((page_memory_arena *)0)->AllocStatus) * 8)
 
 inline u32
 GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
@@ -108,47 +114,103 @@ GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 	return Result;
 }
 
-b32
-FindSequentialFreePages()
-{
-
-}
-
 // TODO: Find way to distribute block search for prevent segmentation?
-u32
-FindFreePages(page_memory_arena *Arena, u32 Count)
+b32
+FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 1)
 {
-	Assert(Count);
-
-	u32 *AllocStatus = Arena->AllocStatus;
+	u32 StartOfSequence = 0;
+	u32 PageOffsetFactor = 0;
+	u32 PrevFreePageIndex = 0;
+	u32 Sequence = 1;
+	b32 Succes = false;
 
 	for (u32 BlockIndex = 0;
-		BlockIndex < Arena->AllocStatusBlocksCount;
+		BlockIndex <= Arena->AllocStatusBlocksCount, !Succes;
 		++BlockIndex)
 	{
-		u32 PageBlock = AllocStatus[BlockIndex];
-		u32 FreePagesInBlock = CountOfSetBits(PageBlock);
+		u32 PageBlock = Arena->AllocStatus[BlockIndex];
 
-		if (FreePagesInBlock >= Count)
+		if (PageBlock)
 		{
-			u32 PageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
+			PageOffsetFactor = BlockIndex * PAGES_PER_ALLOC_STATUS_BLOCK;
 
-			u32 Sequence = 1;
+			u32 PrevFreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
+			PrevFreePageIndex = PageOffsetFactor + PrevFreePageIndexInBlock;
 
-			while ((FreePagesInBlock >= Count) || (Sequence == Count))
+			ResetBit(PageBlock, PrevFreePageIndexInBlock);
+
+			StartOfSequence = PrevFreePageIndex;
+
+			while (PageBlock)
 			{
-				///////////////
+				if (Sequence == NeededAmount)
+				{
+					*StartPageIndex = StartOfSequence;
+					Succes = true;
+					break;
+				}
+			
+				u32 FreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
+				u32 FreePageIndex = PageOffsetFactor + FreePageIndexInBlock;
+				
+				ResetBit(PageBlock, FreePageIndexInBlock);
+				
+				if (FreePageIndex == (PrevFreePageIndex + 1))
+				{	
+					Sequence++;
+				}
+				else
+				{
+					Sequence = 1;
+					StartOfSequence = FreePageIndex;
+				}
+
+				PrevFreePageIndex = FreePageIndex;
 			}
 		}
+	}
+
+	return Succes;
+}
+
+inline void
+SetPageStatus(page_memory_arena *Arena, u32 StartPageIndex, u32 CountOfPages, u32 PageStatus)
+{
+	u32 StartBlockIndex = StartPageIndex / PAGES_PER_ALLOC_STATUS_BLOCK;
+	u32 BlockCount = CountOfPages / PAGES_PER_ALLOC_STATUS_BLOCK;
+
+	u32 StartInBlockIndex = StartPageIndex - (StartBlockIndex * PAGES_PER_ALLOC_STATUS_BLOCK);
+	u32 PagesSet = 0;
+	for (u32 BlockIndex = StartBlockIndex;
+		BlockCount;
+		--BlockCount)
+	{
+		u32 PageBlock = Arena->AllocStatus[BlockIndex];
+
+		for (u32 InPageIndex = StartInBlockIndex;
+			(PagesSet == CountOfPages) || (InPageIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
+			PagesSet++, InPageIndex++)
+		{
+			if (PageStatus) ResetBit(PageBlock, InPageIndex);
+			else SetBit(PageBlock, InPageIndex);
+		}
+
+		Arena->AllocStatus[BlockIndex] = PageBlock;
 	}
 }
 
 inline u32
 InitPagePool(page_memory_arena *Arena)
 {
-	u32 FreePage = FindFreePages(Arena, 1);
+	u32 FreePage;
 
+	if (FindFreePages(Arena, &FreePage))
+	{
+		SetPageStatus(Arena, FreePage, 1, PageStatus_Used);
+		Arena->PoolAllocInfo[FreePage] = 1;
+	}
 
+	return FreePage;
 }
 
 // TODO: Complete!!!
@@ -191,9 +253,9 @@ InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(4))
 	u32 PageCount = PageArenaSize / PageSize;
 	Assert(PageCount);
 
-	u32 AllocStatusBlocksCount = PageCount / PAGES_PER_ALLOC_STATUC_BLOCK;
+	u32 AllocStatusBlocksCount = PageCount / PAGES_PER_ALLOC_STATUS_BLOCK;
 
-	if ((PageCount - (AllocStatusBlocksCount * PAGES_PER_ALLOC_STATUC_BLOCK))) AllocStatusBlocksCount++;
+	if ((PageCount - (AllocStatusBlocksCount * PAGES_PER_ALLOC_STATUS_BLOCK))) AllocStatusBlocksCount++;
 
 	PageArena = PushStruct(Arena, page_memory_arena);
 	PageArena->AllocStatus = PushArray(Arena, u32, AllocStatusBlocksCount, sizeof(*PageArena->AllocStatus));
@@ -229,7 +291,7 @@ struct model
 	v3 *Vertex;
 	model_face *Faces;
 	v4 Color;
-	v3 Offset; // TODO: Store in origin of model space or already in world space offset?
+	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
 	u16 FaceCount;
 	u16 VertexCount;
 };
