@@ -231,7 +231,9 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 
 	u8 *PageBase = (u8 *)*Dest;
 	u32 UsedPagesBySize = Size / Arena->PageSize;
-	if ((Size - (UsedPagesBySize - Arena->PageSize))) UsedPagesBySize++;
+
+	memory_index Remainder = (Size - (UsedPagesBySize - Arena->PageSize));
+	if (Remainder) UsedPagesBySize++;
 
 	if (PageBase)
 	{
@@ -290,7 +292,7 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	u8 *InPoolDest = PageBase + UsedPoolSize;
 
 	Copy(Size, InPoolDest, Source);
-	Arena->UsedStatus[PageIndex] += Size;
+	Arena->UsedStatus[PageIndex] += (s16)Size;
 
 	return nullptr;
 }
@@ -330,14 +332,12 @@ InitPageArena(memory_arena *Arena, page_memory_arena *PageArena, u32 PageArenaSi
 	Assert(PageArenaSize >= PageSize);
 	Assert(!(PageArenaSize % PageSize));
 
-	page_memory_arena *PageArena = nullptr;
-
 	u32 PageCount = PageArenaSize / PageSize;
 	u32 AllocStatusBlocksCount = PageCount / PAGES_PER_ALLOC_STATUS_BLOCK;
 
-	if ((PageCount - (AllocStatusBlocksCount * PAGES_PER_ALLOC_STATUS_BLOCK))) AllocStatusBlocksCount++;
+	u32 Remainder = (PageCount - (AllocStatusBlocksCount * PAGES_PER_ALLOC_STATUS_BLOCK));
+	if (Remainder) AllocStatusBlocksCount++;
 
-	PageArena = PushStruct(Arena, page_memory_arena);
 	PageArena->AllocStatus = PushArray(Arena, u32, AllocStatusBlocksCount, sizeof(*PageArena->AllocStatus));
 	PageArena->UsedStatus = PushArray(Arena, s16, PageCount, sizeof(*PageArena->UsedStatus));
 	PageArena->PoolAllocInfo = PushArray(Arena, s16, PageCount, sizeof(*PageArena->PoolAllocInfo));
@@ -345,7 +345,8 @@ InitPageArena(memory_arena *Arena, page_memory_arena *PageArena, u32 PageArenaSi
 	PageArena->PageSize = PageSize;
 	PageArena->PageCount = PageCount;
 	PageArena->AllocStatusBlocksCount = AllocStatusBlocksCount;
-	PageArena->UnusedSpace = (u16)((umm)PageArena->Base - (umm)PageArena->UsedStatus);
+	PageArena->UnusedSpace = 
+		(u16)((umm)PageArena->Base - (umm)((u8 *)PageArena->PoolAllocInfo + (sizeof(s16)*PageCount)));
 
 	MemSet(PageArena->AllocStatus, AllocStatusBlocksCount, ULONG_MAX);
 	ZeroSize(PageArena->PoolAllocInfo, PageCount * sizeof(*PageArena->PoolAllocInfo));

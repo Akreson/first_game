@@ -1,10 +1,5 @@
 #pragma once
 
-#include "intrinsics.cpp"
-#include "memory_arena.h"
-#include "asset.h"
-#include "render_group.h"
-
 inline u32
 GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 {
@@ -40,6 +35,11 @@ IsPowerOf2(u32 Value)
 	b32 Result = !(Value & (Value - 1));
 	return Result;
 }
+
+#include "intrinsics.cpp"
+#include "memory_arena.h"
+#include "asset.h"
+#include "render_group.h"
 
 enum game_mode
 {
