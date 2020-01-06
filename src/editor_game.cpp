@@ -48,12 +48,9 @@ AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
 }
 
 void
-GeneratingCube(memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
-{
-	Model->VertexCount = 8;
-	Model->FaceCount = 6;
-	v3 *Vertex = Model->Vertex = PushArray(Arena, v3, Model->VertexCount);
-
+GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
+{	
+	v3 Vertex[8];
 	Vertex[0] = V3(-HalfDim, -HalfDim, HalfDim);
 	Vertex[1] = V3(HalfDim, -HalfDim, HalfDim);
 	Vertex[2] = V3(HalfDim, HalfDim, HalfDim);
@@ -64,20 +61,26 @@ GeneratingCube(memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Vertex[6] = V3(-HalfDim, HalfDim, -HalfDim);
 	Vertex[7] = V3(HalfDim, HalfDim, -HalfDim);
 
-	model_face *Faces = Model->Faces = PushArray(Arena, model_face, Model->FaceCount);
+	model_face Faces[6];
 	Faces[0] = {0, 1, 2, 3};
 	Faces[1] = {4, 5, 6, 7};
 	Faces[2] = {1, 4, 7, 2};
 	Faces[3] = {5, 0, 3, 6};
 	Faces[4] = {0, 1, 4, 5};
 	Faces[5] = {3, 2, 7, 6};
+
+	PagePushArray(Arena, v3, ArrayCount(Vertex), Model->Vertex, Vertex);
+	PagePushArray(Arena, model_face, ArrayCount(Faces), Model->Faces, Faces);
+
+	Model->VertexCount = ArrayCount(Vertex);
+	Model->FaceCount = ArrayCount(Faces);
 }
 
 void
 AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3(0))
 {
 	model *Model = AddModel(EditorState, Color, Offset);
-	GeneratingCube(&EditorState->EditorMainArena, Model);
+	GeneratingCube(&EditorState->EditorPageArena, Model);
 }
 
 void
@@ -94,7 +97,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		LoadAsset(GameState);
 
 		InitArena(&GameState->EditorState.EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
-		InitPageArena(&GameState->EditorState.EditorMainArena, MiB(5));
+		InitPageArena(&GameState->EditorState.EditorMainArena, &GameState->EditorState.EditorPageArena, MiB(10));
 
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0.0f, 1.0f, 1.0f));
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));

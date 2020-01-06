@@ -615,7 +615,7 @@ WinMain(HINSTANCE Instance,
 
 			GameMemory.GameStorageSize = MiB(20);
 			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);
-			GameMemory.EditorStorageSize = MiB(20);
+			GameMemory.EditorStorageSize = MiB(50);
 			GameMemory.EditorStorage = Win32AllocateMemory(GameMemory.EditorStorageSize);
 
 			PlatformAPI.GetFileHandlerForFile = Win32GetFileHandlerForFile;

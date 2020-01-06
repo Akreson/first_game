@@ -32,6 +32,10 @@ enum PageStatus
 #define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ##__VA_ARGS__)
 #define PushArray(Arena, type, Count, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ##__VA_ARGS__)
 
+#define PagePushSize(Arena, Size, Dest, Source) PushSize_(Arena, Size, (void **)&Dest, (void *)Source)
+#define PagePushStruct(Arena, type, Dest, Source) PushSize_(Arena, sizeof(type), (void **)&Dest, (void *)Source)
+#define PagePushArray(Arena, type, Count, Dest, Source) PushSize_(Arena, sizeof(type)*Count, (void **)&Dest, (void *)Source)
+
 internal inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 {
@@ -225,15 +229,16 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 {
 	u32 PageIndex;
 
+	u8 *PageBase = (u8 *)*Dest;
 	u32 UsedPagesBySize = Size / Arena->PageSize;
 	if ((Size - (UsedPagesBySize - Arena->PageSize))) UsedPagesBySize++;
 
-	if (Dest)
+	if (PageBase)
 	{
-		Assert((umm)Dest >= (umm)Arena->Base);
-		Assert((umm)Dest < ((umm)Arena->Base + (umm)(Arena->PageSize * Arena->PageCount)));
+		Assert((umm)PageBase >= (umm)Arena->Base);
+		Assert((umm)PageBase < ((umm)Arena->Base + (umm)(Arena->PageSize * Arena->PageCount)));
 
-		PageIndex = GetPageIndex(Dest, Arena->Base, Arena->PageSize);
+		PageIndex = GetPageIndex(PageBase, Arena->Base, Arena->PageSize);
 	}
 	else
 	{
@@ -243,7 +248,7 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	u32 PagesInPool = Arena->PoolAllocInfo[PageIndex];
 	Assert(PagesInPool);
 
-	u8 *PageBase = (u8 *)Arena->Base + (PageIndex * Arena->PageSize);
+	PageBase = (u8 *)Arena->Base + (PageIndex * Arena->PageSize);
 	u32 TotalPoolSize = PagesInPool * Arena->PageSize;
 	s16 UsedPoolSize = Arena->UsedStatus[PageIndex];
 
@@ -282,9 +287,9 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 		}
 	}
 
-	u8 *Dest = PageBase + UsedPoolSize;
+	u8 *InPoolDest = PageBase + UsedPoolSize;
 
-	Copy(Size, Dest, Source);
+	Copy(Size, InPoolDest, Source);
 	Arena->UsedStatus[PageIndex] += Size;
 
 	return nullptr;
@@ -319,7 +324,7 @@ InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 // TODO: Use struct for holding page alloc or use pointer and calc needed metadata
 // on allocation side?
 inline void
-InitPageArena(memory_arena *Arena, u32 PageArenaSize, u16 PageSize = KiB(4))
+InitPageArena(memory_arena *Arena, page_memory_arena *PageArena, u32 PageArenaSize, u16 PageSize = KiB(4))
 {
 	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX) && IsPowerOf2(PageSize));
 	Assert(PageArenaSize >= PageSize);

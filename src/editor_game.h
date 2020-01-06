@@ -87,7 +87,7 @@ struct game_editor_state
 	f32 CameraDolly;
 
 	memory_arena EditorMainArena;
-	page_memory_arena ModelsDataArena;
+	page_memory_arena EditorPageArena;
 	model Models[32];
 	u16 ModelsCount;
 };
