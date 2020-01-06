@@ -60,6 +60,39 @@ struct model_face
 			u16 V0, V1, V2, V3;
 		};
 	};
+
+	// NOTE: All models build from quads
+	union
+	{
+		u16 EdgeID[4];
+
+		struct
+		{
+			u16 Edge0, Edge1, Edge2, Edge3;
+		};
+	};
+};
+
+struct model_edge
+{
+	union
+	{
+		u16 FaceID[2];
+
+		struct
+		{
+			u16 Face0, Face1;
+		};
+	};
+
+	union
+	{
+		u16 VertexID[2];
+		struct
+		{
+			u16 V0, V1;
+		};
+	};
 };
 
 // NOTE: Triangle specifed in conter-clokwise order
@@ -68,6 +101,7 @@ struct model
 {
 	v3 *Vertex;
 	model_face *Faces;
+	model_edge *Edges;
 	v4 Color;
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
 	u16 FaceCount;
