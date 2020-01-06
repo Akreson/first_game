@@ -53,6 +53,13 @@ GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 	return Result;
 }
 
+internal inline u8 *
+GetPageBaseFromPageIndex(page_memory_arena *Arena, u32 PageIndex)
+{
+	u8 *Result = (u8 *)Arena->Base + (PageIndex * Arena->PageSize);
+	return Result;
+}
+
 // TODO: Find way to distribute block search for prevent segmentation?
 internal b32
 FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 1)
@@ -123,6 +130,7 @@ internal inline u32
 CountOfOverlapedPageBlock(u32 InBlockIndex, u32 CountOfPages)
 {
 	u32 Result = (InBlockIndex + CountOfPages) / PAGES_PER_ALLOC_STATUS_BLOCK;
+	Result = Result ? Result : 1;
 	return Result;
 }
 
@@ -143,7 +151,7 @@ SetPagesStatus(page_memory_arena *Arena, u32 StartPageIndex, u32 PageStatus, u32
 		u32 PageBlock = Arena->AllocStatus[BlockIndex];
 
 		for (u32 InBlockIndex = StartInBlockIndex;
-			(PagesSet == CountOfPages) || (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
+			(PagesSet < CountOfPages) && (InBlockIndex < PAGES_PER_ALLOC_STATUS_BLOCK);
 			PagesSet++, InBlockIndex++)
 		{
 			if (PageStatus) SetBit(PageBlock, InBlockIndex);
@@ -183,7 +191,7 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 		u32 PageBlock = Arena->AllocStatus[BlockIndex];
 
 		for (u32 InBlockIndex = InitInBlockIndex;
-			(PagesTest == CountOfPages) || (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
+			(PagesTest < CountOfPages) || (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
 			PagesTest++, InBlockIndex++)
 		{
 			if (!IsBitSet(PageBlock, InBlockIndex))
@@ -232,7 +240,7 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	u8 *PageBase = (u8 *)*Dest;
 	u32 UsedPagesBySize = Size / Arena->PageSize;
 
-	memory_index Remainder = (Size - (UsedPagesBySize - Arena->PageSize));
+	memory_index Remainder = (Size - (UsedPagesBySize * Arena->PageSize));
 	if (Remainder) UsedPagesBySize++;
 
 	if (PageBase)
@@ -245,12 +253,13 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	else
 	{
 		PageIndex = InitPagePool(Arena, UsedPagesBySize);
+		*Dest = GetPageBaseFromPageIndex(Arena, PageIndex);
 	}
 
 	u32 PagesInPool = Arena->PoolAllocInfo[PageIndex];
 	Assert(PagesInPool);
 
-	PageBase = (u8 *)Arena->Base + (PageIndex * Arena->PageSize);
+	PageBase = GetPageBaseFromPageIndex(Arena, PageIndex);
 	u32 TotalPoolSize = PagesInPool * Arena->PageSize;
 	s16 UsedPoolSize = Arena->UsedStatus[PageIndex];
 
@@ -268,7 +277,7 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 
 			SetPagesStatus(Arena, StartOfNewPool, PageStatus_Used, NewPoolSizeInPages);
 
-			u8 *NewPageBase = (u8 *)Arena->Base + (StartOfNewPool * Arena->PageSize);
+			u8 *NewPageBase = GetPageBaseFromPageIndex(Arena, StartOfNewPool);
 			Copy128(TotalPoolSize, (void *)NewPageBase, (void *)PageBase);
 
 			SetPagesStatus(Arena, PageIndex, PageStatus_Unused, PagesInPool);
