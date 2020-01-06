@@ -28,30 +28,11 @@ enum PageStatus
 
 #define PAGES_PER_ALLOC_STATUS_BLOCK (sizeof(*((page_memory_arena *)0)->AllocStatus) * 8)
 
-
 #define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ##__VA_ARGS__)
 #define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ##__VA_ARGS__)
 #define PushArray(Arena, type, Count, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ##__VA_ARGS__)
 
-// NOTE: Just allocate space
-void *
-PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
-{
-	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
-
-	u32 AlignOffset = GetAlignmentOffsetForwad(CurrentArenaPtr, Alignment);
-
-	u32 TotalAddedSize = Size + AlignOffset;
-
-	if (!(Arena->Size >= (Arena->Used + TotalAddedSize))) { Assert(0); }
-
-	void *Result = (void *)(Arena->Base + Arena->Used + AlignOffset);
-	Arena->Used += TotalAddedSize;
-
-	return Result;
-}
-
-inline u32
+internal inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 {
 	Assert(IsPowerOf2(PageSize));
@@ -69,7 +50,7 @@ GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 }
 
 // TODO: Find way to distribute block search for prevent segmentation?
-b32
+internal b32
 FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 1)
 {
 	u32 StartOfSequence = 0;
@@ -141,7 +122,7 @@ CountOfOverlapedPageBlock(u32 InBlockIndex, u32 CountOfPages)
 	return Result;
 }
 
-inline void
+internal inline void
 SetPagesStatus(page_memory_arena *Arena, u32 StartPageIndex, u32 PageStatus, u32 CountOfPages = 1)
 {
 	u32 StartBlockIndex;
@@ -170,7 +151,7 @@ SetPagesStatus(page_memory_arena *Arena, u32 StartPageIndex, u32 PageStatus, u32
 	}
 }
 
-inline b32
+internal inline b32
 AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u32 CountOfPages = 1)
 {
 	b32 Success = true;
@@ -219,7 +200,7 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 	return Success;
 }
 
-inline u32
+internal inline u32
 InitPagePool(page_memory_arena *Arena, u32 PageCount)
 {
 	u32 StartPagePoolIndex;
@@ -237,13 +218,11 @@ InitPagePool(page_memory_arena *Arena, u32 PageCount)
 	return StartPagePoolIndex;
 }
 
-// TODO: Complete!!!
 // NOTE: Allocate and copy memory
 // TODO: Should copy memory??
 void *
 PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source)
 {
-	// TODO: Complete operation with dest
 	u32 PageIndex;
 
 	u32 UsedPagesBySize = Size / Arena->PageSize;
@@ -255,14 +234,6 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 		Assert((umm)Dest < ((umm)Arena->Base + (umm)(Arena->PageSize * Arena->PageCount)));
 
 		PageIndex = GetPageIndex(Dest, Arena->Base, Arena->PageSize);
-		s16 PoolValue = Arena->PoolAllocInfo[PageIndex];
-
-		Assert(PoolValue)
-
-		if (PoolValue < 0)
-		{
-			PageIndex += PoolValue;
-		}
 	}
 	else
 	{
@@ -270,6 +241,9 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	}
 
 	u32 PagesInPool = Arena->PoolAllocInfo[PageIndex];
+	Assert(PagesInPool);
+
+	u8 *PageBase = (u8 *)Arena->Base + (PageIndex * Arena->PageSize);
 	u32 TotalPoolSize = PagesInPool * Arena->PageSize;
 	s16 UsedPoolSize = Arena->UsedStatus[PageIndex];
 
@@ -277,19 +251,30 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	{
 		if (!AllocateNextPagesIfItFree(Arena, PageIndex, UsedPagesBySize))
 		{
-			u32 StartOfNewPool;
 			u32 NewPoolSizeInPages = PagesInPool + UsedPagesBySize;
-			if (FindFreePages(Arena, &StartOfNewPool, NewPoolSizeInPages))
+			
+			u32 StartOfNewPool;
+			if (!FindFreePages(Arena, &StartOfNewPool, NewPoolSizeInPages))
 			{
-				SetPagesStatus(Arena, StartOfNewPool, PageStatus_Used, NewPoolSizeInPages);
-				SetPagesStatus(Arena, PageIndex, PageStatus_Unused, PagesInPool);
+				Assert(0);
 			}
 
-			Arena->PoolAllocInfo[StartOfNewPool] = NewPoolSizeInPages;
-			Arena->UsedStatus[StartOfNewPool] = UsedPoolSize;
+			SetPagesStatus(Arena, StartOfNewPool, PageStatus_Used, NewPoolSizeInPages);
 
+			u8 *NewPageBase = (u8 *)Arena->Base + (StartOfNewPool * Arena->PageSize);
+			Copy128(TotalPoolSize, (void *)NewPageBase, (void *)PageBase);
+
+			SetPagesStatus(Arena, PageIndex, PageStatus_Unused, PagesInPool);
+
+			Arena->UsedStatus[StartOfNewPool] = UsedPoolSize;
+			Arena->PoolAllocInfo[StartOfNewPool] = NewPoolSizeInPages;
+
+			Arena->UsedStatus[PageIndex] = 0;
+			Arena->PoolAllocInfo[PageIndex] = 0;
+
+			*Dest = NewPageBase;
+			PageBase = NewPageBase;
 			PageIndex = StartOfNewPool;
-			//*Dest = ;
 		}
 		else
 		{
@@ -297,13 +282,30 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 		}
 	}
 
-	u8 *PageBase = (u8 *)Arena->Base + (PageIndex * Arena->PageSize);
 	u8 *Dest = PageBase + UsedPoolSize;
 
 	Copy(Size, Dest, Source);
 	Arena->UsedStatus[PageIndex] += Size;
 
 	return nullptr;
+}
+
+// NOTE: Just allocate space
+void *
+PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
+{
+	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
+
+	u32 AlignOffset = GetAlignmentOffsetForwad(CurrentArenaPtr, Alignment);
+
+	u32 TotalAddedSize = Size + AlignOffset;
+
+	if (!(Arena->Size >= (Arena->Used + TotalAddedSize))) { Assert(0); }
+
+	void *Result = (void *)(Arena->Base + Arena->Used + AlignOffset);
+	Arena->Used += TotalAddedSize;
+
+	return Result;
 }
 
 inline void

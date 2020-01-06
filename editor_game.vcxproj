@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClInclude Include="src\editor_game.h" />
     <ClInclude Include="src\asset.h" />
+    <ClInclude Include="src\memory_arena.h" />
     <ClInclude Include="src\platform.h" />
     <ClInclude Include="src\render_group.h" />
     <ClInclude Include="src\string.h" />

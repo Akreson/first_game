@@ -35,6 +35,8 @@ typedef uint32_t b32;
 
 typedef uintptr_t umm;
 
+#define X86_CACHE_LINE_SIZE 64
+
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 #define OffsetOf(Instance, Member) ((size_t)&(((Instance *)0)->Member))
 #define PointerFromU32(Type, Value) (Type *)((size_t)Value)
@@ -118,6 +120,30 @@ Copy(memory_index Size, void *DestBase, void *SourceBase)
 	while (Size--)
 	{
 		*Dest++ = *Source++;
+	}
+}
+
+// TODO: See if need change in loop body
+inline void
+Copy128(memory_index Size, void *DestBase, void *SourceBase)
+{
+	Assert(Size >= X86_CACHE_LINE_SIZE);
+
+	__m128 *Source = (__m128 *)SourceBase;
+	__m128 *Dest = (__m128 *)DestBase;
+
+	memory_index Offset = 0;
+	while (Size)
+	{
+		Dest[0] = Source[0];
+		Dest[1] = Source[1];
+		Dest[2] = Source[2];
+		Dest[3] = Source[3];
+
+		++Dest;
+		++Source;
+
+		Size -= X86_CACHE_LINE_SIZE;
 	}
 }
 

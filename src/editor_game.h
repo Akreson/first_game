@@ -5,14 +5,6 @@
 #include "asset.h"
 #include "render_group.h"
 
-enum game_mode
-{
-	GameMode_None,
-
-	GameMode_Game,
-	GameMode_Editor,
-};
-
 inline u32
 GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 {
@@ -48,6 +40,14 @@ IsPowerOf2(u32 Value)
 	b32 Result = !(Value & (Value - 1));
 	return Result;
 }
+
+enum game_mode
+{
+	GameMode_None,
+
+	GameMode_Game,
+	GameMode_Editor,
+};
 
 // TODO: Model vertex count never be bigger than U16_MAX_VALUE?
 struct model_face
