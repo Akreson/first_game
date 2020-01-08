@@ -47,6 +47,7 @@ AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
 	return Model;
 }
 
+// TODO: Find way combine MatchEdgeToFace and MatchFaceToEdge?
 inline void
 MatchEdgeToFace(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCount)
 {
@@ -80,18 +81,20 @@ MatchEdgeToFace(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 				}
 			}
 
-			if (MatchedCount == ArrayCount(Edge->FaceID))
+			if (MatchedCount == ArrayCount(Edge->VertexID))
 			{
 				Edge->FaceID[FaceMatchedIndex] = FaceIndex;
 				FaceMatchedIndex++;
+				
+				if (FaceMatchedIndex == ArrayCount(Edge->FaceID)) break;
 			}
+
 		}
 
-		Assert(FaceMatchedIndex == 2);
+		Assert(FaceMatchedIndex == ArrayCount(Edge->FaceID));
 	}
 }
 
-// TODO: Complete
 inline void
 MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCount)
 {
@@ -117,9 +120,10 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 					FaceVertexID < ArrayCount(Face->VertexID);
 					++FaceVertexID)
 				{
-					if (Face->VertexID[FaceVertexID] == Edge->VertexID[EdgeVertexID])
+					if (Edge->VertexID[EdgeVertexID] == Face->VertexID[FaceVertexID])
 					{
 						MatchedCount++;
+						break;
 					}
 				}
 			}
@@ -128,10 +132,10 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 			{
 				Face->EdgeID[EdgeMatchedIndex] = EdgeIndex;
 				EdgeMatchedIndex++;
+
+				if (EdgeMatchedIndex == ArrayCount(Face->EdgeID)) break;
 			}
 		}
-
-		Assert(EdgeMatchedIndex == 4);
 	}
 }
 
@@ -159,20 +163,21 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Faces[5] = {{3, 2, 7, 6}, {}};
 
 	model_edge Edges[12];
-	Edges[0] = {{}, {3, 0}};
-	Edges[1] = {{}, {0, 1}};
-	Edges[2] = {{}, {1, 2}};
-	Edges[3] = {{}, {2, 3}};
-	Edges[4] = {{}, {5, 0}};
-	Edges[5] = {{}, {4, 1}};
-	Edges[6] = {{}, {7, 2}};
-	Edges[7] = {{}, {6, 3}};
-	Edges[8] = {{}, {6, 5}};
-	Edges[9] = {{}, {5, 4}};
-	Edges[10] = {{}, {7, 4}};
-	Edges[11] = {{}, {7, 6}};
+	Edges[0] = {{3, 0}, {}};
+	Edges[1] = {{0, 1}, {}};
+	Edges[2] = {{1, 2}, {}};
+	Edges[3] = {{2, 3}, {}};
+	Edges[4] = {{5, 0}, {}};
+	Edges[5] = {{4, 1}, {}};
+	Edges[6] = {{7, 2}, {}};
+	Edges[7] = {{6, 3}, {}};
+	Edges[8] = {{6, 5}, {}};
+	Edges[9] = {{5, 4}, {}};
+	Edges[10] = {{7, 4}, {}};
+	Edges[11] = {{7, 6}, {}};
 
 	MatchEdgeToFace(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
+	MatchFaceToEdge(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 	// TODO: Match Face to edge
 
 	PagePushArray(Arena, v3, ArrayCount(Vertex), Model->Vertex, Vertex);

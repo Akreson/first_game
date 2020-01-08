@@ -77,6 +77,15 @@ struct model_edge
 {
 	union
 	{
+		u16 VertexID[2];
+		struct
+		{
+			u16 V0, V1;
+		};
+	};
+
+	union
+	{
 		u16 FaceID[2];
 
 		struct
@@ -85,14 +94,6 @@ struct model_edge
 		};
 	};
 
-	union
-	{
-		u16 VertexID[2];
-		struct
-		{
-			u16 V0, V1;
-		};
-	};
 };
 
 // NOTE: Triangle specifed in conter-clokwise order
