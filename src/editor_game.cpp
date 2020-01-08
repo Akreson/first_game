@@ -136,6 +136,8 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 				if (EdgeMatchedIndex == ArrayCount(Face->EdgeID)) break;
 			}
 		}
+
+		Assert(EdgeMatchedIndex == ArrayCount(Face->EdgeID));
 	}
 }
 
@@ -186,6 +188,7 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 
 	Model->VertexCount = ArrayCount(Vertex);
 	Model->FaceCount = ArrayCount(Faces);
+	Model->EdgeCount = ArrayCount(Edges);
 }
 
 void

@@ -106,6 +106,7 @@ struct model
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
 	u16 FaceCount;
 	u16 VertexCount;
+	u16 EdgeCount;
 };
 
 struct game_world_state
