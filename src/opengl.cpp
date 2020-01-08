@@ -464,7 +464,16 @@ OpenGLInit()
 	void main()
 	{
 		float Factor = edgeFactor();
-		FragColor = vec4(vec3(Factor), 1.0);
+	
+		if (gl_FrontFacing)
+		{
+			FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+		}
+		else
+		{
+			FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+		}
+		//FragColor = vec4(vec3(Factor), 1.0);
 	}
 	)FOO";
 

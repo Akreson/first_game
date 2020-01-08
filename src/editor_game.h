@@ -96,7 +96,6 @@ struct model_edge
 };
 
 // NOTE: Triangle specifed in conter-clokwise order
-// TODO: Add edge info!!
 struct model
 {
 	v3 *Vertex;

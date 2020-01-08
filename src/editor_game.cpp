@@ -92,6 +92,50 @@ MatchEdgeToFace(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 }
 
 // TODO: Complete
+inline void
+MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCount)
+{
+	for (u32 FaceIndex = 0;
+		FaceIndex < FaceCount;
+		++FaceIndex)
+	{
+		model_face *Face = Faces + FaceIndex;
+
+		u32 EdgeMatchedIndex = 0;
+		for (u32 EdgeIndex = 0;
+			EdgeIndex < EdgeCount;
+			++EdgeIndex)
+		{
+			model_edge *Edge = Edges + EdgeIndex;
+
+			u32 MatchedCount = 0;
+			for (u32 EdgeVertexID = 0;
+				EdgeVertexID < ArrayCount(Edge->VertexID);
+				++EdgeVertexID)
+			{
+				for (u32 FaceVertexID = 0;
+					FaceVertexID < ArrayCount(Face->VertexID);
+					++FaceVertexID)
+				{
+					if (Face->VertexID[FaceVertexID] == Edge->VertexID[EdgeVertexID])
+					{
+						MatchedCount++;
+					}
+				}
+			}
+
+			if (MatchedCount == ArrayCount(Edge->VertexID))
+			{
+				Face->EdgeID[EdgeMatchedIndex] = EdgeIndex;
+				EdgeMatchedIndex++;
+			}
+		}
+
+		Assert(EdgeMatchedIndex == 4);
+	}
+}
+
+// TODO: Complete
 void
 GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 {	
@@ -111,7 +155,7 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Faces[1] = {{4, 5, 6, 7}, {}};
 	Faces[2] = {{1, 4, 7, 2}, {}};
 	Faces[3] = {{5, 0, 3, 6}, {}};
-	Faces[4] = {{0, 1, 4, 5}, {}};
+	Faces[4] = {{5, 4, 1, 0}, {}};
 	Faces[5] = {{3, 2, 7, 6}, {}};
 
 	model_edge Edges[12];
@@ -204,7 +248,6 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	CameraOffset.z += EditorState->CameraDolly;
 
 	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOffset);
-
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	for (u32 ModelIndex = 0;
