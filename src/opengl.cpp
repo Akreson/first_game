@@ -75,6 +75,8 @@
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 
+#define GL_CLAMP_TO_EDGE                  0x812F
+
 typedef char GLchar;
 typedef size_t GLsizeiptr;
 typedef int* GLintptr;
@@ -277,8 +279,8 @@ PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
 	glGenTextures(1, &TextureIndex);
 	glBindTexture(GL_TEXTURE_2D, TextureIndex);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -435,14 +437,19 @@ OpenGLInit()
 	layout (location = 0) in vec3 aPos;
 	layout (location = 1) in vec3 aBarCoord;
 
+	// experimental
+	layout (location = 2) in vec3 aSelectedReg;
+
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
 	out vec3 BarCoord;
+	out vec3 SelectedReg;
 
 	void main()
 	{
 		BarCoord = aBarCoord;
+		SelectedReg = aSelectedReg;
 		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
 	}
 
@@ -454,17 +461,30 @@ OpenGLInit()
 	uniform vec4 Color;
 
 	in vec3 BarCoord;
+	in vec3 SelectedReg;
 
 	float edgeFactor(){
 		vec3 dBarCoord = fwidth(BarCoord);
-		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*1.5, BarCoord);
-		return min(min(a3.x, a3.y), a3.z);
+		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*2.5, BarCoord);
+		//vec3 a3 = step(dBarCoord, BarCoord);
+		float Result = min(min(a3.x, a3.y), a3.z);
+		return Result;
 	}
 
 	void main()
 	{
 		float Factor = edgeFactor();
-		FragColor = vec4(vec3(Factor), 1.0);
+		float InvFactor = 1.0 - Factor;
+		vec3 Color = vec3(0.17, 0.5, 0.8) * InvFactor;
+		
+		// NOTE: Test code for edge selection
+		/*vec3 AllowedRange = vec3(1.0) - (fwidth(SelectedReg)*5.5);
+		if (all(greaterThanEqual(SelectedReg, AllowedRange)))
+		{
+			Color = vec3(1.0, 0, 0);
+		}*/
+		
+		FragColor = vec4(Color, 1.0);
 	}
 	)FOO";
 
@@ -494,7 +514,8 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
+	//glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glBindVertexArray(OpenGL.VertexBufferVAO);
@@ -576,12 +597,19 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				u32 OffsetInBytes = FaceEntry->VertexBufferOffset * sizeof(f32);
 
-				glEnableVertexAttribArray(0);
+				/*glEnableVertexAttribArray(0);
 				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
 				glEnableVertexAttribArray(1);
 				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)(sizeof(f32) * 3));
+*/
+				glEnableVertexAttribArray(0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(f32), (void*)0);
+				glEnableVertexAttribArray(1);
+				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(f32), (void*)(sizeof(f32) * 3));
+				glEnableVertexAttribArray(2);
+				glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(f32), (void*)(sizeof(f32) * 6));
 
-				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 6, 6);
+				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 9, 6);
 			} break;
 
 			// TODO: Remove

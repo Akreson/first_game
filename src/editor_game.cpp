@@ -180,7 +180,6 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 
 	MatchEdgeToFace(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 	MatchFaceToEdge(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
-	// TODO: Match Face to edge
 
 	PagePushArray(Arena, v3, ArrayCount(Vertex), Model->Vertex, Vertex);
 	PagePushArray(Arena, model_face, ArrayCount(Faces), Model->Faces, Faces);

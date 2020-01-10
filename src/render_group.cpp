@@ -89,17 +89,23 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face *Face, v4 Color
 	v3 *FaceVertex = (v3 *)(Commands->VertexBufferBase + Commands->VertexCount);
 	FaceVertex[0] = VertexStorage[Face->V0];
 	FaceVertex[1] = V3(1, 1, 0);
-	FaceVertex[2] = VertexStorage[Face->V1];
-	FaceVertex[3] = V3(0, 1, 0);
-	FaceVertex[4] = VertexStorage[Face->V2];
-	FaceVertex[5] = V3(0, 1, 1);
+	FaceVertex[2] = V3(1.0f);
+	FaceVertex[3] = VertexStorage[Face->V1];
+	FaceVertex[4] = V3(0, 1, 0);
+	FaceVertex[5] = V3(1.0f);
+	FaceVertex[6] = VertexStorage[Face->V2];
+	FaceVertex[7] = V3(0, 1, 1);
+	FaceVertex[8] = V3(0.0f);
 
-	FaceVertex[6] = VertexStorage[Face->V0];
-	FaceVertex[7] = V3(1, 0, 1);
-	FaceVertex[8] = VertexStorage[Face->V2];
-	FaceVertex[9] = V3(0, 1, 1);
-	FaceVertex[10] = VertexStorage[Face->V3];
-	FaceVertex[11] = V3(0, 0, 1);
+	FaceVertex[9] = VertexStorage[Face->V0];
+	FaceVertex[10] = V3(1, 0, 1);
+	FaceVertex[11] = V3(1.0f);
+	FaceVertex[12] = VertexStorage[Face->V2];
+	FaceVertex[13] = V3(0, 1, 1);
+	FaceVertex[14] = V3(0.0f);
+	FaceVertex[15] = VertexStorage[Face->V3];
+	FaceVertex[16] = V3(0, 0, 1);
+	FaceVertex[17] = V3(0.0f);
 
-	Commands->VertexCount += 12 * 3;
+	Commands->VertexCount += (18 * 3);
 }

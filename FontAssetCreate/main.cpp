@@ -24,7 +24,7 @@ FromMonoToRGBA(bitmap_info *Glyph, u8 *DestMem, u32 *BitmapSize)
 {
 	u32 Pitch = Glyph->Width * BITMAP_BYTES_PER_PIXEL;
 
-	*BitmapSize = Glyph->Height * Pitch;;
+	*BitmapSize = Glyph->Height * Pitch;
 
 	u8 *Source = (u8 *)Glyph->Data;
 	u8 *DestRow = DestMem + (Glyph->Height - 1)*Pitch;
@@ -92,7 +92,7 @@ main(int argc, char **argv)
 			(sizeof(bitmap_info)*GlyphCount));
 		
 		font_asset_info *FontAsset = (font_asset_info *)malloc(AllocateMemorySize);
-		ZeroSize(AllocateMemorySize, (void *)FontAsset);
+		ZeroSize((void *)FontAsset, AllocateMemorySize);
 
 		FontAsset->UnicodeMap = (u16 *)((u8 *)FontAsset + sizeof(font_asset_info));
 		// TODO: Collate table and advance;
@@ -127,6 +127,7 @@ main(int argc, char **argv)
 			GlyphBitmap->Data =
 				(void *)stbtt_GetCodepointBitmap(&FontInfo, 0, Scale, UnicodeIndex,
 					(int *)&GlyphBitmap->Width, (int *)&GlyphBitmap->Height, 0, 0);
+
 			
 			int x0, x1, y0, y1;
 			stbtt_GetCodepointBitmapBox(&FontInfo, UnicodeIndex, Scale, Scale, &x0, &y0, &x1, &y1);

@@ -107,6 +107,18 @@ operator*(v3 A, m4x4 B)
 	return Result;
 }
 
+inline v4
+operator*(v4 A, m4x4 B)
+{
+	v4 Result;
+	Result.x = A.x*B.E[0][0] + A.y*B.E[1][0] + A.z*B.E[2][0] + A.w*B.E[3][0];
+	Result.y = A.x*B.E[0][1] + A.y*B.E[1][1] + A.z*B.E[2][1] + A.w*B.E[3][1];
+	Result.z = A.x*B.E[0][2] + A.y*B.E[1][2] + A.z*B.E[2][2] + A.w*B.E[3][2];
+	Result.w = A.x*B.E[0][3] + A.y*B.E[1][3] + A.z*B.E[2][3] + A.w*B.E[3][3];
+
+	return Result;
+}
+
 inline m4x4
 Identity(void)
 {
@@ -149,7 +161,7 @@ PerspectiveProjection(f32 FocalLength, f32 WidthOverHeight)
 {
 	
 	f32 Near = 0.1f;
-	f32 Far = 100.0f;
+	f32 Far = 200.0f;
 
 	f32 ZRange = Far - Near;
 
