@@ -191,7 +191,7 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 		u32 PageBlock = Arena->AllocStatus[BlockIndex];
 
 		for (u32 InBlockIndex = InitInBlockIndex;
-			(PagesTest < CountOfPages) || (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
+			(PagesTest < CountOfPages) && (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
 			PagesTest++, InBlockIndex++)
 		{
 			if (!IsBitSet(PageBlock, InBlockIndex))
