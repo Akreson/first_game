@@ -15,7 +15,7 @@ V2(f32 x, f32 y)
 inline v2
 V2(f32 Value)
 {
-	v2 Result = {Value};
+	v2 Result = {Value, Value};
 	return Result;
 }
 
@@ -27,16 +27,16 @@ V3(f32 x, f32 y, f32 z)
 }
 
 inline v3
-V3(f32 ValueXY, f32 z)
+V3(v2 XY, f32 z)
 {
-	v3 Result = {ValueXY, ValueXY, z};
+	v3 Result = {XY.x, XY.y, z};
 	return Result;
 }
 
 inline v3
 V3(f32 Value)
 {
-	v3 Result = {Value};
+	v3 Result = {Value, Value, Value};
 	return Result;
 }
 
@@ -48,9 +48,16 @@ V4(f32 x, f32 y, f32 z, f32 w)
 }
 
 inline v4
-V4(f32 XYZW)
+V4(f32 Value)
 {
-	v4 Result = {XYZW};
+	v4 Result = {Value, Value, Value, Value};
+	return Result;
+}
+
+inline v3
+operator-(v3 A)
+{
+	v3 Result = {-A.x, -A.y, -A.z};
 	return Result;
 }
 
@@ -260,8 +267,9 @@ inline m4x4
 CameraViewTransform(m4x4 *CameraR, v3 CameraO)
 {
 	m4x4 Result = *CameraR;
-	//CameraO = CameraO * *CameraR;
-	SetTranslationPart(&Result, CameraO);
+	//Result = Transpose(Result);
+	//CameraO = -(CameraO * Result);
+	SetTranslationPart(&Result, -CameraO);
 
 	return Result;
 }

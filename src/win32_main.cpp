@@ -637,7 +637,7 @@ WinMain(HINSTANCE Instance,
 				ScreenToClient(Window, &MouseP);
 				// TODO: Store in normalize form?
 				GameInput.MouseX = (f32)MouseP.x;
-				GameInput.MouseY = (f32)(ScreenWidth - MouseP.y);
+				GameInput.MouseY = (f32)((ScreenHeight - 1) - MouseP.y);
 				GameInput.MouseZ = 0; // TODO: Support mousewheel
 
 				GameInput.AltDown = GetKeyState(VK_MENU) & (1 << 15);

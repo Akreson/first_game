@@ -2,6 +2,9 @@
 #include "render_group.cpp"
 #include "asset.cpp"
 
+// TODO: Delete
+#include <cstdio>
+
 void
 OutputText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
 {
@@ -213,10 +216,10 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitArena(&GameState->EditorState.EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		InitPageArena(&GameState->EditorState.EditorMainArena, &GameState->EditorState.EditorPageArena, MiB(10));
 
-		AddCubeModel(&GameState->EditorState, V4(0.5f, 0.0f, 1.0f, 1.0f));
+		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 1.0f, 1.0f));
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));
 
-		EditorState->CameraOffset = V3(0, 0, -3);
+		EditorState->CameraOffset = V3(0, 0, 3);
 
 		GameState->IsInit = true;
 	}
@@ -234,6 +237,12 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		if ((GameState->LastMouseP.x != 0) && (GameState->LastMouseP.y != 0))
 		{
 			v2 dMouse = Mouse - GameState->LastMouseP;
+
+#if 1
+			char Buffer[1024];
+			sprintf(Buffer, "Mouse x:%f y:%f", Mouse.x, Mouse.y);
+			OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.3f);
+#endif
 
 			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 			{
@@ -253,7 +262,6 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	}
 
 	m4x4 CameraR = YRotation(EditorState->CameraOrbit) * XRotation(EditorState->CameraPitch);
-	//CameraR = Transpose(CameraR);
 	CameraOffset.z += EditorState->CameraDolly;
 
 	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOffset);
@@ -273,5 +281,5 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		}
 	}
 
-	OutputText(&RenderGroup, (char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
+	//OutputText(&RenderGroup, (char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
 }
