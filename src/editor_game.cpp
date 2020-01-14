@@ -215,6 +215,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0.0f, 1.0f, 1.0f));
 		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));
+
 		EditorState->CameraOffset = V3(0, 0, -3);
 
 		GameState->IsInit = true;
@@ -252,6 +253,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	}
 
 	m4x4 CameraR = YRotation(EditorState->CameraOrbit) * XRotation(EditorState->CameraPitch);
+	//CameraR = Transpose(CameraR);
 	CameraOffset.z += EditorState->CameraDolly;
 
 	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOffset);

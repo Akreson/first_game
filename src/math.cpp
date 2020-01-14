@@ -234,8 +234,34 @@ ZRotation(f32 Angle)
 }
 
 inline void
-Translate(m4x4 *A, v3 B)
+SetTranslationPart(m4x4 *A, v3 B)
 {
 	v3 *TranslationPart = (v3 *)&A->E[3][0];
 	*TranslationPart = B;
+}
+
+inline m4x4
+Transpose(m4x4 A)
+{
+	m4x4 Result = {};
+
+	for (u32 i = 0; i <= 3; ++i)
+	{
+		for (u32 y = 0; y <= 3; ++y)
+		{
+			Result.E[y][i] = A.E[i][y];
+		}
+	}
+
+	return Result;
+}
+
+inline m4x4
+CameraViewTransform(m4x4 *CameraR, v3 CameraO)
+{
+	m4x4 Result = *CameraR;
+	//CameraO = CameraO * *CameraR;
+	SetTranslationPart(&Result, CameraO);
+
+	return Result;
 }

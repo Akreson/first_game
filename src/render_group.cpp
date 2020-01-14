@@ -11,15 +11,6 @@ InitRenderGroup(game_render_commands *Commands, game_input *Input, font_asset_in
 	return Result;
 }
 
-inline m4x4
-CameraViewTransform(m4x4 *CameraR, v3 CameraO)
-{
-	m4x4 Result = *CameraR;
-	Translate(&Result, CameraO);
-
-	return Result;
-}
-
 void
 SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4 *CameraViewTransform)
 {

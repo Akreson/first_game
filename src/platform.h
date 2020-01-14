@@ -125,7 +125,7 @@ Copy(memory_index Size, void *DestBase, void *SourceBase)
 }
 
 // TODO: See if need change in loop body
-inline void
+void
 Copy128(memory_index Size, void *DestBase, void *SourceBase)
 {
 	Assert(Size >= X86_CACHE_LINE_SIZE);
@@ -141,8 +141,8 @@ Copy128(memory_index Size, void *DestBase, void *SourceBase)
 		Dest[2] = Source[2];
 		Dest[3] = Source[3];
 
-		++Dest;
-		++Source;
+		Dest += 4;
+		Source += 4;
 
 		Size -= X86_CACHE_LINE_SIZE;
 	}
@@ -266,9 +266,9 @@ typedef PLATFORM_DEALLOCATE_TEXTURE(platform_deallocate_texture);
 
 struct platform_api
 {
-	platform_get_file_handler_for_file *GetFileHandlerForFile;
 	platform_read_file *ReadFile;
 	platform_get_file_size *GetFileSize;
 	platform_allocate_texture *AllocateTexture;
 	platform_deallocate_texture *DeallocateTexture;
+	platform_get_file_handler_for_file *GetFileHandlerForFile;
 };

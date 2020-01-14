@@ -514,8 +514,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	//glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glBindVertexArray(OpenGL.VertexBufferVAO);
@@ -585,7 +584,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				BufferOffset += sizeof(render_entry_model_face);
 
 				m4x4 ModelTransform = Identity();
-				Translate(&ModelTransform, FaceEntry->Offset);
+				SetTranslationPart(&ModelTransform, FaceEntry->Offset);
 
 				glUniform4f(OpenGL.ModelColorID,
 					FaceEntry->Color.r, FaceEntry->Color.g, FaceEntry->Color.b, FaceEntry->Color.a);
@@ -621,7 +620,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				BufferOffset += sizeof(render_entry_model);
 
 				m4x4 ModelTransform = Identity();
-				Translate(&ModelTransform, ModelEntry->Offset);
+				SetTranslationPart(&ModelTransform, ModelEntry->Offset);
 
 				glUniform4f(OpenGL.ModelColorID,
 					ModelEntry->Color.r, ModelEntry->Color.g, ModelEntry->Color.b, ModelEntry->Color.a);
