@@ -37,6 +37,8 @@ IsPowerOf2(u32 Value)
 }
 
 #include "intrinsics.cpp"
+#include "math.cpp"
+#include "string.h"
 #include "memory_arena.h"
 #include "asset.h"
 #include "render_group.h"

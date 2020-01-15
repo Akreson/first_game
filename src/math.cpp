@@ -5,6 +5,20 @@
 #define Pi32 3.14159265359f
 #define Tau32 6.2831853071f
 
+inline f32
+Cos(f32 Angle)
+{
+	f32 Result = cosf(Angle);
+	return Result;
+}
+
+inline f32
+Sin(f32 Angle)
+{
+	f32 Result = sinf(Angle);
+	return Result;
+}
+
 inline v2
 V2(f32 x, f32 y)
 {
@@ -27,9 +41,9 @@ V3(f32 x, f32 y, f32 z)
 }
 
 inline v3
-V3(v2 XY, f32 z)
+V3(v2 A, f32 z)
 {
-	v3 Result = {XY.x, XY.y, z};
+	v3 Result = {A.x, A.y, z};
 	return Result;
 }
 
@@ -54,10 +68,13 @@ V4(f32 Value)
 	return Result;
 }
 
-inline v3
-operator-(v3 A)
+inline v4
+V4(v3 A, f32 w)
 {
-	v3 Result = {-A.x, -A.y, -A.z};
+	v4 Result;
+	Result.xyz = A;
+	Result.w = w;
+
 	return Result;
 }
 
@@ -67,6 +84,24 @@ operator-(v2 A, v2 B)
 	v2 Result;
 	Result.x = A.x - B.x;
 	Result.y = A.y - B.y;
+	return Result;
+}
+
+inline v3
+operator-(v3 A)
+{
+	v3 Result = {-A.x, -A.y, -A.z};
+	return Result;
+}
+
+inline v3
+operator/(v3 A, f32 B)
+{
+	v3 Result;
+	Result.x = A.x / B;
+	Result.y = A.y / B;
+	Result.z = A.z / B;
+
 	return Result;
 }
 
@@ -80,6 +115,54 @@ operator*(v4 A, v4 B)
 	Result.z = A.z * B.z;
 	Result.w = A.w * B.w;
 
+	return Result;
+}
+
+inline f32
+Dot(v3 A, v3 B)
+{
+	f32 Result = A.x*B.x + A.y*B.y + A.z*B.z;
+	return Result;
+}
+
+inline f32
+LengthSq(v3 A)
+{
+	f32 Result = Dot(A, A);
+	return Result;
+}
+
+inline f32
+Length(v3 A)
+{
+	f32 Result = SquareRoot(LengthSq(A));
+	return Result;
+}
+
+// TODO: Optimize?
+inline v4
+Transform(v4 A, m4x4 B)
+{
+	v4 Result;
+	Result.x = A.x*B.E[0][0] + A.y*B.E[1][0] + A.z*B.E[2][0] + A.w*B.E[3][0];
+	Result.y = A.x*B.E[0][1] + A.y*B.E[1][1] + A.z*B.E[2][1] + A.w*B.E[3][1];
+	Result.z = A.x*B.E[0][2] + A.y*B.E[1][2] + A.z*B.E[2][2] + A.w*B.E[3][2];
+	Result.w = A.x*B.E[0][3] + A.y*B.E[1][3] + A.z*B.E[2][3] + A.w*B.E[3][3];
+
+	return Result;
+}
+
+inline v3
+operator*(v3 A, m4x4 B)
+{
+	v3 Result = Transform(V4(A, 1.0f), B).xyz;
+	return Result;
+}
+
+inline v4
+operator*(v4 A, m4x4 B)
+{
+	v4 Result = Transform(A, B);
 	return Result;
 }
 
@@ -104,25 +187,9 @@ operator*(m4x4 A, m4x4 B)
 }
 
 inline v3
-operator*(v3 A, m4x4 B)
+GetRow(m4x4 A, u32 R)
 {
-	v3 Result;
-	Result.x = A.x*B.E[0][0] + A.y*B.E[1][0] + A.z*B.E[2][0];
-	Result.y = A.x*B.E[0][1] + A.y*B.E[1][1] + A.z*B.E[2][1];
-	Result.z = A.x*B.E[0][2] + A.y*B.E[1][2] + A.z*B.E[2][2];
-
-	return Result;
-}
-
-inline v4
-operator*(v4 A, m4x4 B)
-{
-	v4 Result;
-	Result.x = A.x*B.E[0][0] + A.y*B.E[1][0] + A.z*B.E[2][0] + A.w*B.E[3][0];
-	Result.y = A.x*B.E[0][1] + A.y*B.E[1][1] + A.z*B.E[2][1] + A.w*B.E[3][1];
-	Result.z = A.x*B.E[0][2] + A.y*B.E[1][2] + A.z*B.E[2][2] + A.w*B.E[3][2];
-	Result.w = A.x*B.E[0][3] + A.y*B.E[1][3] + A.z*B.E[2][3] + A.w*B.E[3][3];
-
+	v3 Result = {A.E[R][0], A.E[R][1], A.E[R][2]};
 	return Result;
 }
 
@@ -140,8 +207,7 @@ Identity(void)
 	return Result;
 }
 
-// add inverse
-inline m4x4
+inline m4x4_inv
 OrthographicProjection(f32 Width, f32 Height)
 {
 	f32 Far = 100.0f;
@@ -152,18 +218,30 @@ OrthographicProjection(f32 Width, f32 Height)
 	f32 c = -2.0f / (Far - Near);
 	f32 d = (Near + Far) / (Near - Far);
 
-	m4x4 Result =
+	m4x4_inv Result;
+	Result.Forward =
 	{{
-		{ a,  0, 0, 0},
-		{ 0,  b, 0, 0},
-		{ 0,  0, c, 0},
+		{a,  0,  0, 0},
+		{0,  b,  0, 0},
+		{0,  0,  c, 0},
 		{-1, -1, d, 1}
 	}};
+	Result.Inverse =
+	{{
+		{1/a,   0,    0, 0},
+		{  0, 1/b,    0, 0},
+		{  0,   0,  1/c, 0},
+		{1/a, 1/b, -d/c, 1}
+	}};
+
+#if 0
+	m4x4 I = Result.Forward * Result.Inverse;
+#endif
 
 	return Result;
 }
 
-inline m4x4
+inline m4x4_inv
 PerspectiveProjection(f32 FocalLength, f32 WidthOverHeight)
 {
 	
@@ -177,23 +255,35 @@ PerspectiveProjection(f32 FocalLength, f32 WidthOverHeight)
 	f32 c = -(Near + Far) / ZRange;
 	f32 d = -(2.0f * Far * Near) / ZRange;
 
-	m4x4 Result = 
+	m4x4_inv Result;
+	Result.Forward = 
 	{{
 		{a, 0, 0,  0},
 		{0, b, 0,  0},
 		{0, 0, c, -1},
 		{0, 0, d,  0}
 	}};
+	Result.Inverse = 
+	{{
+		{1/a,   0,   0,   0},
+		{  0, 1/b,   0,   0},
+		{  0,   0,   0, 1/d},
+		{  0,   0,  -1, c/d}
+	}};
+
+#if 0
+	m4x4 I = Result.Forward * Result.Inverse;
+#endif
 
 	return Result;
 }
 
-// TODO: Use quat for rotation?
+// TODO: Use quaternion for rotation?
 inline m4x4
 XRotation(f32 Angle)
 {
-	f32 c = cosf(Angle);
-	f32 s = sinf(Angle);
+	f32 c = Cos(Angle);
+	f32 s = Sin(Angle);
 
 	m4x4 Result =
 	{{
@@ -209,8 +299,8 @@ XRotation(f32 Angle)
 inline m4x4
 YRotation(f32 Angle)
 {
-	f32 c = cosf(Angle);
-	f32 s = sinf(Angle);
+	f32 c = Cos(Angle);
+	f32 s = Sin(Angle);
 
 	m4x4 Result =
 	{{
@@ -226,8 +316,8 @@ YRotation(f32 Angle)
 inline m4x4
 ZRotation(f32 Angle)
 {
-	f32 c = cosf(Angle);
-	f32 s = sinf(Angle);
+	f32 c = Cos(Angle);
+	f32 s = Sin(Angle);
 
 	m4x4 Result =
 	{{
@@ -241,10 +331,9 @@ ZRotation(f32 Angle)
 }
 
 inline void
-SetTranslationPart(m4x4 *A, v3 B)
+SetTranslation(m4x4 *A, v3 B)
 {
-	v3 *TranslationPart = (v3 *)&A->E[3][0];
-	*TranslationPart = B;
+	A->Row3.xyz = B;
 }
 
 inline m4x4
@@ -264,11 +353,47 @@ Transpose(m4x4 A)
 }
 
 inline m4x4
-CameraViewTransform(m4x4 *CameraR, v3 P)
+Row3x3(v3 X, v3 Y, v3 Z)
 {
-	m4x4 Result = Transpose(*CameraR);
-	P = -(P * Result);
-	SetTranslationPart(&Result, P);
+	m4x4 Result = {};
+	Result.Row0.xyz = X;
+	Result.Row1.xyz = Y;
+	Result.Row2.xyz = Z;
+	Result.E[3][3] = 1.0f;
 
+	return Result;
+}
+
+inline m4x4_inv
+CameraViewTransform(m4x4 R, v3 P)
+{
+	m4x4_inv Result;
+
+	m4x4 A = Transpose(R);
+	v3 PA = -(P * A);
+	SetTranslation(&A, PA);
+	Result.Forward = A;
+
+	v3 iX = GetRow(R, 0);
+	v3 iY = GetRow(R, 1);
+	v3 iZ = GetRow(R, 2);
+	iX = iX / LengthSq(iX);
+	iY = iY / LengthSq(iY);
+	iZ = iZ / LengthSq(iZ);
+	
+	v3 iP = 
+	{	
+		PA.x*iX.x + PA.y*iY.x + PA.z*iZ.x,
+		PA.x*iX.y + PA.y*iY.y + PA.z*iZ.y, 
+		PA.x*iX.z + PA.y*iY.z + PA.z*iZ.z
+	};
+
+	m4x4 B = Row3x3(iX, iY, iZ);
+	SetTranslation(&B, -iP);
+	Result.Inverse = B;
+
+#if 0
+	m4x4 I = Result.Forward * Result.Inverse;
+#endif
 	return Result;
 }

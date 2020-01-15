@@ -104,6 +104,20 @@ union v4
 union m4x4
 {
 	f32 E[4][4];
+
+	struct
+	{
+		v4 Row0;
+		v4 Row1;
+		v4 Row2;
+		v4 Row3;
+	};
+};
+
+struct m4x4_inv
+{
+	m4x4 Forward;
+	m4x4 Inverse;
 };
 
 #if DEVELOP_MODE
@@ -223,8 +237,8 @@ struct game_memory
 
 struct game_render_commands
 {
-	m4x4 PersProj;
-	m4x4 OrthoProj;
+	m4x4_inv PersProj;
+	m4x4_inv OrthoProj;
 
 	v2 ScreenDim;
 	u8 *PushBufferBase;

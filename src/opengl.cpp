@@ -560,7 +560,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				glUniform3f(OpenGL.BitmapColorID,
 					BitmapEntry->Color.x, BitmapEntry->Color.y, BitmapEntry->Color.z);
-				glUniformMatrix4fv(OpenGL.BitmapProjID, 1, GL_FALSE, &Commands->OrthoProj.E[0][0]);
+				glUniformMatrix4fv(OpenGL.BitmapProjID, 1, GL_FALSE, &Commands->OrthoProj.Forward.E[0][0]);
 
 				glActiveTexture(GL_TEXTURE0);
 				glBindVertexArray(OpenGL.BitmapVAO);
@@ -584,11 +584,11 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				BufferOffset += sizeof(render_entry_model_face);
 
 				m4x4 ModelTransform = Identity();
-				SetTranslationPart(&ModelTransform, FaceEntry->Offset);
+				SetTranslation(&ModelTransform, FaceEntry->Offset);
 
 				glUniform4f(OpenGL.ModelColorID,
 					FaceEntry->Color.r, FaceEntry->Color.g, FaceEntry->Color.b, FaceEntry->Color.a);
-				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.E[0][0]);
+				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
 				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
@@ -620,11 +620,11 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				BufferOffset += sizeof(render_entry_model);
 
 				m4x4 ModelTransform = Identity();
-				SetTranslationPart(&ModelTransform, ModelEntry->Offset);
+				SetTranslation(&ModelTransform, ModelEntry->Offset);
 
 				glUniform4f(OpenGL.ModelColorID,
 					ModelEntry->Color.r, ModelEntry->Color.g, ModelEntry->Color.b, ModelEntry->Color.a);
-				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.E[0][0]);
+				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
 				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
 
 				glBindVertexArray(OpenGL.ModelVAO);

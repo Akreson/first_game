@@ -234,28 +234,25 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Mouse.x = Input->MouseX;
 		Mouse.y = Input->MouseY;
 		
-		if ((GameState->LastMouseP.x != 0) && (GameState->LastMouseP.y != 0))
-		{
-			v2 dMouse = Mouse - GameState->LastMouseP;
+		v2 dMouse = Mouse - GameState->LastMouseP;
 
 #if 1
-			char Buffer[1024];
-			sprintf(Buffer, "Mouse x:%f y:%f", Mouse.x, Mouse.y);
-			OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
+		char Buffer[1024];
+		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Mouse.x, (u32)Mouse.y);
+		OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
 
-			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
-			{
-				f32 RotationSpeed = Pi32 * 0.0005f;
-				EditorState->CameraOrbit -= dMouse.x * RotationSpeed;
-				EditorState->CameraPitch += dMouse.y * RotationSpeed;
-			}
+		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
+		{
+			f32 RotationSpeed = Pi32 * 0.0005f;
+			EditorState->CameraOrbit -= dMouse.x * RotationSpeed;
+			EditorState->CameraPitch += dMouse.y * RotationSpeed;
+		}
 
-			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
-			{
-				f32 ZoomSpeed = (CameraOffset.z + EditorState->CameraDolly) * 0.004f;
-				EditorState->CameraDolly -= dMouse.y*ZoomSpeed;
-			}
+		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
+		{
+			f32 ZoomSpeed = (CameraOffset.z + EditorState->CameraDolly) * 0.004f;
+			EditorState->CameraDolly -= dMouse.y*ZoomSpeed;
 		}
 
 		GameState->LastMouseP = Mouse;
@@ -265,7 +262,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	CameraOffset.z += EditorState->CameraDolly;
 	v3 CameraOt = CameraOffset * CameraR;
 
-	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOt);
+	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	for (u32 ModelIndex = 0;

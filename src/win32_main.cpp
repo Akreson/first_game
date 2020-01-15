@@ -7,10 +7,6 @@
 
 #include "platform.h"
 
-// TODO: Delete form platform layer
-#include "math.cpp"
-#include "string.h"
-
 // TODO: Set as different translation unit and compile as dll?
 #include "editor_game.cpp"
 

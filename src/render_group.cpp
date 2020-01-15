@@ -12,12 +12,13 @@ InitRenderGroup(game_render_commands *Commands, game_input *Input, font_asset_in
 }
 
 void
-SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4 *CameraViewTransform)
+SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4_inv *CameraViewTransform)
 {
 	Group->Commands->OrthoProj = OrthographicProjection(Group->ScreenDim.x, Group->ScreenDim.y);
 
-	Group->Commands->PersProj = PerspectiveProjection(FocalLength, Group->ScreenDim.x / Group->ScreenDim.y);
-	Group->Commands->PersProj = *CameraViewTransform * Group->Commands->PersProj;
+	m4x4_inv PersProj = PerspectiveProjection(FocalLength, Group->ScreenDim.x / Group->ScreenDim.y);
+	Group->Commands->PersProj.Forward = CameraViewTransform->Forward * PersProj.Forward;
+	Group->Commands->PersProj.Inverse = CameraViewTransform->Inverse * PersProj.Inverse;
 }
 
 void *
