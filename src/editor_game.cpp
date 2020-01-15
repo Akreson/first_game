@@ -241,19 +241,19 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 #if 1
 			char Buffer[1024];
 			sprintf(Buffer, "Mouse x:%f y:%f", Mouse.x, Mouse.y);
-			OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.3f);
+			OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
 
 			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 			{
-				f32 RotationSpeed = Pi32 * 0.001f;
-				EditorState->CameraOrbit += dMouse.x * RotationSpeed;
+				f32 RotationSpeed = Pi32 * 0.0005f;
+				EditorState->CameraOrbit -= dMouse.x * RotationSpeed;
 				EditorState->CameraPitch += dMouse.y * RotationSpeed;
 			}
 
 			if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
 			{
-				f32 ZoomSpeed = (CameraOffset.z + EditorState->CameraDolly) * 0.005f;
+				f32 ZoomSpeed = (CameraOffset.z + EditorState->CameraDolly) * 0.004f;
 				EditorState->CameraDolly -= dMouse.y*ZoomSpeed;
 			}
 		}
@@ -261,10 +261,11 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		GameState->LastMouseP = Mouse;
 	}
 
-	m4x4 CameraR = YRotation(EditorState->CameraOrbit) * XRotation(EditorState->CameraPitch);
+	m4x4 CameraR = XRotation(EditorState->CameraPitch) * YRotation(EditorState->CameraOrbit);
 	CameraOffset.z += EditorState->CameraDolly;
+	v3 CameraOt = CameraOffset * CameraR;
 
-	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOffset);
+	m4x4 CameraTansform = CameraViewTransform(&CameraR, CameraOt);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	for (u32 ModelIndex = 0;

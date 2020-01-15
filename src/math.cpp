@@ -250,7 +250,7 @@ SetTranslationPart(m4x4 *A, v3 B)
 inline m4x4
 Transpose(m4x4 A)
 {
-	m4x4 Result = {};
+	m4x4 Result;
 
 	for (u32 i = 0; i <= 3; ++i)
 	{
@@ -264,12 +264,11 @@ Transpose(m4x4 A)
 }
 
 inline m4x4
-CameraViewTransform(m4x4 *CameraR, v3 CameraO)
+CameraViewTransform(m4x4 *CameraR, v3 P)
 {
-	m4x4 Result = *CameraR;
-	//Result = Transpose(Result);
-	//CameraO = -(CameraO * Result);
-	SetTranslationPart(&Result, -CameraO);
+	m4x4 Result = Transpose(*CameraR);
+	P = -(P * Result);
+	SetTranslationPart(&Result, P);
 
 	return Result;
 }
