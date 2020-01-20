@@ -507,6 +507,7 @@ CameraViewTransform(m4x4 R, v3 P)
 	return Result;
 }
 
+// TODO: Consider to optimize
 b32
 TestRayAABB(ray_param Ray, rect3 AABB, v3 AABBOffset)
 {

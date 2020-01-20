@@ -225,16 +225,6 @@ AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3
 	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 }
 
-inline v2
-MousePosToNDC(render_group *Group, v2 Mouse)
-{
-	v2 Result;
-	Result.x = ((Mouse.x * 2.0f) / Group->ScreenDim.x) - 1.0f;
-	Result.y = ((Mouse.y * 2.0f) / Group->ScreenDim.y) - 1.0f;
-
-	return Result;
-}
-
 void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
