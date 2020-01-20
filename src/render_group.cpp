@@ -17,8 +17,34 @@ SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4_inv *CameraViewTran
 	Group->Commands->OrthoProj = OrthographicProjection(Group->ScreenDim.x, Group->ScreenDim.y);
 
 	m4x4_inv PersProj = PerspectiveProjection(FocalLength, Group->ScreenDim.x / Group->ScreenDim.y);
-	Group->Commands->PersProj.Forward = CameraViewTransform->Forward * PersProj.Forward;
-	Group->Commands->PersProj.Inverse = CameraViewTransform->Inverse * PersProj.Inverse;
+	m4x4 Pers = CameraViewTransform->Forward * PersProj.Forward;
+	m4x4 InvPers = PersProj.Inverse * CameraViewTransform->Inverse;
+	
+	Group->Commands->PersProj.Forward = Pers;
+	Group->Commands->PersProj.Inverse = InvPers;
+	Group->InvPerspective = PersProj.Inverse;
+	Group->InvCamera = CameraViewTransform->Inverse;
+	Group->CameraZ = GetRow(CameraViewTransform->Forward, 2);
+}
+
+inline v2
+FromScreenToClipSpace(render_group *Group, v2 Pos)
+{
+	v2 Result = ((Pos * 2.0f) / Group->ScreenDim) - 1.0f;
+	return Result;
+}
+
+v3
+Unproject(render_group *Group, v2 Mouse)
+{
+	v4 ClipPos;
+	ClipPos.xy = FromScreenToClipSpace(Group, Mouse);
+	ClipPos.zw = V2(-1.0f, 1.0f);
+
+	v4 CameraP = ClipPos * Group->InvPerspective;
+	v4 WorldRayDir = V4(CameraP.xyz, 0) * Group->InvCamera;
+
+	return WorldRayDir.xyz;
 }
 
 void *

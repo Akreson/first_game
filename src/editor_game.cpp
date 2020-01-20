@@ -144,6 +144,30 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 	}
 }
 
+rect3
+ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
+{
+	rect3 Rect = {V3(60000.0f), V3(-60000.0f)};
+
+	for (u32 VertexIndex = 0;
+		VertexIndex < VertexCount;
+		++VertexIndex)
+	{
+		v3 Vertex = VertexArray[VertexIndex];
+		
+		if (Vertex.x < Rect.Min.x) Rect.Min.x = Vertex.x;
+		if (Vertex.x > Rect.Max.x) Rect.Max.x = Vertex.x;
+
+		if (Vertex.y < Rect.Min.y) Rect.Min.y = Vertex.y;
+		if (Vertex.y > Rect.Max.y) Rect.Max.y = Vertex.y;
+
+		if (Vertex.z < Rect.Min.z) Rect.Min.z = Vertex.z;
+		if (Vertex.z > Rect.Max.z) Rect.Max.z = Vertex.z;
+	}
+
+	return Rect;
+}
+
 // TODO: Complete
 void
 GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
@@ -198,6 +222,17 @@ AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3
 {
 	model *Model = AddModel(EditorState, Color, Offset);
 	GeneratingCube(&EditorState->EditorPageArena, Model);
+	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+}
+
+inline v2
+MousePosToNDC(render_group *Group, v2 Mouse)
+{
+	v2 Result;
+	Result.x = ((Mouse.x * 2.0f) / Group->ScreenDim.x) - 1.0f;
+	Result.y = ((Mouse.y * 2.0f) / Group->ScreenDim.y) - 1.0f;
+
+	return Result;
 }
 
 void
@@ -216,8 +251,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitArena(&GameState->EditorState.EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		InitPageArena(&GameState->EditorState.EditorMainArena, &GameState->EditorState.EditorPageArena, MiB(10));
 
-		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 1.0f, 1.0f));
-		AddCubeModel(&GameState->EditorState, V4(0.5f, 0, 0.5f, 1.0f), V3(-2.0f, 1.0f, 1.0f));
+		AddCubeModel(&GameState->EditorState, V4(0));
+		AddCubeModel(&GameState->EditorState, V4(0), V3(-2.0f, 1.0f, 1.0f));
 
 		EditorState->CameraOffset = V3(0, 0, 3);
 
@@ -228,15 +263,15 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 	v3 CameraOffset = EditorState->CameraOffset;
 
+	v2 Mouse = {};
 	if (Input)
 	{
-		v2 Mouse = {};
 		Mouse.x = Input->MouseX;
 		Mouse.y = Input->MouseY;
 		
 		v2 dMouse = Mouse - GameState->LastMouseP;
 
-#if 1
+#if 0
 		char Buffer[1024];
 		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Mouse.x, (u32)Mouse.y);
 		OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
@@ -265,17 +300,26 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
+	ray_param Ray;
+	Ray.Dir = Unproject(&RenderGroup, Mouse);
+	Ray.Pos = CameraOt;
+
 	for (u32 ModelIndex = 0;
 		ModelIndex < EditorState->ModelsCount;
 		++ModelIndex)
 	{
 		model *Model = EditorState->Models + ModelIndex;
+		
+		b32 HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
+
+		v4 Color = HitTest ? V4(1.0f) : Model->Color;
+
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
 			++FaceIndex)
 		{
 			model_face *Face = Model->Faces + FaceIndex;
-			PushModelFace(&RenderGroup, Model->Vertex, Face, Model->Color, Model->Offset);
+			PushModelFace(&RenderGroup, Model->Vertex, Face, Color, Model->Offset);
 		}
 	}
 

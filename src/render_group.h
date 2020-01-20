@@ -42,4 +42,9 @@ struct render_group
 	game_render_commands *Commands;
 	font_asset_info *FontAsset;
 	v2 ScreenDim;
+
+	v3 CameraZ;
+
+	m4x4 InvCamera;
+	m4x4 InvPerspective;
 };

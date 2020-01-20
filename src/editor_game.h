@@ -1,5 +1,8 @@
 #pragma once
 
+#define MIN(A, B) (((A) < (B)) ? (A) : (B))
+#define MAX(A, B) (((A) > (B)) ? (A) : (B))
+
 inline u32
 GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 {
@@ -105,6 +108,7 @@ struct model
 	model_face *Faces;
 	model_edge *Edges;
 	v4 Color;
+	rect3 AABB;
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
 	u16 FaceCount;
 	u16 VertexCount;

@@ -5,6 +5,18 @@
 #define Pi32 3.14159265359f
 #define Tau32 6.2831853071f
 
+struct rect3
+{
+	v3 Min;
+	v3 Max;
+};
+
+struct ray_param
+{
+	v3 Dir;
+	v3 Pos;
+};
+
 inline f32
 Cos(f32 Angle)
 {
@@ -87,10 +99,70 @@ operator-(v2 A, v2 B)
 	return Result;
 }
 
+inline v2
+operator/(v2 A, v2 B)
+{
+	v2 Result;
+	Result.x = A.x / B.x;
+	Result.y = A.y / B.y;
+	return Result;
+}
+
+inline v2
+operator*(v2 A, f32 B)
+{
+	v2 Result;
+	Result.x = A.x * B;
+	Result.y = A.y * B;
+	return Result;
+}
+
+inline v2
+operator-(v2 A, f32 B)
+{
+	v2 Result;
+	Result.x = A.x - B;
+	Result.y = A.y - B;
+	return Result;
+}
+
 inline v3
 operator-(v3 A)
 {
 	v3 Result = {-A.x, -A.y, -A.z};
+	return Result;
+}
+
+inline v3
+operator-(v3 A, v3 B)
+{
+	v3 Result;
+	Result.x = A.x - B.x;
+	Result.y = A.y - B.y;
+	Result.z = A.z - B.z;
+
+	return Result;
+}
+
+inline v3
+operator+(v3 A, v3 B)
+{
+	v3 Result;
+	Result.x = A.x + B.x;
+	Result.y = A.y + B.y;
+	Result.z = A.z + B.z;
+
+	return Result;
+}
+
+inline v3
+operator*(v3 A, v3 B)
+{
+	v3 Result;
+	Result.x = A.x * B.x;
+	Result.y = A.y * B.y;
+	Result.z = A.z * B.z;
+
 	return Result;
 }
 
@@ -101,6 +173,29 @@ operator/(v3 A, f32 B)
 	Result.x = A.x / B;
 	Result.y = A.y / B;
 	Result.z = A.z / B;
+
+	return Result;
+}
+
+inline v3
+operator/(f32 B, v3 A)
+{
+	v3 Result;
+	Result.x = B / A.x;
+	Result.y = B / A.y;
+	Result.z = B / A.z;
+
+	return Result;
+}
+
+
+inline v3
+operator*(v3 A, f32 B)
+{
+	v3 Result;
+	Result.x = A.x * B;
+	Result.y = A.y * B;
+	Result.z = A.z * B;
 
 	return Result;
 }
@@ -136,6 +231,13 @@ inline f32
 Length(v3 A)
 {
 	f32 Result = SquareRoot(LengthSq(A));
+	return Result;
+}
+
+inline v3
+Normilize(v3 A)
+{
+	v3 Result = A * (1.0f / Length(A));
 	return Result;
 }
 
@@ -271,8 +373,15 @@ PerspectiveProjection(f32 FocalLength, f32 WidthOverHeight)
 		{  0,   0,  -1, c/d}
 	}};
 
-#if 0
+#if 1
 	m4x4 I = Result.Forward * Result.Inverse;
+	v4 Test0 = V4(0, 0, -Near, 1.0f) * Result.Forward;
+	Test0.xyz = Test0.xyz / Test0.w;
+	v4 Test1 = V4(0, 0, -Far, 1.0f) * Result.Forward;
+	Test1.xyz = Test1.xyz / Test1.w;
+
+	v4 Test2 = V4(0, 0, -1, 1.0f) * Result.Inverse;
+	v4 Test3 = V4(0, 0, 1, 1.0f) * Result.Inverse;
 #endif
 
 	return Result;
@@ -392,8 +501,31 @@ CameraViewTransform(m4x4 R, v3 P)
 	SetTranslation(&B, -iP);
 	Result.Inverse = B;
 
-#if 0
+#if 1
 	m4x4 I = Result.Forward * Result.Inverse;
 #endif
+	return Result;
+}
+
+b32
+TestRayAABB(ray_param Ray, rect3 AABB, v3 AABBOffset)
+{
+	b32 Result = true;
+
+	v3 InvD = 1.0 / Ray.Dir;
+
+	v3 Min = (AABB.Min + AABBOffset);
+	v3 Max = (AABB.Max + AABBOffset);
+	v3 tMinV = (Min - Ray.Pos) * InvD;
+	v3 tMaxV = (Max - Ray.Pos) * InvD;
+
+	f32 tMin = MAX(MAX(MIN(tMinV.x, tMaxV.x), MIN(tMinV.y, tMaxV.y)), MIN(tMinV.z, tMaxV.z));
+	f32 tMax = MIN(MIN(MAX(tMinV.x, tMaxV.x), MAX(tMinV.y, tMaxV.y)), MAX(tMinV.z, tMaxV.z));
+
+	if ((tMax < 0) || (tMin > tMax))
+	{
+		Result = false;
+	}
+
 	return Result;
 }

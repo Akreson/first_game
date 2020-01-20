@@ -454,7 +454,9 @@ OpenGLInit()
 	}
 
 	)FOO";
+
 	// TODO: Set model color?
+	// TODO: Compute color for selected edge in right way
 	const char *ModelFragmentCode = R"FOO(
 	out vec4 FragColor;
 
@@ -466,26 +468,34 @@ OpenGLInit()
 	float edgeFactor(){
 		vec3 dBarCoord = fwidth(BarCoord);
 		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*2.5, BarCoord);
-		//vec3 a3 = step(dBarCoord, BarCoord);
 		float Result = min(min(a3.x, a3.y), a3.z);
 		return Result;
 	}
 
 	void main()
 	{
+		vec3 EdgeColor;
+
 		float Factor = edgeFactor();
 		float InvFactor = 1.0 - Factor;
-		vec3 Color = vec3(0.17, 0.5, 0.8) * InvFactor;
 		
-		// NOTE: Test code for edge selection
-		/*vec3 AllowedRange = vec3(1.0) - (fwidth(SelectedReg)*5.5);
+		vec3 dSeletedReg = fwidth(SelectedReg);
+		vec3 A = vec3(1.0) - smoothstep(SelectedReg, dSeletedReg*2.5, vec3(0));
+		vec3 AllowedRange = vec3(1.0) - (fwidth(SelectedReg)*2.5f);
 		if (all(greaterThanEqual(SelectedReg, AllowedRange)))
 		{
-			Color = vec3(1.0, 0, 0);
-		}*/
+			EdgeColor = vec3(1.0, 0.59, 0.1);
+		}
+		else
+		{
+			EdgeColor = vec3(0.17, 0.5, 0.8);
+		}
+
+		EdgeColor *= InvFactor;
 		
-		FragColor = vec4(Color, 1.0);
+		FragColor = vec4(mix(EdgeColor, Color.xyz, Factor), 1.0);
 	}
+
 	)FOO";
 
 	OpenGL.ModelProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)ModelVertexCode, (GLchar *)ModelFragmentCode);

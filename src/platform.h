@@ -89,6 +89,12 @@ union v4
 
 	struct
 	{
+		v2 xy;
+		v2 zw;
+	};
+
+	struct
+	{
 		f32 r, g, b, a;
 	};
 
