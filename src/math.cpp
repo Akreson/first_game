@@ -235,9 +235,21 @@ Length(v3 A)
 }
 
 inline v3
-Normilize(v3 A)
+Normalize(v3 A)
 {
 	v3 Result = A * (1.0f / Length(A));
+	return Result;
+}
+
+inline v3
+Cross(v3 A, v3 B)
+{
+	v3 Result;
+
+	Result.x = A.z*B.y - A.y*B.z;
+	Result.y = A.x*B.z - A.z*B.x;
+	Result.z = A.y*B.x - A.x*B.y;
+
 	return Result;
 }
 

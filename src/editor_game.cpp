@@ -225,6 +225,12 @@ AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3
 	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 }
 
+struct plane_param
+{
+	v3 N;
+	f32 D;
+};
+
 void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
@@ -300,15 +306,29 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	{
 		model *Model = EditorState->Models + ModelIndex;
 		
-		b32 HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
-
-		v4 Color = HitTest ? V4(0.4f) : Model->Color;
+		//b32 HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
 
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
 			++FaceIndex)
 		{
 			model_face *Face = Model->Faces + FaceIndex;
+
+			v3 Vector1 = Model->Vertex[Face->V3] - Model->Vertex[Face->V0];
+			v3 Vector2 = Model->Vertex[Face->V1] - Model->Vertex[Face->V0];
+
+			plane_param Plane;
+			Plane.N = Normalize(Cross(Vector1, Vector2));
+			Plane.D = Dot(Plane.N, Model->Vertex[Face->V0]);
+
+			b32 HitTest = true;
+			f32 t = -((Dot(Ray.Pos, Plane.N) + Plane.D) / Dot(Ray.Dir, Plane.N));
+			if (t == 0 || t < 0)
+			{
+				HitTest = false;
+			}
+
+			v4 Color = HitTest ? V4(0.4f) : Model->Color;
 			PushModelFace(&RenderGroup, Model->Vertex, Face, Color, Model->Offset);
 		}
 	}
