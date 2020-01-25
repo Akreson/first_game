@@ -150,19 +150,23 @@ Copy128(memory_index Size, void *DestBase, void *SourceBase)
 {
 	Assert(Size >= X86_CACHE_LINE_SIZE);
 
-	__m128 *Source = (__m128 *)SourceBase;
-	__m128 *Dest = (__m128 *)DestBase;
+	f32 *Source = (f32 *)SourceBase;
+	f32 *Dest = (f32 *)DestBase;
 
-	memory_index Offset = 0;
 	while (Size)
 	{
-		Dest[0] = Source[0];
-		Dest[1] = Source[1];
-		Dest[2] = Source[2];
-		Dest[3] = Source[3];
+		__m128 Source0 = _mm_load_ps(Source);
+		__m128 Source1 = _mm_load_ps(Source + 4);
+		__m128 Source2 = _mm_load_ps(Source + 8);
+		__m128 Source3 = _mm_load_ps(Source + 16);
 
-		Dest += 4;
-		Source += 4;
+		_mm_store_ps(Dest, Source0);
+		_mm_store_ps(Dest + 4, Source1);
+		_mm_store_ps(Dest + 8, Source2);
+		_mm_store_ps(Dest + 16, Source3);
+
+		Dest += 20;
+		Source += 20;
 
 		Size -= X86_CACHE_LINE_SIZE;
 	}

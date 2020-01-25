@@ -302,7 +302,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		
 		b32 HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
 
-		v4 Color = HitTest ? V4(1.0f) : Model->Color;
+		v4 Color = HitTest ? V4(0.4f) : Model->Color;
 
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
