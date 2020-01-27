@@ -225,12 +225,6 @@ AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3
 	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 }
 
-struct plane_param
-{
-	v3 N;
-	f32 D;
-};
-
 void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
@@ -307,7 +301,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	{
 		model *Model = EditorState->Models + ModelIndex;
 		
-		//HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
+		//HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
 
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
@@ -315,21 +309,43 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		{
 			model_face *Face = Model->Faces + FaceIndex;
 
-			HitTest = true;
-#if 1
-			v3 Vector1 = Model->Vertex[Face->V3] - Model->Vertex[Face->V0];
-			v3 Vector2 = Model->Vertex[Face->V1] - Model->Vertex[Face->V0];
+			HitTest = false;
+
+			v3 V0 = Model->Vertex[Face->V0] + Model->Offset;
+			v3 V1 = Model->Vertex[Face->V1] + Model->Offset;
+			v3 V2 = Model->Vertex[Face->V2] + Model->Offset;
+			v3 V3 = Model->Vertex[Face->V3] + Model->Offset;
+
+			v3 Edge1 = V0 - V1;
+			v3 Edge2 = V0 - V3;
 
 			plane_param Plane;
-			Plane.N = Normalize(Cross(Vector1, Vector2));
-			Plane.D = Dot(Plane.N, Model->Vertex[Face->V0]);
+			Plane.N = Normalize(Cross(Edge1, Edge2));
+			Plane.D = Dot(Plane.N, V0);
 
-			f32 t = -((Dot(Ray.Pos, Plane.N) + Plane.D) / Dot(Ray.Dir, Plane.N));
-			if (t == 0 || t < 0)
+			// Plane intersect
+			f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
+			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
+			if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
 			{
-				HitTest = false;
+				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
+
+				b32 PointInTriangle = IsPointInTriangle(V0, V1, V2, IntersetPoint);
+				if (PointInTriangle)
+				{
+					HitTest = true;
+				}
+				else
+				{
+					PointInTriangle = IsPointInTriangle(V0, V2, V3, IntersetPoint);
+
+					if (PointInTriangle)
+					{
+						HitTest = true;
+					}
+				}
 			}
-#endif
+
 			v4 Color = HitTest ? V4(0.4f) : Model->Color;
 			PushModelFace(&RenderGroup, Model->Vertex, Face, Color, Model->Offset);
 		}

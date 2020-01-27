@@ -17,6 +17,12 @@ struct ray_param
 	v3 Pos;
 };
 
+struct plane_param
+{
+	v3 N;
+	f32 D;
+};
+
 inline f32
 Cos(f32 Angle)
 {
@@ -520,8 +526,27 @@ CameraViewTransform(m4x4 R, v3 P)
 }
 
 // TODO: Consider to optimize
+inline b32
+IsPointInTriangle(v3 A, v3 B, v3 C, v3 P)
+{
+	v3 AP = A - P;
+	v3 BP = B - P;
+	v3 CP = C - P;
+
+	v3 U = Cross(BP, CP);
+	v3 V = Cross(CP, AP);
+	v3 W = Cross(AP, BP);
+
+	f32 DirMesureUV = Dot(U, V);
+	f32 DirMesureUW = Dot(U, W);
+
+	b32 Result = (DirMesureUV > 0) && (DirMesureUW > 0);
+	return Result;
+}
+
+// TODO: Consider to optimize
 b32
-TestRayAABB(ray_param Ray, rect3 AABB, v3 AABBOffset)
+RayAABBIntersect(ray_param Ray, rect3 AABB, v3 AABBOffset)
 {
 	b32 Result = true;
 
