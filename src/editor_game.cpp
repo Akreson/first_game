@@ -300,13 +300,14 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	Ray.Dir = Unproject(&RenderGroup, Mouse);
 	Ray.Pos = CameraOt;
 
+	b32 HitTest;
 	for (u32 ModelIndex = 0;
 		ModelIndex < EditorState->ModelsCount;
 		++ModelIndex)
 	{
 		model *Model = EditorState->Models + ModelIndex;
 		
-		//b32 HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
+		//HitTest = TestRayAABB(Ray, Model->AABB, Model->Offset);
 
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
@@ -314,6 +315,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		{
 			model_face *Face = Model->Faces + FaceIndex;
 
+			HitTest = true;
+#if 1
 			v3 Vector1 = Model->Vertex[Face->V3] - Model->Vertex[Face->V0];
 			v3 Vector2 = Model->Vertex[Face->V1] - Model->Vertex[Face->V0];
 
@@ -321,13 +324,12 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			Plane.N = Normalize(Cross(Vector1, Vector2));
 			Plane.D = Dot(Plane.N, Model->Vertex[Face->V0]);
 
-			b32 HitTest = true;
 			f32 t = -((Dot(Ray.Pos, Plane.N) + Plane.D) / Dot(Ray.Dir, Plane.N));
 			if (t == 0 || t < 0)
 			{
 				HitTest = false;
 			}
-
+#endif
 			v4 Color = HitTest ? V4(0.4f) : Model->Color;
 			PushModelFace(&RenderGroup, Model->Vertex, Face, Color, Model->Offset);
 		}

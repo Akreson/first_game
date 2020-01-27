@@ -246,9 +246,9 @@ Cross(v3 A, v3 B)
 {
 	v3 Result;
 
-	Result.x = A.z*B.y - A.y*B.z;
-	Result.y = A.x*B.z - A.z*B.x;
-	Result.z = A.y*B.x - A.x*B.y;
+	Result.x = A.y*B.z - A.z*B.y;
+	Result.y = A.z*B.x - A.x*B.z;
+	Result.z = A.x*B.y - A.y*B.x;
 
 	return Result;
 }
