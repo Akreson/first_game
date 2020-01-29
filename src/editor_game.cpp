@@ -269,13 +269,11 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Mouse.y = Input->MouseY;
 		
 		v2 dMouse = Mouse - GameState->LastMouseP;
-
 #if 0
 		char Buffer[1024];
 		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Mouse.x, (u32)Mouse.y);
 		OutputText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
-
 		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
@@ -317,7 +315,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
-
+#if 1
 			HitTest = false;
 
 			v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
@@ -344,7 +342,6 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 				{
 					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
 				}
-
 #if 1
 				if (HitTest)
 				{
@@ -446,12 +443,11 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 					HitTest = DistanceToEdge < 0.03 ? true : false;
 				}
-			}
 #endif
-			//v4 Color = HitTest ? V4(0.4f) : Model->Color;
-			//PushModelFace(&RenderGroup, Model->Vertex, &Face, Color, Model->Offset);
+			}
 
 			// NOTE: {}; Insted V3(); because of E0980 :(
+#endif
 			v3 EdgeColor;
 			if (HitTest)
 			{
