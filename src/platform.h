@@ -4,6 +4,11 @@
 #include <stddef.h>
 #include <limits.h>
 
+#define FLOAT_MAX 3.402823466e+38
+#define FLOAT_MIN 1.7976931348623158e+308
+#define FLOAT_MAX_NEG -3.402823466e+38
+#define FLOAT_MIN_NEG -1.7976931348623158e+308
+
 #if _MSC_VER
 #include <intrin.h>
 #else
@@ -144,7 +149,6 @@ Copy(memory_index Size, void *DestBase, void *SourceBase)
 	}
 }
 
-// TODO: See if need change in loop body
 void
 Copy128(memory_index Size, void *DestBase, void *SourceBase)
 {

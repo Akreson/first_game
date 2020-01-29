@@ -172,7 +172,7 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 void
 GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 {	
-	v3 Vertex[8];
+	v3 Vertex[12];
 	Vertex[0] = V3(-HalfDim, -HalfDim, HalfDim);
 	Vertex[1] = V3(HalfDim, -HalfDim, HalfDim);
 	Vertex[2] = V3(HalfDim, HalfDim, HalfDim);
@@ -182,6 +182,14 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Vertex[5] = V3(-HalfDim, -HalfDim, -HalfDim);
 	Vertex[6] = V3(-HalfDim, HalfDim, -HalfDim);
 	Vertex[7] = V3(HalfDim, HalfDim, -HalfDim);
+
+#if 1
+	f32 DebugHalfDim = HalfDim * 0.1f;
+	Vertex[8] = V3(-DebugHalfDim, -DebugHalfDim, 0);
+	Vertex[9] = V3(DebugHalfDim, -DebugHalfDim, 0);
+	Vertex[10] = V3(DebugHalfDim, DebugHalfDim, 0);
+	Vertex[11] = V3(-DebugHalfDim, DebugHalfDim, 0);
+#endif
 
 	model_face Faces[6];
 	Faces[0] = {{0, 1, 2, 3}, {}};
@@ -326,26 +334,59 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			// Plane intersect
 			f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
 			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
-			if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
+			if (DotRayPlane < 0 && (tPlaneIntersect != 0) && (tPlaneIntersect > 0))
 			{
 				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
 
-				b32 PointInTriangle = IsPointInTriangle(V0, V1, V2, IntersetPoint);
-				if (PointInTriangle)
+				HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
+				if (!HitTest)
 				{
-					HitTest = true;
+					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
 				}
-				else
-				{
-					PointInTriangle = IsPointInTriangle(V0, V2, V3, IntersetPoint);
 
-					if (PointInTriangle)
+#if 1
+				if (HitTest)
+				{
+					u32 MinLengths[2];
+					f32 LengthsToVertex[4];
+
+					LengthsToVertex[0] = LengthSq(V0 - IntersetPoint);
+					LengthsToVertex[1] = LengthSq(V1 - IntersetPoint);
+					LengthsToVertex[2] = LengthSq(V2 - IntersetPoint);
+					LengthsToVertex[3] = LengthSq(V3 - IntersetPoint);
+
+					for (u32 MinLengthIndex = 0;
+						MinLengthIndex < ArrayCount(MinLengths);
+						++MinLengthIndex)
 					{
-						HitTest = true;
+						f32 MinLength = FLOAT_MAX;
+						u32 CurrentMinLengthIndex;
+
+						for (u32 LengthIndex = 0;
+							LengthIndex < ArrayCount(LengthsToVertex);
+							++LengthIndex)
+						{
+							f32 CheckLength = LengthsToVertex[LengthIndex];
+							if (CheckLength < MinLength)
+							{
+								CurrentMinLengthIndex = LengthIndex;
+								MinLength = CheckLength;
+							}
+						}
+						
+						MinLengths[MinLengthIndex] = CurrentMinLengthIndex;
+						LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
 					}
+					
+					model_face DebugFace = {{8, 9, 10, 11}, {}};
+
+					v3 Offset0 = Model->Vertex[Face->VertexID[MinLengths[0]]];
+					v3 Offset1 = Model->Vertex[Face->VertexID[MinLengths[1]]];
+					PushModelFace(&RenderGroup, Model->Vertex, &DebugFace, V4(0, 1, 0, 1), Offset0 + Model->Offset);
+					PushModelFace(&RenderGroup, Model->Vertex, &DebugFace, V4(0, 1, 0, 1), Offset1 + Model->Offset);
 				}
 			}
-
+#endif
 			v4 Color = HitTest ? V4(0.4f) : Model->Color;
 			PushModelFace(&RenderGroup, Model->Vertex, Face, Color, Model->Offset);
 		}
