@@ -378,12 +378,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 						LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
 					}
 					
-					model_face DebugFace = {{8, 9, 10, 11}, {}};
-
-					v3 Offset0 = Model->Vertex[Face->VertexID[MinLengths[0]]];
-					v3 Offset1 = Model->Vertex[Face->VertexID[MinLengths[1]]];
-					PushModelFace(&RenderGroup, Model->Vertex, &DebugFace, V4(0, 1, 0, 1), Offset0 + Model->Offset);
-					PushModelFace(&RenderGroup, Model->Vertex, &DebugFace, V4(0, 1, 0, 1), Offset1 + Model->Offset);
+					
 				}
 			}
 #endif

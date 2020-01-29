@@ -474,23 +474,10 @@ OpenGLInit()
 
 	void main()
 	{
-		vec3 EdgeColor;
+		vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
 
 		float Factor = edgeFactor();
 		float InvFactor = 1.0 - Factor;
-		
-		vec3 dSeletedReg = fwidth(SelectedReg);
-		vec3 A = vec3(1.0) - smoothstep(SelectedReg, dSeletedReg*2.5, vec3(0));
-		vec3 AllowedRange = vec3(1.0) - (fwidth(SelectedReg)*2.5f);
-		if (all(greaterThanEqual(SelectedReg, AllowedRange)))
-		{
-			EdgeColor = vec3(1.0, 0.59, 0.1);
-		}
-		else
-		{
-			EdgeColor = vec3(0.17, 0.5, 0.8);
-		}
-
 		EdgeColor *= InvFactor;
 		
 		FragColor = vec4(mix(EdgeColor, Color.xyz, Factor), 1.0);
