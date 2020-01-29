@@ -315,14 +315,14 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			FaceIndex < Model->FaceCount;
 			++FaceIndex)
 		{
-			model_face *Face = Model->Faces + FaceIndex;
+			model_face Face = Model->Faces[FaceIndex];
 
 			HitTest = false;
 
-			v3 V0 = Model->Vertex[Face->V0] + Model->Offset;
-			v3 V1 = Model->Vertex[Face->V1] + Model->Offset;
-			v3 V2 = Model->Vertex[Face->V2] + Model->Offset;
-			v3 V3 = Model->Vertex[Face->V3] + Model->Offset;
+			v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
+			v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
+			v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
+			v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
 
 			v3 Edge1 = V0 - V1;
 			v3 Edge2 = V0 - V3;
@@ -347,7 +347,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 #if 1
 				if (HitTest)
 				{
-					u32 MinLengths[2];
+					// NOTE: Closest vertex match
+					u32 VertexRelativeIndex[ArrayCount(GetMemberOf(model_edge, VertexID))];
 					f32 LengthsToVertex[4];
 
 					LengthsToVertex[0] = LengthSq(V0 - IntersetPoint);
@@ -356,7 +357,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 					LengthsToVertex[3] = LengthSq(V3 - IntersetPoint);
 
 					for (u32 MinLengthIndex = 0;
-						MinLengthIndex < ArrayCount(MinLengths);
+						MinLengthIndex < ArrayCount(VertexRelativeIndex);
 						++MinLengthIndex)
 					{
 						f32 MinLength = FLOAT_MAX;
@@ -374,16 +375,80 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 							}
 						}
 						
-						MinLengths[MinLengthIndex] = CurrentMinLengthIndex;
+						VertexRelativeIndex[MinLengthIndex] = CurrentMinLengthIndex;
 						LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
 					}
 					
-					
+					//NOTE: Edge match
+					u32 VertexAbsoluteIndex[ArrayCount(GetMemberOf(model_edge, VertexID))] =
+					{
+						Face.VertexID[VertexRelativeIndex[0]],
+						Face.VertexID[VertexRelativeIndex[1]]
+					};
+
+					model_edge MatchEdge;
+					b32 SuccesMatch = false;
+					for (u32 EdgeIndex = 0;
+						EdgeIndex < ArrayCount(Face.EdgeID);
+						++EdgeIndex)
+					{
+						u32 MatchCount = 0;
+						model_edge Edge = Model->Edges[Face.EdgeID[EdgeIndex]];
+
+						for (u32 EdgeVertexIndex = 0;
+							EdgeVertexIndex < ArrayCount(Edge.VertexID);
+							++EdgeVertexIndex)
+						{
+							for (u32 MatchVertIndex = 0;
+								MatchVertIndex < ArrayCount(Edge.VertexID);
+								++MatchVertIndex)
+							{
+								if (Edge.VertexID[EdgeVertexIndex] == VertexAbsoluteIndex[MatchVertIndex])
+								{
+									MatchCount++;
+								}
+							}
+						}
+
+						if (MatchCount == ArrayCount(Edge.VertexID))
+						{
+							MatchEdge = Edge;
+							SuccesMatch = true;
+							break;
+						}
+					}
+					Assert(SuccesMatch);
+
+					v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
+					v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
+					f32 DistToVertex0 = LengthSq(IntersetPoint - EdgeV0);
+					f32 DistToVertex1 = LengthSq(IntersetPoint - EdgeV1);
+
+					v3 NormalizeEdgeDir;
+					v3 StartVertex;
+					v3 DistVector;
+					if (DistToVertex0 < DistToVertex1)
+					{
+						NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
+						DistVector = IntersetPoint - EdgeV0;
+						StartVertex = EdgeV0;
+					}
+					else
+					{
+						NormalizeEdgeDir = Normalize(EdgeV0 - EdgeV1);
+						DistVector = IntersetPoint - EdgeV1;
+						StartVertex = EdgeV1;
+					}
+
+					v3 PointOnEdge = StartVertex + (NormalizeEdgeDir * Dot(NormalizeEdgeDir, DistVector));
+
+					model_face DebugFace = {{8, 9, 10, 11}, {}};
+					PushModelFace(&RenderGroup, Model->Vertex, &DebugFace, V4(0, 1, 0, 1), PointOnEdge);
 				}
 			}
 #endif
 			v4 Color = HitTest ? V4(0.4f) : Model->Color;
-			PushModelFace(&RenderGroup, Model->Vertex, Face, Color, Model->Offset);
+			PushModelFace(&RenderGroup, Model->Vertex, &Face, Color, Model->Offset);
 		}
 	}
 
