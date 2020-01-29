@@ -95,7 +95,7 @@ PushModel(render_group *Group, model *Model)
 }
 
 internal void
-PushModelFace(render_group *Group, v3 *VertexStorage, model_face *Face, v4 Color, v3 Offset)
+PushModelFace(render_group *Group, v3 *VertexStorage, model_face *Face, v4 Color, v3 Offset, v3 EdgeColor = V3(0))
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_model_face *ModelFaceEntry = PushRenderElement(Group, render_entry_model_face);
@@ -103,6 +103,8 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face *Face, v4 Color
 	ModelFaceEntry->Color = Color;
 	ModelFaceEntry->VertexBufferOffset = Commands->VertexCount;
 	ModelFaceEntry->Offset = Offset;
+
+	ModelFaceEntry->EdgeColor = EdgeColor;
 
 	v3 *FaceVertex = (v3 *)(Commands->VertexBufferBase + Commands->VertexCount);
 	FaceVertex[0] = VertexStorage[Face->V0];

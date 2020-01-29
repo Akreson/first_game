@@ -34,6 +34,9 @@ struct render_entry_model_face
 	v4 Color;
 	v3 Offset; // TODO: Remove?
 	u32 VertexBufferOffset;
+
+	//TODO:Delete later
+	v3 EdgeColor;
 	//v3 BaricentricCoord;
 };
 

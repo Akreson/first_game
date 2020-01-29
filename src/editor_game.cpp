@@ -182,9 +182,10 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Vertex[5] = V3(-HalfDim, -HalfDim, -HalfDim);
 	Vertex[6] = V3(-HalfDim, HalfDim, -HalfDim);
 	Vertex[7] = V3(HalfDim, HalfDim, -HalfDim);
-
+	
 #if 1
-	f32 DebugHalfDim = HalfDim * 0.1f;
+	// NOTE: For debug
+	f32 DebugHalfDim = HalfDim * 0.07f;
 	Vertex[8] = V3(-DebugHalfDim, -DebugHalfDim, 0);
 	Vertex[9] = V3(DebugHalfDim, -DebugHalfDim, 0);
 	Vertex[10] = V3(DebugHalfDim, DebugHalfDim, 0);
@@ -441,14 +442,27 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 					}
 
 					v3 PointOnEdge = StartVertex + (NormalizeEdgeDir * Dot(NormalizeEdgeDir, DistVector));
+					f32 DistanceToEdge = Length(PointOnEdge - IntersetPoint);
 
-					model_face DebugFace = {{8, 9, 10, 11}, {}};
-					PushModelFace(&RenderGroup, Model->Vertex, &DebugFace, V4(0, 1, 0, 1), PointOnEdge);
+					HitTest = DistanceToEdge < 0.03 ? true : false;
 				}
 			}
 #endif
-			v4 Color = HitTest ? V4(0.4f) : Model->Color;
-			PushModelFace(&RenderGroup, Model->Vertex, &Face, Color, Model->Offset);
+			//v4 Color = HitTest ? V4(0.4f) : Model->Color;
+			//PushModelFace(&RenderGroup, Model->Vertex, &Face, Color, Model->Offset);
+
+			// NOTE: {}; Insted V3(); because of E0980 :(
+			v3 EdgeColor;
+			if (HitTest)
+			{
+				EdgeColor = {0, 1, 0};
+			}
+			else
+			{
+				EdgeColor = {0.17f, 0.5f, 0.8f};
+			}
+
+			PushModelFace(&RenderGroup, Model->Vertex, &Face, Model->Color, Model->Offset, EdgeColor);
 		}
 	}
 

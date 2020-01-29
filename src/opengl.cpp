@@ -247,7 +247,7 @@ struct opengl_render_info
 	GLuint ModelColorID;
 	GLuint ModelProjID;
 	GLuint ModelTransformID;
-
+	GLuint ModelEdgeColor;
 	
 	/*GLuint FrameBufferDisplayProgramID;
 	GLuint FrameBuffer;
@@ -461,6 +461,7 @@ OpenGLInit()
 	out vec4 FragColor;
 
 	uniform vec4 Color;
+	uniform vec3 EdgeColor;
 
 	in vec3 BarCoord;
 	in vec3 SelectedReg;
@@ -474,13 +475,12 @@ OpenGLInit()
 
 	void main()
 	{
-		vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
+		//vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
 
 		float Factor = edgeFactor();
 		float InvFactor = 1.0 - Factor;
-		EdgeColor *= InvFactor;
 		
-		FragColor = vec4(mix(EdgeColor, Color.xyz, Factor), 1.0);
+		FragColor = vec4(mix(EdgeColor * InvFactor, Color.xyz, Factor), 1.0);
 	}
 
 	)FOO";
@@ -494,6 +494,9 @@ OpenGLInit()
 	OpenGL.ModelColorID = glGetUniformLocation(OpenGL.ModelProgramID, "Color");
 	OpenGL.ModelProjID = glGetUniformLocation(OpenGL.ModelProgramID, "Proj");
 	OpenGL.ModelTransformID = glGetUniformLocation(OpenGL.ModelProgramID, "ModelTransform");
+	
+	// TODO: Use for debuging, delete later
+	OpenGL.ModelEdgeColor = glGetUniformLocation(OpenGL.ModelProgramID, "EdgeColor");
 
 	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
@@ -587,6 +590,10 @@ OpenGLRenderCommands(game_render_commands *Commands)
 					FaceEntry->Color.r, FaceEntry->Color.g, FaceEntry->Color.b, FaceEntry->Color.a);
 				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
 				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
+
+				// TODO: Delete later
+				glUniform3f(OpenGL.ModelEdgeColor,
+					FaceEntry->EdgeColor.r, FaceEntry->EdgeColor.g, FaceEntry->EdgeColor.b);
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
