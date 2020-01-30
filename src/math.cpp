@@ -500,7 +500,7 @@ CameraViewTransform(m4x4 R, v3 P, v3 O)
 	SetTranslation(&OT, O);
 
 	m4x4 A = Transpose(R);
-	// TODO: Use Hadamard product for (P * OT) and set default arigin as V3(1) insted V3(0)
+	// TODO: Use Hadamard product for (P * OT) and set default origin as V3(1) insted V3(0)
 	v3 PA = -(P * OT * A);
 	SetTranslation(&A, PA);
 	Result.Forward = A;

@@ -301,19 +301,14 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		GameState->LastMouseP = Mouse;
 	}
 
-	//TODO: Test code
-	m4x4 Translation = Identity();
-	SetTranslation(&Translation, EditorState->CameraPos);
-
 	m4x4 CameraR = XRotation(EditorState->CameraPitch) * YRotation(EditorState->CameraOrbit);
 	v3 CameraOt = (CameraOffset + V3(0, 0, EditorState->CameraDolly)) * CameraR;
-
 	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, EditorState->CameraPos);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	ray_param Ray;
 	Ray.Dir = Unproject(&RenderGroup, Mouse);
-	Ray.Pos = CameraOt;
+	Ray.Pos = CameraOt + EditorState->CameraPos;
 
 	b32 HitTest;
 	for (u32 ModelIndex = 0;
