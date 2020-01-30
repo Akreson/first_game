@@ -492,12 +492,16 @@ Row3x3(v3 X, v3 Y, v3 Z)
 }
 
 inline m4x4_inv
-CameraViewTransform(m4x4 R, v3 P)
+CameraViewTransform(m4x4 R, v3 P, v3 O)
 {
 	m4x4_inv Result;
 
+	m4x4 OT = Identity();
+	SetTranslation(&OT, O);
+
 	m4x4 A = Transpose(R);
-	v3 PA = -(P * A);
+	// TODO: Use Hadamard product for (P * OT) and set default arigin as V3(1) insted V3(0)
+	v3 PA = -(P * OT * A);
 	SetTranslation(&A, PA);
 	Result.Forward = A;
 

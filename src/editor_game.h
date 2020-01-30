@@ -126,6 +126,7 @@ struct game_editor_state
 	f32 CameraOrbit;
 	f32 CameraPitch;
 	f32 CameraDolly;
+	v3 CameraPos;
 
 	memory_arena EditorMainArena;
 	page_memory_arena EditorPageArena;

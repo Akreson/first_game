@@ -252,8 +252,10 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		AddCubeModel(&GameState->EditorState, V4(0));
 		AddCubeModel(&GameState->EditorState, V4(0), V3(-2.0f, 1.0f, 1.0f));
+		AddCubeModel(&GameState->EditorState, V4(0), V3(-2.0f, 4.0f, -1.0f));
 
 		EditorState->CameraOffset = V3(0, 0, 3);
+		EditorState->CameraPos = V3(0);
 
 		GameState->IsInit = true;
 	}
@@ -287,14 +289,26 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			EditorState->CameraDolly -= dMouse.y*ZoomSpeed;
 		}
 
+		/*if (Input->CtrlDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
+		{
+			f32 RotationSpeed = Pi32 * 0.0005f;
+			EditorState->CameraOffset.x -= dMouse.x * RotationSpeed;
+			EditorState->CameraOffset.y += dMouse.y * RotationSpeed;
+
+			CameraOffset = EditorState->CameraOffset;
+		}*/
+
 		GameState->LastMouseP = Mouse;
 	}
 
-	m4x4 CameraR = XRotation(EditorState->CameraPitch) * YRotation(EditorState->CameraOrbit);
-	CameraOffset.z += EditorState->CameraDolly;
-	v3 CameraOt = CameraOffset * CameraR;
+	//TODO: Test code
+	m4x4 Translation = Identity();
+	SetTranslation(&Translation, EditorState->CameraPos);
 
-	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt);
+	m4x4 CameraR = XRotation(EditorState->CameraPitch) * YRotation(EditorState->CameraOrbit);
+	v3 CameraOt = (CameraOffset + V3(0, 0, EditorState->CameraDolly)) * CameraR;
+
+	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, EditorState->CameraPos);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	ray_param Ray;
@@ -308,14 +322,19 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	{
 		model *Model = EditorState->Models + ModelIndex;
 		
-		//HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
+		HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
+
+		if (HitTest && (Input->CtrlDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown))
+		{
+			EditorState->CameraPos = Model->Offset;
+		}
 
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
-#if 1
+#if 0
 			HitTest = false;
 
 			v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
