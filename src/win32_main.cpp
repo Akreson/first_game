@@ -625,7 +625,6 @@ WinMain(HINSTANCE Instance,
 			while (GlobalRunning)
 			{
 				// NOTE: Input Process
-
 				Win32ProcessMessage(&GameInput);
 
 				POINT MouseP;

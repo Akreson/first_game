@@ -419,29 +419,17 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 					v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
 					v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
-					f32 DistToVertex0 = LengthSq(IntersetPoint - EdgeV0);
-					f32 DistToVertex1 = LengthSq(IntersetPoint - EdgeV1);
 
-					v3 NormalizeEdgeDir;
-					v3 StartVertex;
-					v3 DistVector;
-					if (DistToVertex0 < DistToVertex1)
-					{
-						NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
-						DistVector = IntersetPoint - EdgeV0;
-						StartVertex = EdgeV0;
-					}
-					else
-					{
-						NormalizeEdgeDir = Normalize(EdgeV0 - EdgeV1);
-						DistVector = IntersetPoint - EdgeV1;
-						StartVertex = EdgeV1;
-					}
+					v3 NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
+					v3 DistVector = IntersetPoint - EdgeV0;
 
-					v3 PointOnEdge = StartVertex + (NormalizeEdgeDir * Dot(NormalizeEdgeDir, DistVector));
+					f32 LengthOnEdge = Dot(NormalizeEdgeDir, DistVector);
+					LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
+
+					v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
 					f32 DistanceToEdge = Length(PointOnEdge - IntersetPoint);
 
-					HitTest = DistanceToEdge < 0.03 ? true : false;
+					HitTest = DistanceToEdge < 0.03f ? true : false;
 				}
 #endif
 			}
