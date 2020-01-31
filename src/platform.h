@@ -47,8 +47,8 @@ typedef uintptr_t umm;
 #define GetMemberOf(Instance, Member) ((((Instance *)0)->Member))
 #define PointerFromU32(Type, Value) (Type *)((size_t)Value)
 #define U32FromPointer(Pointer) (u32)((size_t)(Pointer))
-#define SetBit(Value, BitNum) Value |= (1 << BitNum)
-#define ResetBit(Value, BitNum) Value &= ~(1 << BitNum)
+#define SetBit(Value, BitNum) (Value | (1 << BitNum))
+#define ResetBit(Value, BitNum) (Value & ~(1 << BitNum))
 #define IsBitSet(Value, BitNum) (Value & (1 << BitNum))
 
 union v2

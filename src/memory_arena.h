@@ -83,7 +83,7 @@ FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 
 			u32 PrevFreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
 			PrevFreePageIndex = PageOffsetFactor + PrevFreePageIndexInBlock;
 
-			ResetBit(PageBlock, PrevFreePageIndexInBlock);
+			PageBlock = ResetBit(PageBlock, PrevFreePageIndexInBlock);
 
 			StartOfSequence = PrevFreePageIndex;
 
@@ -99,7 +99,7 @@ FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 
 				u32 FreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
 				u32 FreePageIndex = PageOffsetFactor + FreePageIndexInBlock;
 
-				ResetBit(PageBlock, FreePageIndexInBlock);
+				PageBlock = ResetBit(PageBlock, FreePageIndexInBlock);
 
 				if (FreePageIndex == (PrevFreePageIndex + 1))
 				{
@@ -154,8 +154,8 @@ SetPagesStatus(page_memory_arena *Arena, u32 StartPageIndex, u32 PageStatus, u32
 			(PagesSet < CountOfPages) && (InBlockIndex < PAGES_PER_ALLOC_STATUS_BLOCK);
 			PagesSet++, InBlockIndex++)
 		{
-			if (PageStatus) SetBit(PageBlock, InBlockIndex);
-			else ResetBit(PageBlock, InBlockIndex);
+			if (PageStatus) PageBlock = SetBit(PageBlock, InBlockIndex);
+			else PageBlock = ResetBit(PageBlock, InBlockIndex);
 		}
 
 		StartInBlockIndex = 0;
