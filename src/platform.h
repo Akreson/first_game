@@ -36,7 +36,8 @@ typedef int8_t s8;
 typedef float f32;
 typedef double f64;
 
-typedef uint32_t b32;
+typedef u32 b32;
+typedef u8 b8;
 
 typedef uintptr_t umm;
 
@@ -208,9 +209,11 @@ ZeroSize(void *Ptr, u32 Size)
 
 #define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))
 
+// TODO: Fix button for b8
 struct game_button_state
 {
 	b32 EndedDown;
+	b32 TransionState;
 };
 
 // TODO: finilize
@@ -245,6 +248,27 @@ struct game_input
 	f32 MouseX, MouseY, MouseZ;
 	b32 AltDown, ShiftDown, CtrlDown, TabDown;
 };
+
+inline b32
+IsDown(game_button_state Button)
+{
+	b32 Result = (Button.EndedDown && (Button.TransionState >= 1));
+	return Result;
+}
+
+inline b32
+IsKepDown(game_button_state Button)
+{
+	b32 Result = (Button.EndedDown && (Button.TransionState == 0));
+	return Result;
+}
+
+inline b32
+WasDown(game_button_state Button)
+{
+	b32 Result = (!Button.EndedDown && (Button.TransionState >= 1));
+	return Result;
+}
 
 struct game_memory
 {

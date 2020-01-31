@@ -7,6 +7,8 @@
 
 #include "platform.h"
 
+static u64 GlobalPerfCountFrequency;
+
 // TODO: Set as different translation unit and compile as dll?
 #include "editor_game.cpp"
 
@@ -46,7 +48,6 @@ global_variable wgl_swap_interval_ext *wglSwapIntervalEXT;
 global_variable wgl_get_extension_string_ext *wglGetExtensionStringEXT;
 
 global_variable b32 GlobalRunning;
-global_variable u64 GlobalPerfCountFrequency;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 
 LRESULT
@@ -97,6 +98,7 @@ Win32ProcessButtonState(game_button_state *Button, b32 IsDown)
 	if (Button->EndedDown != IsDown)
 	{
 		Button->EndedDown = IsDown;
+		Button->TransionState++;
 	}
 }
 
@@ -547,10 +549,10 @@ Win32GetClock(void)
 	return(Result);
 }
 
-inline f32
+inline f64
 Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 {
-	f32 Result = (f32)(End.QuadPart - Start.QuadPart) / GlobalPerfCountFrequency;
+	f64 Result = (f32)(End.QuadPart - Start.QuadPart) / (f64)GlobalPerfCountFrequency;
 	return Result;
 }
 
@@ -653,6 +655,7 @@ WinMain(HINSTANCE Instance,
 					ButtonIndex < PlatformMouseButton_Count;
 					++ButtonIndex)
 				{
+					GameInput.MouseButtons[ButtonIndex].TransionState = 0;
 					Win32ProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
 						GetKeyState(Win32MappedMouseID[ButtonIndex]) & (1 << 15));
 				}

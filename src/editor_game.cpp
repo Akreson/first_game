@@ -319,7 +319,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		
 		HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
 
-		if (HitTest && (Input->CtrlDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown))
+		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Left])))
 		{
 			EditorState->CameraPos = Model->Offset;
 		}
