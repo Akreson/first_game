@@ -14,7 +14,6 @@ static u64 GlobalPerfCountFrequency;
 
 #include "opengl.cpp"
 
-
 typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext,
 	const int *attribList);
 
@@ -92,16 +91,6 @@ Win32DeallocateMemory(void *Ptr)
 	}
 }
 
-inline void
-Win32ProcessButtonState(game_button_state *Button, b32 IsDown)
-{
-	if (Button->EndedDown != IsDown)
-	{
-		Button->EndedDown = IsDown;
-		Button->TransionState++;
-	}
-}
-
 void
 ToggleFullscreen(HWND Window)
 {
@@ -134,6 +123,17 @@ ToggleFullscreen(HWND Window)
 	}
 }
 
+inline void
+Win32ProcessButtonState(game_button_state *Button, b32 IsDownState)
+{
+	b8 IsDown = IsDownState ? true : false;
+	if (Button->EndedDown != IsDown)
+	{
+		Button->EndedDown = IsDown;
+		Button->TransionState++;
+	}
+}
+
 // TODO: Set Keys
 void
 Win32ProcessMessage(game_input *GameInput)
@@ -156,8 +156,8 @@ Win32ProcessMessage(game_input *GameInput)
 			{
 				u32 VKCode = (u32)Message.wParam;
 				b32 AltIsDown = Message.lParam & (1 << 29);
-				b32 IsDown = ((Message.lParam & (1 << 31)) == 0);
-				b32 WasDown = ((Message.lParam & (1 << 30)) != 0);
+				b32 IsDown = !IsBitSet(Message.lParam, 31);
+				b32 WasDown = IsBitSet(Message.lParam, 30);
 
 				switch (VKCode)
 				{
@@ -657,7 +657,7 @@ WinMain(HINSTANCE Instance,
 				{
 					GameInput.MouseButtons[ButtonIndex].TransionState = 0;
 					Win32ProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
-						GetKeyState(Win32MappedMouseID[ButtonIndex]) & (1 << 15));
+						IsBitSet(GetKeyState(Win32MappedMouseID[ButtonIndex]), 15));
 				}
 
 				// NOTE: Update and render

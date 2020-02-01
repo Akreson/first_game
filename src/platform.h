@@ -209,11 +209,10 @@ ZeroSize(void *Ptr, u32 Size)
 
 #define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))
 
-// TODO: Fix button for b8
 struct game_button_state
 {
-	b32 EndedDown;
-	b32 TransionState;
+	b8 EndedDown;
+	b8 TransionState;
 };
 
 // TODO: finilize
