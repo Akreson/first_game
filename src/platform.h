@@ -4,10 +4,10 @@
 #include <stddef.h>
 #include <limits.h>
 
-#define FLOAT_MAX 3.402823466e+38
-#define FLOAT_MIN 1.7976931348623158e+308
-#define FLOAT_MAX_NEG -3.402823466e+38
-#define FLOAT_MIN_NEG -1.7976931348623158e+308
+#define FLOAT_MAX 3.402823466e+38f
+#define FLOAT_MIN 1.7976931348623158e+308f
+#define FLOAT_MAX_NEG -3.402823466e+38f
+#define FLOAT_MIN_NEG -1.7976931348623158e+308f
 
 #if _MSC_VER
 #include <intrin.h>
@@ -246,6 +246,8 @@ struct game_input
 	game_button_state MouseButtons[PlatformMouseButton_Count];
 	f32 MouseX, MouseY, MouseZ;
 	b32 AltDown, ShiftDown, CtrlDown, TabDown;
+
+	f32 PrevFrameTime;
 };
 
 inline b32

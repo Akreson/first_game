@@ -329,7 +329,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
-#if 0
+#if 1
 			HitTest = false;
 
 			v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
@@ -460,7 +460,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 				EdgeColor = {0.17f, 0.5f, 0.8f};
 			}
 
-			PushModelFace(&RenderGroup, Model->Vertex, &Face, Model->Color, Model->Offset, EdgeColor);
+			PushModelFace(&RenderGroup, Model->Vertex, Face, Model->Color, Model->Offset, EdgeColor);
 		}
 	}
 

@@ -5,7 +5,7 @@ global_variable opengl_render_info OpenGL;
 void OpenGLMessageDebugCallback(
 	GLenum source,
 	GLenum type,
-	GLuint id,
+	GLuint id,\
 	GLenum severity,
 	GLsizei length,
 	const GLchar* message,
@@ -178,21 +178,16 @@ OpenGLInit()
 
 	const char *ModelVertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
-	layout (location = 1) in vec3 aBarCoord;
-
-	// experimental
-	layout (location = 2) in vec3 aSelectedReg;
+	layout (location = 1) in vec4 aBarCoord;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
-	out vec3 BarCoord;
-	out vec3 SelectedReg;
+	out vec4 BarCoord;
 
 	void main()
 	{
 		BarCoord = aBarCoord;
-		SelectedReg = aSelectedReg;
 		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
 	}
 
@@ -204,28 +199,47 @@ OpenGLInit()
 	out vec4 FragColor;
 
 	uniform vec4 Color;
-	uniform vec3 EdgeColor;
+	//uniform vec3 EdgeColor;
 
-	in vec3 BarCoord;
-	in vec3 SelectedReg;
+	in vec4 BarCoord;
+
+	// TODO: Decide which method use
+	/*
+	// NOTE: In this case, the selected edge is defined as the opposite to vertex,
+	// same schema as with BarCoords
+	float when_eq(float x, float y) {
+	  return 1.0 - abs(sign(x - y));
+	}
+	
+	float A = when_eq(MinD - BarCoord.w, 0);
+	*/
 
 	float edgeFactor(){
-		vec3 dBarCoord = fwidth(BarCoord);
-		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*2.5, BarCoord);
+		vec3 dBarCoord = fwidth(BarCoord.xyz);
+		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*2.5, BarCoord.xyz);
 		float Result = min(min(a3.x, a3.y), a3.z);
 		return Result;
 	}
 
 	void main()
 	{
-		//vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
-
+		vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
+		vec3 SelectEdgeColor = vec3(0, 1.0, 0);
+#if 1
+		float MinD = min(min(BarCoord.x, BarCoord.y), BarCoord.z);
+		float dMinD = fwidth(MinD);
+		float Thickness = dMinD*2.5;
+		float Factor = smoothstep(0, Thickness, MinD);
+#else
 		float Factor = edgeFactor();
+#endif
 		float InvFactor = 1.0 - Factor;
 		
-		FragColor = vec4(mix(EdgeColor * InvFactor, Color.xyz, Factor), 1.0);
-	}
+		float A = step(1.0 - dMinD, BarCoord.w);
+		vec3 FinalEdgeColor = mix(EdgeColor, SelectEdgeColor, A);
 
+		FragColor = vec4(mix(Color.xyz, FinalEdgeColor, InvFactor), 1.0);
+	}
 	)FOO";
 
 	OpenGL.ModelProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)ModelVertexCode, (GLchar *)ModelFragmentCode);
@@ -335,27 +349,20 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
 
 				// TODO: Delete later
-				glUniform3f(OpenGL.ModelEdgeColor,
-					FaceEntry->EdgeColor.r, FaceEntry->EdgeColor.g, FaceEntry->EdgeColor.b);
+				/*glUniform3f(OpenGL.ModelEdgeColor,
+					FaceEntry->EdgeColor.r, FaceEntry->EdgeColor.g, FaceEntry->EdgeColor.b);*/
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
 				u32 OffsetInBytes = FaceEntry->VertexBufferOffset * sizeof(f32);
 
-				/*glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
-				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)(sizeof(f32) * 3));
-*/
 				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(f32), (void*)0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)0);
 				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(f32), (void*)(sizeof(f32) * 3));
-				glEnableVertexAttribArray(2);
-				glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(f32), (void*)(sizeof(f32) * 6));
+				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)(sizeof(f32) * 3));
 
-				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 9, 6);
+				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 7, 6);
 			} break;
 
 			// TODO: Remove

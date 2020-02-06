@@ -549,10 +549,10 @@ Win32GetClock(void)
 	return(Result);
 }
 
-inline f64
+inline f32
 Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 {
-	f64 Result = (f32)(End.QuadPart - Start.QuadPart) / (f64)GlobalPerfCountFrequency;
+	f32 Result = (f32)(End.QuadPart - Start.QuadPart) / (f32)GlobalPerfCountFrequency;
 	return Result;
 }
 
@@ -673,8 +673,8 @@ WinMain(HINSTANCE Instance,
 				Win32DisplayRenderCommands(Window, &RenderCommands);
 
 				LARGE_INTEGER EndCounter = Win32GetClock();
-
-				f32 SecondsElapsed = Win32GetSecondsElapsed(LastCounter, EndCounter);
+				GameInput.PrevFrameTime = Win32GetSecondsElapsed(LastCounter, EndCounter);
+				LastCounter = EndCounter;
 			}
 		}
 	}
