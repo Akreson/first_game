@@ -1,6 +1,6 @@
 #include "opengl.h"
 
-global_variable opengl_render_info OpenGL;
+global opengl_render_info OpenGL;
 
 void OpenGLMessageDebugCallback(
 	GLenum source,

@@ -16,7 +16,7 @@
 #endif
 
 #define internal static
-#define global_variable static
+#define global static
 
 #define KiB(Value) (Value * 1024)
 #define MiB(Value) (KiB(Value) * 1024)
@@ -249,6 +249,17 @@ struct game_input
 
 	f32 PrevFrameTime;
 };
+
+inline void
+PlatformProcessButtonState(game_button_state *Button, b32 IsDownState)
+{
+	b8 IsDown = IsDownState ? true : false;
+	if (Button->EndedDown != IsDown)
+	{
+		Button->EndedDown = IsDown;
+		Button->TransionState++;
+	}
+}
 
 inline b32
 IsDown(game_button_state Button)

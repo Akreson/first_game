@@ -7,47 +7,15 @@
 
 #include "platform.h"
 
-static u64 GlobalPerfCountFrequency;
-
 // TODO: Set as different translation unit and compile as dll?
 #include "editor_game.cpp"
 
 #include "opengl.cpp"
+#include "win32_opengl.cpp"
 
-typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext,
-	const int *attribList);
-
-typedef BOOL WINAPI wgl_get_pixel_format_attrib_iv_arb(HDC hdc,
-	int iPixelFormat,
-	int iLayerPlane,
-	UINT nAttributes,
-	const int *piAttributes,
-	int *piValue);
-
-typedef BOOL WINAPI wgl_get_pixel_format_attrib_fv_arb(HDC hdc,
-	int iPixelFormat,
-	int iLayerPlane,
-	UINT nAttributes,
-	const int *piAttributes,
-	FLOAT *piValue);
-
-typedef BOOL WINAPI wgl_choose_pixel_format_arb(HDC hdc,
-	const int *piAttribList,
-	const FLOAT *pfAttribFList,
-	UINT nMaxFormats,
-	int *piFormats,
-	UINT *nNumFormats);
-
-typedef BOOL WINAPI wgl_swap_interval_ext(int interval);
-typedef const char * WINAPI wgl_get_extension_string_ext(void);
-
-global_variable wgl_create_context_attribs_arb *wglCreateContextAttribsARB;
-global_variable wgl_choose_pixel_format_arb *wglChoosePixelFormatARB;
-global_variable wgl_swap_interval_ext *wglSwapIntervalEXT;
-global_variable wgl_get_extension_string_ext *wglGetExtensionStringEXT;
-
-global_variable b32 GlobalRunning;
-global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
+global b32 GlobalRunning;
+global u64 GlobalPerfCountFrequency; 
+global WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 
 LRESULT
 Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM  LParam)
@@ -120,17 +88,6 @@ ToggleFullscreen(HWND Window)
 		SetWindowPos(Window, NULL, 0, 0, 0, 0,
 			SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
 			SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
-	}
-}
-
-inline void
-Win32ProcessButtonState(game_button_state *Button, b32 IsDownState)
-{
-	b8 IsDown = IsDownState ? true : false;
-	if (Button->EndedDown != IsDown)
-	{
-		Button->EndedDown = IsDown;
-		Button->TransionState++;
 	}
 }
 
@@ -301,225 +258,6 @@ PLATFORM_READ_FILE(Win32ReadFile)
 }
 
 void
-Win32SetPixelFormat(HDC WindowDC)
-{
-	PIXELFORMATDESCRIPTOR SuggestedPixelFormat = {};
-	int SuggestedPixelFormatIndex = 0;
-	GLuint NumFormats = 0;
-
-	if (wglChoosePixelFormatARB)
-	{
-		int AttribList[] =
-		{
-			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
-			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-			WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-			WGL_RED_BITS_ARB, 8,
-			WGL_GREEN_BITS_ARB, 8,
-			WGL_BLUE_BITS_ARB, 8,
-			WGL_ALPHA_BITS_ARB, 8,
-			WGL_DEPTH_BITS_ARB, 16,
-			0
-		};
-
-		wglChoosePixelFormatARB(WindowDC, AttribList, 0, 1,
-			&SuggestedPixelFormatIndex, &NumFormats);
-	}
-
-	if (!NumFormats)
-	{
-		SuggestedPixelFormat.nSize = sizeof(SuggestedPixelFormat);
-		SuggestedPixelFormat.nVersion = 1;
-		SuggestedPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER | PFD_DRAW_TO_WINDOW;
-		SuggestedPixelFormat.iPixelType = PFD_TYPE_RGBA;
-		SuggestedPixelFormat.iLayerType = PFD_MAIN_PLANE;
-		SuggestedPixelFormat.cColorBits = 32;
-		SuggestedPixelFormat.cAlphaBits = 8;
-		SuggestedPixelFormat.cDepthBits = 24;
-
-		SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &SuggestedPixelFormat);
-	}
-
-	DescribePixelFormat(WindowDC, SuggestedPixelFormatIndex, sizeof(SuggestedPixelFormat),
-		&SuggestedPixelFormat);
-	if (!SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat))
-	{
-		Assert(0);
-	}
-}
-
-internal void
-Win32LoadOpenGLExtenssion(void)
-{
-	WNDCLASSA WindowClass = {};
-
-	WindowClass.lpfnWndProc = DefWindowProcA;
-	WindowClass.hInstance = GetModuleHandle(0);
-	WindowClass.lpszClassName = "TempWindowClass";
-
-	if (RegisterClass(&WindowClass))
-	{
-		HWND Window = CreateWindowEx(
-			0,
-			WindowClass.lpszClassName,
-			"Cross Plane",
-			0,
-			CW_USEDEFAULT,
-			CW_USEDEFAULT,
-			CW_USEDEFAULT,
-			CW_USEDEFAULT,
-			0,
-			0,
-			WindowClass.hInstance,
-			0);
-
-
-		HDC WindowDC = GetDC(Window);
-		Win32SetPixelFormat(WindowDC);
-		HGLRC OpenGLRC = wglCreateContext(WindowDC);
-		if (wglMakeCurrent(WindowDC, OpenGLRC))
-		{
-			wglCreateContextAttribsARB = (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
-			wglChoosePixelFormatARB = (wgl_choose_pixel_format_arb *)wglGetProcAddress("wglChoosePixelFormatARB");
-			wglSwapIntervalEXT = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
-			wglGetExtensionStringEXT = (wgl_get_extension_string_ext *)wglGetProcAddress("wglGetExtensionStringEXT");
-#if 0
-			if (wglGetExtensionStringEXT)
-			{
-				char *Extension = (char *)wglGetExtensionStringEXT();
-				char *At = Extension;
-			}
-#endif
-			wglMakeCurrent(0, 0);
-		}
-
-		wglDeleteContext(OpenGLRC);
-		ReleaseDC(Window, WindowDC);
-		DestroyWindow(Window);
-	}
-}
-
-int Win32OpenGLContextAttribs[] =
-{
-	WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-	WGL_CONTEXT_MINOR_VERSION_ARB, 4,
-	WGL_CONTEXT_FLAGS_ARB, 0
-#if DEVELOP_MODE
-	| WGL_CONTEXT_DEBUG_BIT_ARB
-#endif
-	,
-	WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-	0,
-};
-
-#define Win32LoadOpenGLFunction(Name) {Name = (type_##Name *)wglGetProcAddress(#Name); Assert(Name)}
-
-internal HGLRC
-Win32InitOpenGL(HDC WindowDC)
-{
-	HGLRC OpenGLRC = 0;
-
-	Win32LoadOpenGLExtenssion();
-
-	if (wglCreateContextAttribsARB)
-	{
-		Win32SetPixelFormat(WindowDC);
-		OpenGLRC = wglCreateContextAttribsARB(WindowDC, 0, Win32OpenGLContextAttribs);
-	}
-
-	// TODO: Maintain
-	if (!OpenGLRC)
-	{
-		Assert(!"Not maintained");
-	}
-
-	if (wglMakeCurrent(WindowDC, OpenGLRC))
-	{
-		opengl_info OpenGLInfo = OpenGLGetInfo();
-
-		if (OpenGLInfo.GL_EXT_framebuffer_object)
-		{
-			Win32LoadOpenGLFunction(glBindFramebuffer);
-			Win32LoadOpenGLFunction(glGenFramebuffers);
-			Win32LoadOpenGLFunction(glFramebufferTexture2D);
-			Win32LoadOpenGLFunction(glDeleteFramebuffers);
-			Win32LoadOpenGLFunction(glCheckFramebufferStatus);
-
-			Win32LoadOpenGLFunction(glGenRenderbuffers);
-			Win32LoadOpenGLFunction(glBindRenderbuffer);
-			Win32LoadOpenGLFunction(glRenderbufferStorage);
-			Win32LoadOpenGLFunction(glFramebufferRenderbuffer);
-		}
-		else
-		{
-			Assert(0);
-		}
-
-		Win32LoadOpenGLFunction(glCreateProgram);
-		Win32LoadOpenGLFunction(glDeleteProgram);
-		Win32LoadOpenGLFunction(glLinkProgram);
-		Win32LoadOpenGLFunction(glCreateShader);
-		Win32LoadOpenGLFunction(glCompileShader);
-		Win32LoadOpenGLFunction(glShaderSource);
-		Win32LoadOpenGLFunction(glDeleteShader);
-		Win32LoadOpenGLFunction(glAttachShader);
-		Win32LoadOpenGLFunction(glDetachShader);
-		Win32LoadOpenGLFunction(glUseProgram);
-
-		Win32LoadOpenGLFunction(glActiveTexture);
-
-		Win32LoadOpenGLFunction(glUniform1i);
-		Win32LoadOpenGLFunction(glUniform2i);
-		Win32LoadOpenGLFunction(glUniform3i);
-		Win32LoadOpenGLFunction(glUniform4i);
-		Win32LoadOpenGLFunction(glUniform1f);
-		Win32LoadOpenGLFunction(glUniform2f);
-		Win32LoadOpenGLFunction(glUniform3f);
-		Win32LoadOpenGLFunction(glUniform4f);
-		Win32LoadOpenGLFunction(glUniform2fv);
-		Win32LoadOpenGLFunction(glUniform3fv);
-		Win32LoadOpenGLFunction(glUniform4fv);
-		Win32LoadOpenGLFunction(glUniformMatrix2fv);
-		Win32LoadOpenGLFunction(glUniformMatrix3fv);
-		Win32LoadOpenGLFunction(glUniformMatrix4fv);
-
-		Win32LoadOpenGLFunction(glGetUniformLocation);
-
-		Win32LoadOpenGLFunction(glBindVertexArray);
-		Win32LoadOpenGLFunction(glDeleteVertexArrays);
-		Win32LoadOpenGLFunction(glGenVertexArrays);
-		Win32LoadOpenGLFunction(glGenBuffers);
-		Win32LoadOpenGLFunction(glBindBuffer);
-		Win32LoadOpenGLFunction(glBufferData);
-		Win32LoadOpenGLFunction(glBufferSubData);
-		Win32LoadOpenGLFunction(glDeleteBuffers);
-
-		Win32LoadOpenGLFunction(glEnableVertexAttribArray);
-		Win32LoadOpenGLFunction(glDisableVertexAttribArray);
-		Win32LoadOpenGLFunction(glVertexAttribPointer);
-
-		Win32LoadOpenGLFunction(glGetShaderiv);
-		Win32LoadOpenGLFunction(glGetProgramiv);
-		Win32LoadOpenGLFunction(glGetProgramInfoLog);
-		Win32LoadOpenGLFunction(glGetShaderInfoLog);
-		Win32LoadOpenGLFunction(glValidateProgram);
-
-		Win32LoadOpenGLFunction(glDebugMessageCallback);
-
-		if (wglSwapIntervalEXT)
-		{
-			wglSwapIntervalEXT(1);
-		}
-	}
-
-	OpenGLInit();
-
-	return OpenGLRC;
-}
-
-void
 Win32DisplayRenderCommands(HWND Window, game_render_commands *RenderCommands)
 {
 	OpenGLRenderCommands(RenderCommands);
@@ -656,7 +394,7 @@ WinMain(HINSTANCE Instance,
 					++ButtonIndex)
 				{
 					GameInput.MouseButtons[ButtonIndex].TransionState = 0;
-					Win32ProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
+					PlatformProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
 						IsBitSet(GetKeyState(Win32MappedMouseID[ButtonIndex]), 15));
 				}
 

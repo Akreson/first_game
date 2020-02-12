@@ -94,16 +94,16 @@ PushModel(render_group *Group, model *Model)
 	ModelEntry->Offset = Model->Offset;
 }
 
-struct model_face_vertex
+struct rendre_model_face_vertex
 {
 	v3 Vertex;
 	v4 MetaInfo;
 };
 
-inline model_face_vertex
+inline rendre_model_face_vertex
 ConstractFaceVertexInfo(v3 Vertex, v4 MetaInfo)
 {
-	model_face_vertex Result;
+	rendre_model_face_vertex Result;
 	Result.Vertex = Vertex;
 	Result.MetaInfo = MetaInfo;
 
@@ -122,8 +122,7 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face, v4 Color,
 
 	ModelFaceEntry->EdgeColor = EdgeColor;
 
-	model_face_vertex *FaceVertex = (model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexCount);
-	model_face_vertex *Start = FaceVertex;
+	rendre_model_face_vertex *FaceVertex = (rendre_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexCount);
 
 	*FaceVertex++ = ConstractFaceVertexInfo(VertexStorage[Face.V0], V4(1, 1, 0, 1));
 	*FaceVertex++ = ConstractFaceVertexInfo(VertexStorage[Face.V1], V4(0, 1, 0, 1));
@@ -150,5 +149,5 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face, v4 Color,
 	FaceVertex[16] = V3(0, 0, 1);
 #endif
 
-	Commands->VertexCount += sizeof(model_face_vertex) * 6;
+	Commands->VertexCount += sizeof(rendre_model_face_vertex) * 6;
 }

@@ -153,4 +153,4 @@ struct game_state
 #endif
 };
 
-global_variable platform_api PlatformAPI;
+global platform_api PlatformAPI;
