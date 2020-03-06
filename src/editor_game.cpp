@@ -329,7 +329,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
-#if 1
+#if 0
 			HitTest = false;
 
 			v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
@@ -447,18 +447,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 				}
 #endif
 			}
-
-			// NOTE: {}; Insted V3(); because of E0980 :(
 #endif
-			v3 EdgeColor;
-			if (HitTest)
-			{
-				EdgeColor = {0, 1, 0};
-			}
-			else
-			{
-				EdgeColor = {0.17f, 0.5f, 0.8f};
-			}
+			v3 EdgeColor = HitTest ? V3(0, 1, 0) : V3(0.17f, 0.5f, 0.8f);
 
 			PushModelFace(&RenderGroup, Model->Vertex, Face, Model->Color, Model->Offset, EdgeColor);
 		}

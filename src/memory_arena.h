@@ -14,7 +14,7 @@ struct page_memory_arena
 	u32 *AllocStatus; // NOTE: One bit status: 0 - used, 1 - unused (for now)
 	s16 *UsedStatus; // per page, must be signed
 	s16 *PoolAllocInfo;//
-	u32 PageSize;
+	u32 PageSize; // NOTE: Must be power of 2
 	u32 AllocStatusBlocksCount;
 	u16 PageCount;
 	u16 UnusedSpace;
@@ -47,7 +47,7 @@ GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 
 	u32 ShiftValue = FindLeastSignificantSetBit(PageSize);
 
-	u32 Result = (u8 *)AlignPtr - (u8 *)PageBase;
+	u32 Result = AlignPtr - (u8 *)PageBase;
 	Result >>= ShiftValue;
 
 	return Result;
@@ -213,7 +213,7 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 }
 
 internal inline u32
-InitPagePool(page_memory_arena *Arena, u32 PageCount)
+AllocatePagePool(page_memory_arena *Arena, u32 PageCount)
 {
 	u32 StartPagePoolIndex;
 
@@ -230,16 +230,27 @@ InitPagePool(page_memory_arena *Arena, u32 PageCount)
 	return StartPagePoolIndex;
 }
 
+internal inline void
+DeallocatePagePool(page_memory_arena *Arena, u32 PageIndex)
+{
+	u32 PagesInPool = Arena->PoolAllocInfo[PageIndex];
+
+	Arena->UsedStatus[PageIndex] = 0;
+	Arena->PoolAllocInfo[PageIndex] = 0;
+	
+	SetPagesStatus(Arena, PageIndex, PageStatus_Unused, PagesInPool);
+}
+
 // NOTE: Allocate and copy memory
 // TODO: Should copy memory??
 void *
-PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source)
+PushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source)
 {
 	u32 PageIndex;
 
 	u8 *PageBase = (u8 *)*Dest;
-	u32 UsedPagesBySize = Size / Arena->PageSize;
 
+	u32 UsedPagesBySize = Size / Arena->PageSize;
 	memory_index Remainder = (Size - (UsedPagesBySize * Arena->PageSize));
 	if (Remainder) UsedPagesBySize++;
 
@@ -252,7 +263,7 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 	}
 	else
 	{
-		PageIndex = InitPagePool(Arena, UsedPagesBySize);
+		PageIndex = AllocatePagePool(Arena, UsedPagesBySize);
 		*Dest = GetPageBaseFromPageIndex(Arena, PageIndex);
 	}
 
@@ -269,24 +280,13 @@ PushSize_(page_memory_arena *Arena, memory_index Size, void **Dest, void *Source
 		{
 			u32 NewPoolSizeInPages = PagesInPool + UsedPagesBySize;
 			
-			u32 StartOfNewPool;
-			if (!FindFreePages(Arena, &StartOfNewPool, NewPoolSizeInPages))
-			{
-				Assert(0);
-			}
-
-			SetPagesStatus(Arena, StartOfNewPool, PageStatus_Used, NewPoolSizeInPages);
+			u32 StartOfNewPool = AllocatePagePool(Arena, NewPoolSizeInPages);
+			Arena->UsedStatus[StartOfNewPool] = UsedPoolSize;
 
 			u8 *NewPageBase = GetPageBaseFromPageIndex(Arena, StartOfNewPool);
 			Copy128(TotalPoolSize, (void *)NewPageBase, (void *)PageBase);
 
-			SetPagesStatus(Arena, PageIndex, PageStatus_Unused, PagesInPool);
-
-			Arena->UsedStatus[StartOfNewPool] = UsedPoolSize;
-			Arena->PoolAllocInfo[StartOfNewPool] = NewPoolSizeInPages;
-
-			Arena->UsedStatus[PageIndex] = 0;
-			Arena->PoolAllocInfo[PageIndex] = 0;
+			DeallocatePagePool(Arena, PageIndex);
 
 			*Dest = NewPageBase;
 			PageBase = NewPageBase;

@@ -104,6 +104,7 @@ inline rendre_model_face_vertex
 ConstractFaceVertexInfo(v3 Vertex, v4 MetaInfo)
 {
 	rendre_model_face_vertex Result;
+
 	Result.Vertex = Vertex;
 	Result.MetaInfo = MetaInfo;
 
@@ -122,7 +123,8 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face, v4 Color,
 
 	ModelFaceEntry->EdgeColor = EdgeColor;
 
-	rendre_model_face_vertex *FaceVertex = (rendre_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexCount);
+	rendre_model_face_vertex *StartFaceVertex = (rendre_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexCount);
+	rendre_model_face_vertex *FaceVertex = StartFaceVertex;
 
 	*FaceVertex++ = ConstractFaceVertexInfo(VertexStorage[Face.V0], V4(1, 1, 0, 1));
 	*FaceVertex++ = ConstractFaceVertexInfo(VertexStorage[Face.V1], V4(0, 1, 0, 1));
@@ -132,22 +134,5 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face, v4 Color,
 	*FaceVertex++ = ConstractFaceVertexInfo(VertexStorage[Face.V2], V4(0, 1, 0, 0));
 	*FaceVertex++ = ConstractFaceVertexInfo(VertexStorage[Face.V3], V4(0, 0, 1, 0));
 
-#if 0
-	v3 *FaceVertex = (v3 *)(Commands->VertexBufferBase + Commands->VertexCount);
-	FaceVertex[0] = VertexStorage[Face->V0];
-	FaceVertex[1] = V3(1, 1, 0);
-	FaceVertex[3] = VertexStorage[Face->V1];
-	FaceVertex[4] = V3(0, 1, 0);
-	FaceVertex[6] = VertexStorage[Face->V2];
-	FaceVertex[7] = V3(0, 0, 1);
-
-	FaceVertex[9] = VertexStorage[Face->V0];
-	FaceVertex[10] = V3(1, 0, 1);
-	FaceVertex[12] = VertexStorage[Face->V2];
-	FaceVertex[13] = V3(0, 1, 0);
-	FaceVertex[15] = VertexStorage[Face->V3];
-	FaceVertex[16] = V3(0, 0, 1);
-#endif
-
-	Commands->VertexCount += sizeof(rendre_model_face_vertex) * 6;
+	Commands->VertexCount += (u32)((FaceVertex - StartFaceVertex)) * sizeof(rendre_model_face_vertex);
 }
