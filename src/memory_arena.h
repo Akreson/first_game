@@ -5,6 +5,13 @@ struct memory_arena
 	memory_index Size;
 	memory_index Used;
 	u8 *Base;
+	u16 CountOfTempMem;
+};
+
+struct temp_memory
+{
+	memory_arena *Arena;
+	u32 Used;
 };
 
 //TODO: Combine AllocStatus and PoolAllocInfo??
@@ -35,6 +42,57 @@ enum PageStatus
 #define PagePushSize(Arena, Size, Dest, Source) PushSize_(Arena, Size, (void **)&Dest, (void *)Source)
 #define PagePushStruct(Arena, type, Dest, Source) PushSize_(Arena, sizeof(type), (void **)&Dest, (void *)Source)
 #define PagePushArray(Arena, type, Count, Dest, Source) PushSize_(Arena, sizeof(type)*Count, (void **)&Dest, (void *)Source)
+
+// NOTE: Just allocate space
+void *
+PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
+{
+	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
+
+	u32 AlignOffset = GetAlignmentOffsetForwad(CurrentArenaPtr, Alignment);
+
+	u32 TotalAddedSize = Size + AlignOffset;
+
+	if (!(Arena->Size >= (Arena->Used + TotalAddedSize))) { Assert(0); }
+
+	void *Result = (void *)(Arena->Base + Arena->Used + AlignOffset);
+	Arena->Used += TotalAddedSize;
+
+	return Result;
+}
+
+inline void
+InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
+{
+	Arena->Base = Base;
+	Arena->Size = Size;
+	Arena->Used = 0;
+}
+
+inline temp_memory
+BeginTempMemory(memory_arena *Arena)
+{
+	temp_memory Result;
+
+	Result.Arena = Arena;
+	Result.Used = Arena->Used;
+
+	++Arena->CountOfTempMem;
+
+	return Result;
+}
+
+inline void
+EndTempMemory(temp_memory TempMem)
+{
+	memory_arena *Arena = TempMem.Arena;
+
+	Assert(Arena->Used >= TempMem.Used);
+	Arena->Used = TempMem.Used;
+
+	Assert(Arena->CountOfTempMem > 0);
+	--Arena->CountOfTempMem;
+}
 
 internal inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
@@ -306,32 +364,6 @@ PushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source)
 	return nullptr;
 }
 
-// NOTE: Just allocate space
-void *
-PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
-{
-	memory_index CurrentArenaPtr = (memory_index)Arena->Base + Arena->Used;
-
-	u32 AlignOffset = GetAlignmentOffsetForwad(CurrentArenaPtr, Alignment);
-
-	u32 TotalAddedSize = Size + AlignOffset;
-
-	if (!(Arena->Size >= (Arena->Used + TotalAddedSize))) { Assert(0); }
-
-	void *Result = (void *)(Arena->Base + Arena->Used + AlignOffset);
-	Arena->Used += TotalAddedSize;
-
-	return Result;
-}
-
-inline void
-InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
-{
-	Arena->Base = Base;
-	Arena->Size = Size;
-	Arena->Used = 0;
-}
-
 // TODO: Use struct for holding page alloc or use pointer and calc needed metadata
 // on allocation side?
 inline void
@@ -354,7 +386,7 @@ InitPageArena(memory_arena *Arena, page_memory_arena *PageArena, u32 PageArenaSi
 	PageArena->PageSize = PageSize;
 	PageArena->PageCount = PageCount;
 	PageArena->AllocStatusBlocksCount = AllocStatusBlocksCount;
-	PageArena->UnusedSpace = 
+	PageArena->UnusedSpace =
 		(u16)((umm)PageArena->Base - (umm)((u8 *)PageArena->PoolAllocInfo + (sizeof(s16)*PageCount)));
 
 	MemSet(PageArena->AllocStatus, AllocStatusBlocksCount, ULONG_MAX);

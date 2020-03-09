@@ -199,7 +199,7 @@ OpenGLInit()
 	out vec4 FragColor;
 
 	uniform vec4 Color;
-	//uniform vec3 EdgeColor;
+	uniform vec3 EdgeColor;
 
 	in vec4 BarCoord;
 
@@ -223,7 +223,7 @@ OpenGLInit()
 
 	void main()
 	{
-		vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
+		//vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
 		vec3 SelectEdgeColor = vec3(0.86f, 0.65, 0.2);
 #if 1
 		float MinD = min(min(BarCoord.x, BarCoord.y), BarCoord.z);
@@ -238,7 +238,7 @@ OpenGLInit()
 		float A = step(1.0 - dMinD, BarCoord.w);
 		vec3 FinalEdgeColor = mix(EdgeColor, SelectEdgeColor, A);
 
-		FragColor = vec4(mix(Color.xyz, FinalEdgeColor, InvFactor), 1.0);
+		FragColor = vec4(mix(Color.xyz, EdgeColor, InvFactor), 1.0);
 	}
 	)FOO";
 
@@ -349,8 +349,8 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
 
 				// TODO: Delete later
-				/* glUniform3f(OpenGL.ModelEdgeColor,
-					FaceEntry->EdgeColor.r, FaceEntry->EdgeColor.g, FaceEntry->EdgeColor.b); */
+				glUniform3f(OpenGL.ModelEdgeColor,
+					FaceEntry->EdgeColor.r, FaceEntry->EdgeColor.g, FaceEntry->EdgeColor.b);
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);

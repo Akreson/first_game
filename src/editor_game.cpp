@@ -234,6 +234,240 @@ AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3
 	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 }
 
+struct model_ray_result
+{
+	b32 Hit;
+	u32 ModelIndex;
+	v3 IntersetPoint;
+};
+
+struct model_ray_sort
+{
+	u32 Index;
+	f32 Length;
+};
+
+// TODO: Implemnt
+void
+ModelEdgeInterset(void)
+{
+#if 0
+	if (HitTest)
+	{
+		// NOTE: Closest vertex match
+		u32 VertexRelativeIndex[ArrayCount(GetMemberOf(model_edge, VertexID))];
+		f32 LengthsToVertex[4];
+
+		LengthsToVertex[0] = LengthSq(V0 - IntersetPoint);
+		LengthsToVertex[1] = LengthSq(V1 - IntersetPoint);
+		LengthsToVertex[2] = LengthSq(V2 - IntersetPoint);
+		LengthsToVertex[3] = LengthSq(V3 - IntersetPoint);
+
+		for (u32 MinLengthIndex = 0;
+			MinLengthIndex < ArrayCount(VertexRelativeIndex);
+			++MinLengthIndex)
+		{
+			f32 MinLength = FLOAT_MAX;
+			u32 CurrentMinLengthIndex;
+
+			for (u32 LengthIndex = 0;
+				LengthIndex < ArrayCount(LengthsToVertex);
+				++LengthIndex)
+			{
+				f32 CheckLength = LengthsToVertex[LengthIndex];
+				if (CheckLength < MinLength)
+				{
+					CurrentMinLengthIndex = LengthIndex;
+					MinLength = CheckLength;
+				}
+			}
+
+			VertexRelativeIndex[MinLengthIndex] = CurrentMinLengthIndex;
+			LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
+		}
+
+		//NOTE: Edge match
+		u32 VertexAbsoluteIndex[ArrayCount(GetMemberOf(model_edge, VertexID))] =
+		{
+			Face.VertexID[VertexRelativeIndex[0]],
+			Face.VertexID[VertexRelativeIndex[1]]
+		};
+
+		model_edge MatchEdge;
+		b32 SuccesMatch = false;
+		for (u32 EdgeIndex = 0;
+			EdgeIndex < ArrayCount(Face.EdgeID);
+			++EdgeIndex)
+		{
+			u32 MatchCount = 0;
+			model_edge Edge = Model->Edges[Face.EdgeID[EdgeIndex]];
+
+			for (u32 EdgeVertexIndex = 0;
+				EdgeVertexIndex < ArrayCount(Edge.VertexID);
+				++EdgeVertexIndex)
+			{
+				for (u32 MatchVertIndex = 0;
+					MatchVertIndex < ArrayCount(Edge.VertexID);
+					++MatchVertIndex)
+				{
+					if (Edge.VertexID[EdgeVertexIndex] == VertexAbsoluteIndex[MatchVertIndex])
+					{
+						MatchCount++;
+					}
+				}
+			}
+
+			if (MatchCount == ArrayCount(Edge.VertexID))
+			{
+				MatchEdge = Edge;
+				SuccesMatch = true;
+				break;
+			}
+		}
+		Assert(SuccesMatch);
+
+		v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
+		v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
+
+		v3 NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
+		v3 DistVector = IntersetPoint - EdgeV0;
+
+		f32 LengthOnEdge = Dot(NormalizeEdgeDir, DistVector);
+		LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
+
+		v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
+		f32 DistanceToEdge = Length(PointOnEdge - IntersetPoint);
+
+		HitTest = DistanceToEdge < 0.03f ? true : false;
+	}
+#endif
+}
+
+model_ray_result
+RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param Ray)
+{
+	model_ray_result Result = {};
+	temp_memory TempMem = BeginTempMemory(Arena);
+
+	u32 ModelsHitCount = 0;
+	u32 ModelsSortArraySize = 20;
+	model_ray_sort *ModelsIndexArray = (model_ray_sort *)PushArray(Arena, model_ray_sort, ModelsSortArraySize);
+
+	// NOTE: Gather all intersect models
+
+	for (u32 ModelIndex = 0;
+		ModelIndex < ModelCount;
+		++ModelIndex)
+	{
+		model *Model = Models + ModelIndex;
+
+		b32 HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
+
+		if (HitTest)
+		{
+			model_ray_sort *SortEntry = ModelsIndexArray + ModelsHitCount++;
+
+			v3 CenterOfAABB = ((Model->AABB.Min + Model->Offset) + (Model->AABB.Max + Model->Offset)) / 2.0f;
+
+			SortEntry->Index = ModelIndex;
+			SortEntry->Length = LengthSq(CenterOfAABB - Ray.Pos);
+
+			if (ModelsHitCount >= ModelsSortArraySize)
+			{
+				PushArray(Arena, u32, ModelsSortArraySize);
+				ModelsSortArraySize += ModelsSortArraySize;
+			}
+		}
+	}
+
+	// NOTE: Sort by length from ray position to center of AABB
+
+	for (u32 Outer = 0;
+		Outer < ModelsHitCount;
+		++Outer)
+	{
+		for (u32 Inner = 0;
+			Inner < (ModelsHitCount - 1);
+			++Inner)
+		{
+			model_ray_sort *A = ModelsIndexArray + Inner;
+			model_ray_sort *B = ModelsIndexArray + Inner + 1;
+
+			if (A->Length > B->Length)
+			{
+				model_ray_sort Temp = *B;
+				*B = *A;
+				*A = Temp;
+			}
+		}
+	}
+
+	// NOTE: Find intersetc model face for non convex case
+
+	if (ModelsHitCount)
+	{
+		b32 FaceHitTest = false;
+		for (u32 SortIndex = 0;
+			SortIndex < ModelsHitCount, !FaceHitTest;
+			SortIndex)
+		{
+			u32 ModelIndex = ModelsIndexArray[SortIndex].Index;
+			model *Model = Models + ModelIndex;
+
+			for (u32 FaceIndex = 0;
+				FaceIndex < Model->FaceCount;
+				++FaceIndex)
+			{
+				model_face Face = Model->Faces[FaceIndex];
+
+				v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
+				v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
+				v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
+				v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+
+				v3 Edge1 = V0 - V1;
+				v3 Edge2 = V0 - V3;
+
+				plane_param Plane;
+				Plane.N = Normalize(Cross(Edge1, Edge2));
+				Plane.D = Dot(Plane.N, V0);
+
+				// Plane intersect
+				f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
+				if (DotRayPlane < 0)
+				{
+					f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
+				
+					if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
+					{
+						v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
+
+						b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
+						if (!HitTest)
+						{
+							HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
+						}
+
+						if (HitTest)
+						{
+							Result.Hit = true;
+							Result.ModelIndex = ModelIndex;
+							Result.IntersetPoint = IntersetPoint;
+
+							FaceHitTest = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	EndTempMemory(TempMem);
+
+	return Result;
+}
+
 void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
@@ -247,12 +481,12 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		LoadAsset(GameState);
 
-		InitArena(&GameState->EditorState.EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
-		InitPageArena(&GameState->EditorState.EditorMainArena, &GameState->EditorState.EditorPageArena, MiB(10));
+		InitArena(&EditorState->EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		InitPageArena(&EditorState->EditorMainArena, &EditorState->EditorPageArena, MiB(10));
 
-		AddCubeModel(&GameState->EditorState, V4(0));
-		AddCubeModel(&GameState->EditorState, V4(0), V3(-2.0f, 1.0f, 1.0f));
-		AddCubeModel(&GameState->EditorState, V4(0), V3(-2.0f, 4.0f, -1.0f));
+		AddCubeModel(EditorState, V4(0));
+		AddCubeModel(EditorState, V4(0), V3(-2.0f, 1.0f, 1.0f));
+		AddCubeModel(EditorState, V4(0), V3(-2.0f, 4.0f, -1.0f));
 
 		EditorState->CameraOffset = V3(0, 0, 3);
 		EditorState->CameraPos = V3(0);
@@ -310,6 +544,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	Ray.Dir = Unproject(&RenderGroup, Mouse);
 	Ray.Pos = CameraOt;
 
+	model_ray_result ModelHit =
+		RayModelsIntersect(&EditorState->EditorMainArena, EditorState->Models, EditorState->ModelsCount, Ray);
+
 	b32 HitTest;
 	for (u32 ModelIndex = 0;
 		ModelIndex < EditorState->ModelsCount;
@@ -317,138 +554,20 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	{
 		model *Model = EditorState->Models + ModelIndex;
 		
-		HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
+		b32 HitTest = ModelHit.Hit && (ModelHit.ModelIndex == ModelIndex);
 
 		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Left])))
 		{
 			EditorState->CameraPos = Model->Offset;
 		}
+		
+		v3 EdgeColor = HitTest ? V3(0.86f, 0.70f, 0.2f) : V3(0.17f, 0.5f, 0.8f);
 
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
-#if 0
-			HitTest = false;
-
-			v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
-			v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
-			v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
-			v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
-
-			v3 Edge1 = V0 - V1;
-			v3 Edge2 = V0 - V3;
-
-			plane_param Plane;
-			Plane.N = Normalize(Cross(Edge1, Edge2));
-			Plane.D = Dot(Plane.N, V0);
-
-			// Plane intersect
-			f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
-			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
-			if (DotRayPlane < 0 && (tPlaneIntersect != 0) && (tPlaneIntersect > 0))
-			{
-				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
-
-				HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
-				if (!HitTest)
-				{
-					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
-				}
-#if 1
-				if (HitTest)
-				{
-					// NOTE: Closest vertex match
-					u32 VertexRelativeIndex[ArrayCount(GetMemberOf(model_edge, VertexID))];
-					f32 LengthsToVertex[4];
-
-					LengthsToVertex[0] = LengthSq(V0 - IntersetPoint);
-					LengthsToVertex[1] = LengthSq(V1 - IntersetPoint);
-					LengthsToVertex[2] = LengthSq(V2 - IntersetPoint);
-					LengthsToVertex[3] = LengthSq(V3 - IntersetPoint);
-
-					for (u32 MinLengthIndex = 0;
-						MinLengthIndex < ArrayCount(VertexRelativeIndex);
-						++MinLengthIndex)
-					{
-						f32 MinLength = FLOAT_MAX;
-						u32 CurrentMinLengthIndex;
-
-						for (u32 LengthIndex = 0;
-							LengthIndex < ArrayCount(LengthsToVertex);
-							++LengthIndex)
-						{
-							f32 CheckLength = LengthsToVertex[LengthIndex];
-							if (CheckLength < MinLength)
-							{
-								CurrentMinLengthIndex = LengthIndex;
-								MinLength = CheckLength;
-							}
-						}
-						
-						VertexRelativeIndex[MinLengthIndex] = CurrentMinLengthIndex;
-						LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
-					}
-					
-					//NOTE: Edge match
-					u32 VertexAbsoluteIndex[ArrayCount(GetMemberOf(model_edge, VertexID))] =
-					{
-						Face.VertexID[VertexRelativeIndex[0]],
-						Face.VertexID[VertexRelativeIndex[1]]
-					};
-
-					model_edge MatchEdge;
-					b32 SuccesMatch = false;
-					for (u32 EdgeIndex = 0;
-						EdgeIndex < ArrayCount(Face.EdgeID);
-						++EdgeIndex)
-					{
-						u32 MatchCount = 0;
-						model_edge Edge = Model->Edges[Face.EdgeID[EdgeIndex]];
-
-						for (u32 EdgeVertexIndex = 0;
-							EdgeVertexIndex < ArrayCount(Edge.VertexID);
-							++EdgeVertexIndex)
-						{
-							for (u32 MatchVertIndex = 0;
-								MatchVertIndex < ArrayCount(Edge.VertexID);
-								++MatchVertIndex)
-							{
-								if (Edge.VertexID[EdgeVertexIndex] == VertexAbsoluteIndex[MatchVertIndex])
-								{
-									MatchCount++;
-								}
-							}
-						}
-
-						if (MatchCount == ArrayCount(Edge.VertexID))
-						{
-							MatchEdge = Edge;
-							SuccesMatch = true;
-							break;
-						}
-					}
-					Assert(SuccesMatch);
-
-					v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
-					v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
-
-					v3 NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
-					v3 DistVector = IntersetPoint - EdgeV0;
-
-					f32 LengthOnEdge = Dot(NormalizeEdgeDir, DistVector);
-					LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
-
-					v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
-					f32 DistanceToEdge = Length(PointOnEdge - IntersetPoint);
-
-					HitTest = DistanceToEdge < 0.03f ? true : false;
-				}
-#endif
-			}
-#endif
-			v3 EdgeColor = HitTest ? V3(0, 1, 0) : V3(0.17f, 0.5f, 0.8f);
 
 			PushModelFace(&RenderGroup, Model->Vertex, Face, Model->Color, Model->Offset, EdgeColor);
 		}
