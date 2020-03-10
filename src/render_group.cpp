@@ -78,32 +78,23 @@ internal void
 PushFont(render_group *Group, bitmap_info *Glyph, v2 Min, v2 Max, v3 Color)
 {
 	render_entry_bitmap *BitmapEntry = PushRenderElement(Group, render_entry_bitmap);
+
 	BitmapEntry->Bitmap = Glyph;
 	BitmapEntry->Min = Min;
 	BitmapEntry->Max = Max;
 	BitmapEntry->Color = Color;
 }
 
-internal void
-PushModel(render_group *Group, model *Model)
-{
-	render_entry_model *ModelEntry = PushRenderElement(Group, render_entry_model);
-	ModelEntry->Color = Model->Color;
-	ModelEntry->Vertex = Model->Vertex;
-	ModelEntry->VertexCount = Model->VertexCount;
-	ModelEntry->Offset = Model->Offset;
-}
-
-struct rendre_model_face_vertex
+struct render_model_face_vertex
 {
 	v3 Vertex;
 	v4 MetaInfo;
 };
 
-inline rendre_model_face_vertex
+inline render_model_face_vertex
 ConstructFaceVertexInfo(v3 Vertex, v4 MetaInfo)
 {
-	rendre_model_face_vertex Result;
+	render_model_face_vertex Result;
 
 	Result.Vertex = Vertex;
 	Result.MetaInfo = MetaInfo;
@@ -111,20 +102,24 @@ ConstructFaceVertexInfo(v3 Vertex, v4 MetaInfo)
 	return Result;
 }
 
-internal void
-PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face, v4 Color, v3 Offset, v3 EdgeColor = V3(0))
+void
+PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
+	v4 Color = V4(0), v3 Offset = V3(0), v3 EdgeColor = V3(0))
 {
 	game_render_commands *Commands = Group->Commands;
-	render_entry_model_face *ModelFaceEntry = PushRenderElement(Group, render_entry_model_face);
+	
+	if (!Group->GroupRenderElement)
+	{
+		render_entry_model_face *FaceEntry = PushRenderElement(Group, render_entry_model_face);
 
-	ModelFaceEntry->Color = Color;
-	ModelFaceEntry->VertexBufferOffset = Commands->VertexCount;
-	ModelFaceEntry->Offset = Offset;
+		FaceEntry->Color = Color;
+		FaceEntry->VertexBufferOffset = Commands->VertexBufferOffset;
+		FaceEntry->Offset = Offset;
+		FaceEntry->EdgeColor = EdgeColor;
+	}
 
-	ModelFaceEntry->EdgeColor = EdgeColor;
-
-	rendre_model_face_vertex *StartFaceVertex = (rendre_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexCount);
-	rendre_model_face_vertex *FaceVertex = StartFaceVertex;
+	render_model_face_vertex *StartFaceVertex = (render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
+	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
 	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V0], V4(1, 1, 0, 1));
 	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V1], V4(0, 1, 0, 1));
@@ -134,5 +129,32 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face, v4 Color,
 	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V2], V4(0, 1, 0, 0));
 	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V3], V4(0, 0, 1, 0));
 
-	Commands->VertexCount += (u32)((FaceVertex - StartFaceVertex)) * sizeof(rendre_model_face_vertex);
+	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
+}
+
+void
+BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor = V3(0))
+{
+	game_render_commands *Commands = Group->Commands;
+	render_entry_model *ModelEntry = (render_entry_model *)PushRenderElement(Group, render_entry_model);
+
+	ModelEntry->StartOffset = Commands->VertexBufferOffset;
+	ModelEntry->Offset = Offset;
+	ModelEntry->Color = Color;
+	ModelEntry->EdgeColor = EdgeColor;
+
+	Assert(!Group->GroupRenderElement);
+	Group->GroupRenderElement = (void *)ModelEntry;
+}
+
+void
+EndPushModel(render_group *Group)
+{
+	game_render_commands *Commands = Group->Commands;
+	render_entry_model *ModelEntry = (render_entry_model *)Group->GroupRenderElement;
+
+	ModelEntry->ElementCount =
+		(Commands->VertexBufferOffset - ModelEntry->StartOffset) / sizeof(render_model_face_vertex);
+
+	Group->GroupRenderElement = 0;
 }

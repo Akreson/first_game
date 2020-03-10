@@ -34,4 +34,5 @@ struct font_asset_info
 	f32 DescenderHeight;
 	f32 LineGap;
 };
-#define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs)/sizeof(void*))
+
+#define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs) / sizeof(void*))

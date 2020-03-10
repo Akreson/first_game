@@ -404,7 +404,7 @@ WinMain(HINSTANCE Instance,
 				RenderCommands.PushBufferBase = (u8 *)PushBufferBase;
 				RenderCommands.MaxPushBufferSize = PushBufferSize;
 				RenderCommands.MaxVertexBufferSize = VertexBufferSize;
-				RenderCommands.VertexBufferBase = (f32 *)VertexBuffer;
+				RenderCommands.VertexBufferBase = (u8 *)VertexBuffer;
 
 				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
 

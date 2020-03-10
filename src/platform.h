@@ -301,8 +301,8 @@ struct game_render_commands
 	u32 PushBufferSize;
 	u32 MaxPushBufferSize;
 
-	f32 *VertexBufferBase;
-	u32 VertexCount;
+	u8 *VertexBufferBase;
+	u32 VertexBufferOffset;
 	u32 MaxVertexBufferSize;
 
 	// TODO: store more mat

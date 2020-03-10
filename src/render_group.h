@@ -24,9 +24,10 @@ struct render_entry_bitmap
 struct render_entry_model
 {
 	v4 Color;
+	v3 EdgeColor;
 	v3 Offset;
-	v3 *Vertex;
-	u16 VertexCount;
+	u32 StartOffset;
+	u32 ElementCount;
 };
 
 struct render_entry_model_face
@@ -44,8 +45,11 @@ struct render_group
 {
 	game_render_commands *Commands;
 	font_asset_info *FontAsset;
-	v2 ScreenDim;
 
+	void *GroupRenderElement;
+
+	v2 ScreenDim;
+	
 	v3 CameraZ;
 
 	m4x4 InvCamera;

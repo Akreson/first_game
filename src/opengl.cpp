@@ -277,10 +277,9 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glBindVertexArray(OpenGL.VertexBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
-	u32 SizeOfVertexData = Commands->VertexCount * sizeof(f32);
-	glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, Commands->VertexBufferOffset, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
 
-	glBindBuffer(GL_ARRAY_BUFFER,0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
 	for (u32 BufferOffset = 0;
@@ -332,7 +331,36 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindTexture(GL_TEXTURE_2D, 0);
 			} break;
 
-			// TODO: Batch all model(s) faces?
+			case RenderEntryType_render_entry_model:
+			{
+				glUseProgram(OpenGL.ModelProgramID);
+
+				render_entry_model *ModelEntry = (render_entry_model *)(Commands->PushBufferBase + BufferOffset);
+				BufferOffset += sizeof(render_entry_model);
+
+				m4x4 ModelTransform = Identity();
+				SetTranslation(&ModelTransform, ModelEntry->Offset);
+
+				glUniform4f(OpenGL.ModelColorID,
+					ModelEntry->Color.r, ModelEntry->Color.g, ModelEntry->Color.b, ModelEntry->Color.a);
+				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
+				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
+
+				// TODO: Delete later
+				glUniform3f(OpenGL.ModelEdgeColor,
+					ModelEntry->EdgeColor.r, ModelEntry->EdgeColor.g, ModelEntry->EdgeColor.b);
+
+				glBindVertexArray(OpenGL.VertexBufferVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
+
+				glEnableVertexAttribArray(0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)0);
+				glEnableVertexAttribArray(1);
+				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)(sizeof(f32) * 3));
+
+				glDrawArrays(GL_TRIANGLES, ModelEntry->StartOffset / sizeof(render_model_face_vertex), ModelEntry->ElementCount);
+			} break;
+
 			case RenderEntryType_render_entry_model_face:
 			{
 				glUseProgram(OpenGL.ModelProgramID);
@@ -363,34 +391,6 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)(sizeof(f32) * 3));
 
 				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 7, 6);
-			} break;
-
-			// TODO: Remove
-			case RenderEntryType_render_entry_model:
-			{
-				glUseProgram(OpenGL.ModelProgramID);
-
-				render_entry_model *ModelEntry = (render_entry_model *)(Commands->PushBufferBase + BufferOffset);
-				BufferOffset += sizeof(render_entry_model);
-
-				m4x4 ModelTransform = Identity();
-				SetTranslation(&ModelTransform, ModelEntry->Offset);
-
-				glUniform4f(OpenGL.ModelColorID,
-					ModelEntry->Color.r, ModelEntry->Color.g, ModelEntry->Color.b, ModelEntry->Color.a);
-				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
-				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
-
-				glBindVertexArray(OpenGL.ModelVAO);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.ModelVBO);
-				u32 SizeOfVertexData = ModelEntry->VertexCount * sizeof(v3);
-				glBufferData(GL_ARRAY_BUFFER, SizeOfVertexData, (GLvoid *)ModelEntry->Vertex, GL_STREAM_DRAW);
-				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
-
-				glDrawArrays(GL_TRIANGLES, 0, ModelEntry->VertexCount / 3);
-
-				glBindVertexArray(0);
 			} break;
 		}
 	}

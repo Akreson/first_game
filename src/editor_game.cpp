@@ -354,7 +354,6 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 	model_ray_sort *ModelsIndexArray = (model_ray_sort *)PushArray(Arena, model_ray_sort, ModelsSortArraySize);
 
 	// NOTE: Gather all intersect models
-
 	for (u32 ModelIndex = 0;
 		ModelIndex < ModelCount;
 		++ModelIndex)
@@ -381,7 +380,6 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 	}
 
 	// NOTE: Sort by length from ray position to center of AABB
-
 	for (u32 Outer = 0;
 		Outer < ModelsHitCount;
 		++Outer)
@@ -403,7 +401,6 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 	}
 
 	// NOTE: Find intersetc model face for non convex case
-
 	if (ModelsHitCount)
 	{
 		b32 FaceHitTest = false;
@@ -563,14 +560,18 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		
 		v3 EdgeColor = HitTest ? V3(0.86f, 0.70f, 0.2f) : V3(0.17f, 0.5f, 0.8f);
 
+		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, EdgeColor);
+		
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
 
-			PushModelFace(&RenderGroup, Model->Vertex, Face, Model->Color, Model->Offset, EdgeColor);
+			PushModelFace(&RenderGroup, Model->Vertex, Face);
 		}
+
+		EndPushModel(&RenderGroup);
 	}
 
 	//OutputText(&RenderGroup, (char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
