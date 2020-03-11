@@ -238,6 +238,7 @@ struct model_ray_result
 {
 	b32 Hit;
 	u32 ModelIndex;
+	u32 FaceIndex;
 	v3 IntersetPoint;
 };
 
@@ -406,7 +407,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 		b32 FaceHitTest = false;
 		for (u32 SortIndex = 0;
 			SortIndex < ModelsHitCount, !FaceHitTest;
-			SortIndex)
+			++SortIndex)
 		{
 			u32 ModelIndex = ModelsIndexArray[SortIndex].Index;
 			model *Model = Models + ModelIndex;
@@ -449,6 +450,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 						{
 							Result.Hit = true;
 							Result.ModelIndex = ModelIndex;
+							Result.FaceIndex = FaceIndex;
 							Result.IntersetPoint = IntersetPoint;
 
 							FaceHitTest = true;
@@ -481,9 +483,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitArena(&EditorState->EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		InitPageArena(&EditorState->EditorMainArena, &EditorState->EditorPageArena, MiB(10));
 
-		AddCubeModel(EditorState, V4(0));
-		AddCubeModel(EditorState, V4(0), V3(-2.0f, 1.0f, 1.0f));
-		AddCubeModel(EditorState, V4(0), V3(-2.0f, 4.0f, -1.0f));
+		AddCubeModel(EditorState, V4(0, 0, 0, 1.0f));
+		AddCubeModel(EditorState, V4(0, 0, 0, 1.0f), V3(-2.0f, 1.0f, 1.0f));
+		AddCubeModel(EditorState, V4(0, 0, 0, 1.0f), V3(-2.0f, 4.0f, -1.0f));
 
 		EditorState->CameraOffset = V3(0, 0, 3);
 		EditorState->CameraPos = V3(0);
@@ -567,8 +569,14 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			++FaceIndex)
 		{
 			model_face Face = Model->Faces[FaceIndex];
+			face_render_param FaceParam = {};
+			
+			if (HitTest && (FaceIndex == ModelHit.FaceIndex))
+			{
+				FaceParam.SelectionType = FaceSelectionType_Hot;
+			}
 
-			PushModelFace(&RenderGroup, Model->Vertex, Face);
+			PushFace(&RenderGroup, Model->Vertex, Face, FaceParam);
 		}
 
 		EndPushModel(&RenderGroup);

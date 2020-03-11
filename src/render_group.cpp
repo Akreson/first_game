@@ -85,14 +85,8 @@ PushFont(render_group *Group, bitmap_info *Glyph, v2 Min, v2 Max, v3 Color)
 	BitmapEntry->Color = Color;
 }
 
-struct render_model_face_vertex
-{
-	v3 Vertex;
-	v4 MetaInfo;
-};
-
 inline render_model_face_vertex
-ConstructFaceVertexInfo(v3 Vertex, v4 MetaInfo)
+ConstructFaceVertexInfo(v4 Vertex, v4 MetaInfo)
 {
 	render_model_face_vertex Result;
 
@@ -102,32 +96,32 @@ ConstructFaceVertexInfo(v3 Vertex, v4 MetaInfo)
 	return Result;
 }
 
-void
-PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
-	v4 Color = V4(0), v3 Offset = V3(0), v3 EdgeColor = V3(0))
+#define FaceSelectionType_Hot 1.0f
+#define FaceSelectionType_Select 2.0f
+
+struct face_render_param
 {
+	f32 SelectionType;
+};
+
+void
+PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_param FaceParam = {})
+{
+	Assert(Group->GroupRenderElement);
+
 	game_render_commands *Commands = Group->Commands;
-	
-	if (!Group->GroupRenderElement)
-	{
-		render_entry_model_face *FaceEntry = PushRenderElement(Group, render_entry_model_face);
 
-		FaceEntry->Color = Color;
-		FaceEntry->VertexBufferOffset = Commands->VertexBufferOffset;
-		FaceEntry->Offset = Offset;
-		FaceEntry->EdgeColor = EdgeColor;
-	}
-
-	render_model_face_vertex *StartFaceVertex = (render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
+	render_model_face_vertex *StartFaceVertex = 
+		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
-	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V0], V4(1, 1, 0, 1));
-	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V1], V4(0, 1, 0, 1));
-	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V2], V4(0, 0, 1, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 1, 0, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V1], FaceParam.SelectionType), V4(0, 1, 0, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 0, 1, 1));
 
-	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V0], V4(1, 0, 1, 0));
-	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V2], V4(0, 1, 0, 0));
-	*FaceVertex++ = ConstructFaceVertexInfo(VertexStorage[Face.V3], V4(0, 0, 1, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 0, 1, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 1, 0, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V3], FaceParam.SelectionType), V4(0, 0, 1, 0));
 
 	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }
@@ -157,4 +151,13 @@ EndPushModel(render_group *Group)
 		(Commands->VertexBufferOffset - ModelEntry->StartOffset) / sizeof(render_model_face_vertex);
 
 	Group->GroupRenderElement = 0;
+}
+
+inline void
+PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
+	v4 Color = V4(0), v3 Offset = V3(0), v3 EdgeColor = V3(0))
+{
+	BeginPushModel(Group, Color, Offset, EdgeColor);
+	PushFace(Group, VertexStorage, Face);
+	EndPushModel(Group);
 }

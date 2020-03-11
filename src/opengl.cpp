@@ -122,6 +122,10 @@ OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode
 internal void
 OpenGLInit()
 {
+#ifdef DEVELOP_MODE
+	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
+#endif
+
 	const char *HeaderCode = R"FOO(
 	#version 440	
 	)FOO";
@@ -154,10 +158,6 @@ OpenGLInit()
 	}
 	)FOO";
 
-#ifdef DEVELOP_MODE
-	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
-#endif
-
 	OpenGL.BitmapProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)BitmapVertexCode, (GLchar *)BitmapFragmentCode);
 	
 	glUseProgram(OpenGL.BitmapProgramID);
@@ -177,42 +177,46 @@ OpenGLInit()
 	OpenGL.BitmapProjID = glGetUniformLocation(OpenGL.BitmapProgramID, "Proj");
 
 	const char *ModelVertexCode = R"FOO(
-	layout (location = 0) in vec3 aPos;
+	layout (location = 0) in vec4 aPos;
 	layout (location = 1) in vec4 aBarCoord;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
 	out vec4 BarCoord;
+	out float FaceSelectionParam;
 
 	void main()
 	{
 		BarCoord = aBarCoord;
-		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
+		FaceSelectionParam = aPos.w;
+		gl_Position = Proj * ModelTransform * vec4(aPos.xyz, 1.0f);
 	}
 
 	)FOO";
 
 	// TODO: Set model color?
 	// TODO: Compute color for selected edge in right way
+
+	// TODO: Fix Edge outline (broken for now)
 	const char *ModelFragmentCode = R"FOO(
+	#define FaceSelectionType_Hot 1.0f
+	#define FaceSelectionType_Select 2.0f
+
 	out vec4 FragColor;
 
 	uniform vec4 Color;
 	uniform vec3 EdgeColor;
 
 	in vec4 BarCoord;
+	in float FaceSelectionParam;
 
-	// TODO: Decide which method use
-	/*
+	// TODO: Decide which method use	
 	// NOTE: In this case, the selected edge is defined as the opposite to vertex,
 	// same schema as with BarCoords
 	float when_eq(float x, float y) {
 	  return 1.0 - abs(sign(x - y));
 	}
-	
-	float A = when_eq(MinD - BarCoord.w, 0);
-	*/
 
 	float edgeFactor(){
 		vec3 dBarCoord = fwidth(BarCoord.xyz);
@@ -223,22 +227,29 @@ OpenGLInit()
 
 	void main()
 	{
-		//vec3 EdgeColor = vec3(0.17, 0.5, 0.8);
-		vec3 SelectEdgeColor = vec3(0.86f, 0.65, 0.2);
-#if 1
+		vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
+
+		vec3 SelectColor = vec3(0.86f, 0.65f, 0.2f);
+		vec3 HotFaceColor = vec3(1.0f);
+
 		float MinD = min(min(BarCoord.x, BarCoord.y), BarCoord.z);
 		float dMinD = fwidth(MinD);
-		float Thickness = dMinD*2.5;
+		float Thickness = dMinD*2.5f;
 		float Factor = smoothstep(0, Thickness, MinD);
-#else
-		float Factor = edgeFactor();
-#endif
-		float InvFactor = 1.0 - Factor;
+		float InvFactor = 1.0f - Factor;
+		//float A = step(1.0f - dMinD, BarCoord.w);
+		float A = when_eq(MinD - BarCoord.w, 0);
 		
-		float A = step(1.0 - dMinD, BarCoord.w);
-		vec3 FinalEdgeColor = mix(EdgeColor, SelectEdgeColor, A);
+		vec3 FinalEdgeColor = mix(_EdgeColor, SelectColor, A);
 
-		FragColor = vec4(mix(Color.xyz, EdgeColor, InvFactor), 1.0);
+		float SelectFaceColorFactor = step(FaceSelectionType_Select, FaceSelectionParam);
+		float HotFaceColorFactor = (1.0f - SelectFaceColorFactor) * step(FaceSelectionType_Hot, FaceSelectionParam);
+		vec3 FinalSelectionFaceColor = SelectColor*SelectFaceColorFactor + HotFaceColor*HotFaceColorFactor;
+
+		// TODO: Properly specify mix factor
+		vec3 FinalFaceColor = mix(Color.xyz, FinalSelectionFaceColor, 0.3f);
+
+		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvFactor), Color.w);
 	}
 	)FOO";
 
@@ -354,43 +365,11 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
 				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)0);
+				glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
 				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)(sizeof(f32) * 3));
+				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 3));
 
 				glDrawArrays(GL_TRIANGLES, ModelEntry->StartOffset / sizeof(render_model_face_vertex), ModelEntry->ElementCount);
-			} break;
-
-			case RenderEntryType_render_entry_model_face:
-			{
-				glUseProgram(OpenGL.ModelProgramID);
-
-				render_entry_model_face *FaceEntry = (render_entry_model_face *)(Commands->PushBufferBase + BufferOffset);
-				BufferOffset += sizeof(render_entry_model_face);
-
-				m4x4 ModelTransform = Identity();
-				SetTranslation(&ModelTransform, FaceEntry->Offset);
-
-				glUniform4f(OpenGL.ModelColorID,
-					FaceEntry->Color.r, FaceEntry->Color.g, FaceEntry->Color.b, FaceEntry->Color.a);
-				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
-				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
-
-				// TODO: Delete later
-				glUniform3f(OpenGL.ModelEdgeColor,
-					FaceEntry->EdgeColor.r, FaceEntry->EdgeColor.g, FaceEntry->EdgeColor.b);
-
-				glBindVertexArray(OpenGL.VertexBufferVAO);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
-
-				u32 OffsetInBytes = FaceEntry->VertexBufferOffset * sizeof(f32);
-
-				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)0);
-				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(f32), (void*)(sizeof(f32) * 3));
-
-				glDrawArrays(GL_TRIANGLES, FaceEntry->VertexBufferOffset / 7, 6);
 			} break;
 		}
 	}

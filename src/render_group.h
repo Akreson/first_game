@@ -41,6 +41,12 @@ struct render_entry_model_face
 	//v3 BaricentricCoord;
 };
 
+struct render_model_face_vertex
+{
+	v4 Vertex;
+	v4 MetaInfo;
+};
+
 struct render_group
 {
 	game_render_commands *Commands;
