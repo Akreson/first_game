@@ -198,7 +198,6 @@ OpenGLInit()
 	// TODO: Set model color?
 	// TODO: Compute color for selected edge in right way
 
-	// TODO: Fix Edge outline (broken for now)
 	const char *ModelFragmentCode = R"FOO(
 	#define FaceSelectionType_Hot 1.0f
 	#define FaceSelectionType_Select 2.0f
@@ -367,7 +366,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glEnableVertexAttribArray(0);
 				glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
 				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 3));
+				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
 
 				glDrawArrays(GL_TRIANGLES, ModelEntry->StartOffset / sizeof(render_model_face_vertex), ModelEntry->ElementCount);
 			} break;

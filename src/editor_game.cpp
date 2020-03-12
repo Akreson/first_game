@@ -227,7 +227,7 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 }
 
 void
-AddCubeModel(game_editor_state *EditorState, v4 Color = V4(1.0f), v3 Offset = V3(0))
+AddCubeModel(game_editor_state *EditorState, v3 Offset = V3(0), v4 Color = V4(0, 0, 0, 1.0f))
 {
 	model *Model = AddModel(EditorState, Color, Offset);
 	GeneratingCube(&EditorState->EditorPageArena, Model);
@@ -483,9 +483,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitArena(&EditorState->EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		InitPageArena(&EditorState->EditorMainArena, &EditorState->EditorPageArena, MiB(10));
 
-		AddCubeModel(EditorState, V4(0, 0, 0, 1.0f));
-		AddCubeModel(EditorState, V4(0, 0, 0, 1.0f), V3(-2.0f, 1.0f, 1.0f));
-		AddCubeModel(EditorState, V4(0, 0, 0, 1.0f), V3(-2.0f, 4.0f, -1.0f));
+		AddCubeModel(EditorState);
+		AddCubeModel(EditorState, V3(-2.0f, 1.0f, 1.0f));
+		AddCubeModel(EditorState, V3(-2.0f, 4.0f, -1.0f));
 
 		EditorState->CameraOffset = V3(0, 0, 3);
 		EditorState->CameraPos = V3(0);

@@ -115,9 +115,9 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 1, 0, 0));
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V1], FaceParam.SelectionType), V4(0, 1, 0, 0));
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 0, 1, 1));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 1, 0, 1));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V1], FaceParam.SelectionType), V4(0, 1, 0, 1));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 0, 1, 0));
 
 	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 0, 1, 0));
 	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 1, 0, 0));
@@ -155,7 +155,7 @@ EndPushModel(render_group *Group)
 
 inline void
 PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
-	v4 Color = V4(0), v3 Offset = V3(0), v3 EdgeColor = V3(0))
+	v4 Color = V4(1), v3 Offset = V3(0), v3 EdgeColor = V3(0))
 {
 	BeginPushModel(Group, Color, Offset, EdgeColor);
 	PushFace(Group, VertexStorage, Face);
