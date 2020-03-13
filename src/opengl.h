@@ -194,26 +194,35 @@ struct opengl_info
 	b32 GL_EXT_framebuffer_object;
 };
 
-struct opengl_render_info
+struct opengl_bitmap_program
 {
-	GLuint BitmapProgramID;
+	GLuint ProgID;
 	GLuint BitmapVAO;
 	GLuint BitmapVBO;
 
-	GLuint VertexBufferVAO;
-	GLuint VertexBufferVBO;
+	GLuint ColorID;
+	GLuint ProjID;
+};
 
-	GLuint ModelProgramID; //
+struct opengl_model_program
+{
+	GLuint ProgID; //
 	GLuint ModelVAO; // TODO: Delete?
 	GLuint ModelVBO; //
-
-	GLuint BitmapColorID;
-	GLuint BitmapProjID;
 
 	GLuint ModelColorID;
 	GLuint ModelProjID;
 	GLuint ModelTransformID;
 	GLuint ModelEdgeColor;
+};
+
+struct opengl_render_info
+{
+	GLuint VertexBufferVAO;
+	GLuint VertexBufferVBO;
+
+	opengl_bitmap_program BitmapProg;
+	opengl_model_program ModelProg;
 
 	/*GLuint FrameBufferDisplayProgramID;
 	GLuint FrameBuffer;

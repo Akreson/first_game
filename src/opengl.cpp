@@ -1,6 +1,7 @@
 #include "opengl.h"
 
 global opengl_render_info OpenGL;
+global const char *SharedHeaderCode;
 
 void OpenGLMessageDebugCallback(
 	GLenum source,
@@ -120,17 +121,9 @@ OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode
 }
 
 internal void
-OpenGLInit()
+CompileBitmapProgram(opengl_bitmap_program *Prog)
 {
-#ifdef DEVELOP_MODE
-	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
-#endif
-
-	const char *HeaderCode = R"FOO(
-	#version 440	
-	)FOO";
-
-	const char *BitmapVertexCode =  R"FOO(
+	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec4 vertex;
 	out vec2 TexCoords;
 	
@@ -143,7 +136,7 @@ OpenGLInit()
 	}
 
 	)FOO";
-	const char *BitmapFragmentCode = R"FOO(
+	const char *FragmentCode = R"FOO(
 	in vec2 TexCoords;	
 	out vec4 FragColor;
 
@@ -158,25 +151,33 @@ OpenGLInit()
 	}
 	)FOO";
 
-	OpenGL.BitmapProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)BitmapVertexCode, (GLchar *)BitmapFragmentCode);
+	GLuint ProgID = OpenGLCreateProgram((GLchar *)SharedHeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	Prog->ProgID = ProgID;
+
+	glUseProgram(ProgID);
 	
-	glUseProgram(OpenGL.BitmapProgramID);
-	glGenVertexArrays(1, &OpenGL.BitmapVAO);
-	glGenBuffers(1, &OpenGL.BitmapVBO);
+	Prog->ColorID = glGetUniformLocation(ProgID, "Color");
+	Prog->ProjID = glGetUniformLocation(ProgID, "Proj");
+	
+	glGenVertexArrays(1, &Prog->BitmapVAO);
+	glGenBuffers(1, &Prog->BitmapVBO);
 
-	glBindVertexArray(OpenGL.BitmapVAO);
+	glBindVertexArray(Prog->BitmapVAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, Prog->BitmapVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+	glUseProgram(0);
+}
 
-	OpenGL.BitmapColorID = glGetUniformLocation(OpenGL.BitmapProgramID, "Color");
-	OpenGL.BitmapProjID = glGetUniformLocation(OpenGL.BitmapProgramID, "Proj");
-
-	const char *ModelVertexCode = R"FOO(
+internal void
+CompileModelProgram(opengl_model_program *Prog)
+{
+	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec4 aPos;
 	layout (location = 1) in vec4 aBarCoord;
 
@@ -198,7 +199,7 @@ OpenGLInit()
 	// TODO: Set model color?
 	// TODO: Compute color for selected edge in right way
 
-	const char *ModelFragmentCode = R"FOO(
+	const char *FragmentCode = R"FOO(
 	#define FaceSelectionType_Hot 1.0f
 	#define FaceSelectionType_Select 2.0f
 
@@ -252,23 +253,91 @@ OpenGLInit()
 	}
 	)FOO";
 
-	OpenGL.ModelProgramID = OpenGLCreateProgram((GLchar *)HeaderCode, (GLchar *)ModelVertexCode, (GLchar *)ModelFragmentCode);
+	GLuint ProgID = OpenGLCreateProgram((GLchar *)SharedHeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	Prog->ProgID = ProgID;
 
-	glUseProgram(OpenGL.ModelProgramID);
-	glGenVertexArrays(1, &OpenGL.ModelVAO);
-	glGenBuffers(1, &OpenGL.ModelVBO);
+	glUseProgram(ProgID);
+	Prog->ModelColorID = glGetUniformLocation(ProgID, "Color");
+	Prog->ModelProjID = glGetUniformLocation(ProgID, "Proj");
+	Prog->ModelTransformID = glGetUniformLocation(ProgID, "ModelTransform");
 
-	OpenGL.ModelColorID = glGetUniformLocation(OpenGL.ModelProgramID, "Color");
-	OpenGL.ModelProjID = glGetUniformLocation(OpenGL.ModelProgramID, "Proj");
-	OpenGL.ModelTransformID = glGetUniformLocation(OpenGL.ModelProgramID, "ModelTransform");
-	
 	// TODO: Use for debuging, delete later
-	OpenGL.ModelEdgeColor = glGetUniformLocation(OpenGL.ModelProgramID, "EdgeColor");
+	Prog->ModelEdgeColor = glGetUniformLocation(ProgID, "EdgeColor");
+	
+	glGenVertexArrays(1, &Prog->ModelVAO);
+	glGenBuffers(1, &Prog->ModelVBO);
+
+	glUseProgram(0);
+}
+
+void
+OpenGLInit()
+{
+#ifdef DEVELOP_MODE
+	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
+#endif
+
+	SharedHeaderCode = R"FOO(
+	#version 440	
+	)FOO";
+
+	CompileBitmapProgram(&OpenGL.BitmapProg);
+	CompileModelProgram(&OpenGL.ModelProg);
 
 	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
 
 	// NOTE: use framebuffer in future
+}
+
+internal void
+UseProgramBegin(opengl_bitmap_program *Prog, v3 Color, m4x4 *ProgMat)
+{
+	glUseProgram(Prog->ProgID);
+
+	glUniform3f(Prog->ColorID, Color.x, Color.y, Color.z);
+	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(Prog->BitmapVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, Prog->BitmapVBO);
+}
+
+internal void
+UseProgramEnd(opengl_bitmap_program *Prog)
+{
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glUseProgram(0);
+}
+
+internal void
+UseProgramBegin(opengl_model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProgMat, m4x4 *ModelMat)
+{
+	glUseProgram(Prog->ProgID);
+
+	glUniform4f(Prog->ModelColorID, Color.r, Color.g, Color.b, Color.a);
+	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
+
+	// TODO: Delete later
+	glUniform3f(Prog->ModelEdgeColor, EdgeColor.r, EdgeColor.g, EdgeColor.b);
+
+	glBindVertexArray(OpenGL.VertexBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
+}
+
+internal void
+UseProgramEnd(opengl_model_program *Prog)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glUseProgram(0);
 }
 
 void
@@ -303,7 +372,6 @@ OpenGLRenderCommands(game_render_commands *Commands)
 		{
 			case RenderEntryType_render_entry_bitmap:
 			{
-				glUseProgram(OpenGL.BitmapProgramID);
 
 				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)(Commands->PushBufferBase + BufferOffset);
 				BufferOffset += sizeof(render_entry_bitmap);
@@ -324,51 +392,30 @@ OpenGLRenderCommands(game_render_commands *Commands)
 					MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
 				};
 
-				glUniform3f(OpenGL.BitmapColorID,
-					BitmapEntry->Color.x, BitmapEntry->Color.y, BitmapEntry->Color.z);
-				glUniformMatrix4fv(OpenGL.BitmapProjID, 1, GL_FALSE, &Commands->OrthoProj.Forward.E[0][0]);
-
-				glActiveTexture(GL_TEXTURE0);
-				glBindVertexArray(OpenGL.BitmapVAO);
+				UseProgramBegin(&OpenGL.BitmapProg, BitmapEntry->Color, &Commands->OrthoProj.Forward);
 
 				glBindTexture(GL_TEXTURE_2D, TextureIndex);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapVBO);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertices), Vertices);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 
-				glBindVertexArray(0);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				UseProgramEnd(&OpenGL.BitmapProg);
 			} break;
 
 			case RenderEntryType_render_entry_model:
 			{
-				glUseProgram(OpenGL.ModelProgramID);
-
 				render_entry_model *ModelEntry = (render_entry_model *)(Commands->PushBufferBase + BufferOffset);
 				BufferOffset += sizeof(render_entry_model);
 
 				m4x4 ModelTransform = Identity();
 				SetTranslation(&ModelTransform, ModelEntry->Offset);
 
-				glUniform4f(OpenGL.ModelColorID,
-					ModelEntry->Color.r, ModelEntry->Color.g, ModelEntry->Color.b, ModelEntry->Color.a);
-				glUniformMatrix4fv(OpenGL.ModelProjID, 1, GL_FALSE, &Commands->PersProj.Forward.E[0][0]);
-				glUniformMatrix4fv(OpenGL.ModelTransformID, 1, GL_FALSE, &ModelTransform.E[0][0]);
-
-				// TODO: Delete later
-				glUniform3f(OpenGL.ModelEdgeColor,
-					ModelEntry->EdgeColor.r, ModelEntry->EdgeColor.g, ModelEntry->EdgeColor.b);
-
-				glBindVertexArray(OpenGL.VertexBufferVAO);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
-
-				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
-				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
+				UseProgramBegin(&OpenGL.ModelProg, ModelEntry->Color, ModelEntry->EdgeColor,
+					&Commands->PersProj.Forward, &ModelTransform);
 
 				glDrawArrays(GL_TRIANGLES, ModelEntry->StartOffset / sizeof(render_model_face_vertex), ModelEntry->ElementCount);
+			
+				UseProgramEnd(&OpenGL.ModelProg);
 			} break;
 		}
 	}
