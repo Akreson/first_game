@@ -211,9 +211,6 @@ CompileModelProgram(opengl_model_program *Prog)
 	in vec4 BarCoord;
 	in float FaceSelectionParam;
 
-	// TODO: Decide which method use	
-	// NOTE: In this case, the selected edge is defined as the opposite to vertex,
-	// same schema as with BarCoords
 	float when_eq(float x, float y) {
 	  return 1.0 - abs(sign(x - y));
 	}
@@ -237,8 +234,7 @@ CompileModelProgram(opengl_model_program *Prog)
 		float Thickness = dMinD*2.5f;
 		float Factor = smoothstep(0, Thickness, MinD);
 		float InvFactor = 1.0f - Factor;
-		//float A = step(1.0f - dMinD, BarCoord.w);
-		float A = when_eq(MinD - BarCoord.w, 0);
+		float A = step(1.0f - dMinD, BarCoord.w);
 		
 		vec3 FinalEdgeColor = mix(_EdgeColor, SelectColor, A);
 
@@ -278,7 +274,7 @@ OpenGLInit()
 #endif
 
 	SharedHeaderCode = R"FOO(
-	#version 440	
+	#version 440
 	)FOO";
 
 	CompileBitmapProgram(&OpenGL.BitmapProg);

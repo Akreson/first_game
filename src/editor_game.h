@@ -115,6 +115,15 @@ struct model
 	u16 EdgeCount;
 };
 
+struct camera
+{
+	v3 Pos;
+	v3 Offset;
+	f32 Orbit;
+	f32 Pitch;
+	f32 Dolly;
+};
+
 struct game_world_state
 {
 
@@ -122,16 +131,18 @@ struct game_world_state
 
 struct game_editor_state
 {
-	v3 CameraOffset;
-	f32 CameraOrbit;
-	f32 CameraPitch;
-	f32 CameraDolly;
-	v3 CameraPos;
-
-	memory_arena EditorMainArena;
-	page_memory_arena EditorPageArena;
 	model Models[32];
 	u16 ModelsCount;
+
+	memory_arena MainArena;
+	page_memory_arena PageArena;
+
+	camera Camera;
+
+	b32 ActiveModel;
+	u32 ActiveModelID;
+	b32 HotModel;
+	u32 HotMOdelID;
 };
 
 struct game_state

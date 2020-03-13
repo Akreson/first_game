@@ -102,26 +102,32 @@ ConstructFaceVertexInfo(v4 Vertex, v4 MetaInfo)
 struct face_render_param
 {
 	f32 SelectionType;
+	b8 ActiveVert[4];
 };
 
 void
 PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_param FaceParam = {})
 {
 	Assert(Group->GroupRenderElement);
-
 	game_render_commands *Commands = Group->Commands;
 
 	render_model_face_vertex *StartFaceVertex = 
 		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 1, 0, 1));
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V1], FaceParam.SelectionType), V4(0, 1, 0, 1));
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 0, 1, 0));
+	f32 ActiveVert[4];
+	ActiveVert[0] = FaceParam.ActiveVert[0] ? 1.0f : 0;
+	ActiveVert[1] = FaceParam.ActiveVert[1] ? 1.0f : 0;
+	ActiveVert[2] = FaceParam.ActiveVert[2] ? 1.0f : 0;
+	ActiveVert[3] = FaceParam.ActiveVert[3] ? 1.0f : 0;
 
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 0, 1, 0));
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 1, 0, 0));
-	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V3], FaceParam.SelectionType), V4(0, 0, 1, 0));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 1, 0, ActiveVert[0]));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V1], FaceParam.SelectionType), V4(0, 1, 0, ActiveVert[1]));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 0, 1, ActiveVert[2]));
+
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V0], FaceParam.SelectionType), V4(1, 0, 1, ActiveVert[0]));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V2], FaceParam.SelectionType), V4(0, 1, 0, ActiveVert[2]));
+	*FaceVertex++ = ConstructFaceVertexInfo(V4(VertexStorage[Face.V3], FaceParam.SelectionType), V4(0, 0, 1, ActiveVert[3]));
 
 	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }

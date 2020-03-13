@@ -147,7 +147,9 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 rect3
 ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 {
-	rect3 Rect = {V3(60000.0f), V3(-60000.0f)};
+	rect3 Rect;
+	Rect.Min = V3(FLOAT_MAX);
+	Rect.Max = V3(FLOAT_MAX_NEG);
 
 	for (u32 VertexIndex = 0;
 		VertexIndex < VertexCount;
@@ -165,6 +167,10 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 		if (Vertex.z > Rect.Max.z) Rect.Max.z = Vertex.z;
 	}
 
+	Assert(Rect.Max.x < 5.0f);
+	Assert(Rect.Max.y < 5.0f);
+	Assert(Rect.Max.z < 5.0f);
+
 	return Rect;
 }
 
@@ -172,7 +178,7 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 void
 GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 {	
-	v3 Vertex[12];
+	v3 Vertex[8];
 	Vertex[0] = V3(-HalfDim, -HalfDim, HalfDim);
 	Vertex[1] = V3(HalfDim, -HalfDim, HalfDim);
 	Vertex[2] = V3(HalfDim, HalfDim, HalfDim);
@@ -183,7 +189,7 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Vertex[6] = V3(-HalfDim, HalfDim, -HalfDim);
 	Vertex[7] = V3(HalfDim, HalfDim, -HalfDim);
 	
-#if 1
+#if 0
 	// NOTE: For debug
 	f32 DebugHalfDim = HalfDim * 0.07f;
 	Vertex[8] = V3(-DebugHalfDim, -DebugHalfDim, 0);
@@ -230,7 +236,7 @@ void
 AddCubeModel(game_editor_state *EditorState, v3 Offset = V3(0), v4 Color = V4(0, 0, 0, 1.0f))
 {
 	model *Model = AddModel(EditorState, Color, Offset);
-	GeneratingCube(&EditorState->EditorPageArena, Model);
+	GeneratingCube(&EditorState->PageArena, Model);
 	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 }
 
@@ -480,22 +486,22 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		LoadAsset(GameState);
 
-		InitArena(&EditorState->EditorMainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
-		InitPageArena(&EditorState->EditorMainArena, &EditorState->EditorPageArena, MiB(10));
+		InitArena(&EditorState->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		InitPageArena(&EditorState->MainArena, &EditorState->PageArena, MiB(10));
 
 		AddCubeModel(EditorState);
 		AddCubeModel(EditorState, V3(-2.0f, 1.0f, 1.0f));
 		AddCubeModel(EditorState, V3(-2.0f, 4.0f, -1.0f));
 
-		EditorState->CameraOffset = V3(0, 0, 3);
-		EditorState->CameraPos = V3(0);
+		EditorState->Camera.Offset = V3(0, 0, 3);
+		EditorState->Camera.Pos = V3(0);
 
 		GameState->IsInit = true;
 	}
 
 	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
 
-	v3 CameraOffset = EditorState->CameraOffset;
+	v3 CameraOffset = EditorState->Camera.Offset;
 
 	v2 Mouse = {};
 	if (Input)
@@ -512,31 +518,31 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
-			EditorState->CameraOrbit -= dMouse.x * RotationSpeed;
-			EditorState->CameraPitch += dMouse.y * RotationSpeed;
+			EditorState->Camera.Orbit -= dMouse.x * RotationSpeed;
+			EditorState->Camera.Pitch += dMouse.y * RotationSpeed;
 		}
 
 		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
 		{
-			f32 ZoomSpeed = (CameraOffset.z + EditorState->CameraDolly) * 0.004f;
-			EditorState->CameraDolly -= dMouse.y*ZoomSpeed;
+			f32 ZoomSpeed = (CameraOffset.z + EditorState->Camera.Dolly) * 0.004f;
+			EditorState->Camera.Dolly -= dMouse.y*ZoomSpeed;
 		}
 
 		/*if (Input->CtrlDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
-			EditorState->CameraOffset.x -= dMouse.x * RotationSpeed;
-			EditorState->CameraOffset.y += dMouse.y * RotationSpeed;
+			EditorState->Camera.Offset.x -= dMouse.x * RotationSpeed;
+			EditorState->Camera.Offset.y += dMouse.y * RotationSpeed;
 
-			CameraOffset = EditorState->CameraOffset;
+			CameraOffset = EditorState->Camera.Offset;
 		}*/
 
 		GameState->LastMouseP = Mouse;
 	}
 
-	m4x4 CameraR = XRotation(EditorState->CameraPitch) * YRotation(EditorState->CameraOrbit);
-	v3 CameraOt = ((CameraOffset + V3(0, 0, EditorState->CameraDolly)) * CameraR) + EditorState->CameraPos;
-	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, EditorState->CameraPos);
+	m4x4 CameraR = XRotation(EditorState->Camera.Pitch) * YRotation(EditorState->Camera.Orbit);
+	v3 CameraOt = ((CameraOffset + V3(0, 0, EditorState->Camera.Dolly)) * CameraR) + EditorState->Camera.Pos;
+	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, EditorState->Camera.Pos);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	ray_param Ray;
@@ -544,7 +550,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	Ray.Pos = CameraOt;
 
 	model_ray_result ModelHit =
-		RayModelsIntersect(&EditorState->EditorMainArena, EditorState->Models, EditorState->ModelsCount, Ray);
+		RayModelsIntersect(&EditorState->MainArena, EditorState->Models, EditorState->ModelsCount, Ray);
 
 	b32 HitTest;
 	for (u32 ModelIndex = 0;
@@ -557,7 +563,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Left])))
 		{
-			EditorState->CameraPos = Model->Offset;
+			EditorState->Camera.Pos = Model->Offset;
 		}
 		
 		v3 EdgeColor = HitTest ? V3(0.86f, 0.70f, 0.2f) : V3(0.17f, 0.5f, 0.8f);
@@ -574,6 +580,10 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			if (HitTest && (FaceIndex == ModelHit.FaceIndex))
 			{
 				FaceParam.SelectionType = FaceSelectionType_Hot;
+				FaceParam.ActiveVert[0] = true;
+				FaceParam.ActiveVert[1] = true;
+				FaceParam.ActiveVert[2] = true;
+				FaceParam.ActiveVert[3] = true;
 			}
 
 			PushFace(&RenderGroup, Model->Vertex, Face, FaceParam);
