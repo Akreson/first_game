@@ -224,7 +224,7 @@ CompileModelProgram(opengl_model_program *Prog)
 
 	void main()
 	{
-		vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
+		//vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
 
 		vec3 SelectColor = vec3(0.86f, 0.65f, 0.2f);
 		vec3 HotFaceColor = vec3(1.0f);
@@ -236,7 +236,7 @@ CompileModelProgram(opengl_model_program *Prog)
 		float InvFactor = 1.0f - Factor;
 		float A = step(1.0f - dMinD, BarCoord.w);
 		
-		vec3 FinalEdgeColor = mix(_EdgeColor, SelectColor, A);
+		vec3 FinalEdgeColor = mix(EdgeColor, SelectColor, A);
 
 		float SelectFaceColorFactor = step(FaceSelectionType_Select, FaceSelectionParam);
 		float HotFaceColorFactor = (1.0f - SelectFaceColorFactor) * step(FaceSelectionType_Hot, FaceSelectionParam);

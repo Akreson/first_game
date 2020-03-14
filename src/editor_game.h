@@ -88,6 +88,13 @@ struct model_ray_sort
 	f32 Length;
 };
 
+struct model_interact
+{
+	u32 Type;
+	u32 FaceID;
+	u32 EdgeID;
+};
+
 enum select_element_type
 {
 	SelectElementType_None,
@@ -114,10 +121,10 @@ struct game_editor_state
 
 	camera Camera;
 
-	b32 ActiveModel;
+	b32 IsActiveModelSet;
 	u32 ActiveModelID;
-	b32 HotModel;
-	u32 HotMOdelID;
+	b32 IsHotModelSet;
+	u32 HotModelID;
 
 	selected_elements_buffer Selected;
 };

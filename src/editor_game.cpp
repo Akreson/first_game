@@ -40,7 +40,7 @@ RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Scree
 	}
 }
 
-// TODO: Implemnt
+// TODO: Implement
 void
 ModelEdgeInterset(void)
 {
@@ -198,7 +198,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 
 	u32 ModelsHitCount = 0;
 	u32 ModelsSortArraySize = 20;
-	model_ray_sort *ModelsIndexArray = (model_ray_sort *)PushArray(Arena, model_ray_sort, ModelsSortArraySize);
+	model_ray_sort *ModelsSortArray = (model_ray_sort *)PushArray(Arena, model_ray_sort, ModelsSortArraySize);
 
 	// NOTE: Gather all intersect models
 	for (u32 ModelIndex = 0;
@@ -211,7 +211,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 
 		if (HitTest)
 		{
-			model_ray_sort *SortEntry = ModelsIndexArray + ModelsHitCount++;
+			model_ray_sort *SortEntry = ModelsSortArray + ModelsHitCount++;
 
 			v3 CenterOfAABB = ((Model->AABB.Min + Model->Offset) + (Model->AABB.Max + Model->Offset)) / 2.0f;
 
@@ -235,8 +235,8 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			Inner < (ModelsHitCount - 1);
 			++Inner)
 		{
-			model_ray_sort *A = ModelsIndexArray + Inner;
-			model_ray_sort *B = ModelsIndexArray + Inner + 1;
+			model_ray_sort *A = ModelsSortArray + Inner;
+			model_ray_sort *B = ModelsSortArray + Inner + 1;
 
 			if (A->Length > B->Length)
 			{
@@ -250,12 +250,11 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 	// NOTE: Find intersetc model face for non convex case
 	if (ModelsHitCount)
 	{
-		b32 FaceHitTest = false;
 		for (u32 SortIndex = 0;
-			SortIndex < ModelsHitCount, !FaceHitTest;
+			(SortIndex < ModelsHitCount) && !Result.Hit;
 			++SortIndex)
 		{
-			u32 ModelIndex = ModelsIndexArray[SortIndex].Index;
+			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
 			model *Model = Models + ModelIndex;
 
 			if (RayModelFaceIntersect(Model, Ray, &Result.Face))
@@ -331,6 +330,13 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			EditorState->Camera.Dolly -= dMouse.y*ZoomSpeed;
 		}
 
+		// TODO: Delete leter
+		if (Input->TabDown)
+		{
+			EditorState->ActiveModelID = 0;
+			EditorState->IsActiveModelSet = 0;
+		}
+
 		/*if (Input->CtrlDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
@@ -352,25 +358,44 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	Ray.Dir = Unproject(&RenderGroup, Mouse);
 	Ray.Pos = CameraOt;
 
-	model_ray_result ModelHit =
-		RayModelsIntersect(&EditorState->MainArena, EditorState->Models, EditorState->ModelsCount, Ray);
+	model_ray_result ModelHit = {};
 
-	if (!EditorState->ActiveModel)
+	// TODO: Set ui interaction in proper way
+	if (!EditorState->IsActiveModelSet)
 	{
-		if (ModelHit.Hit && IsDown(Input->MouseButtons[PlatformMouseButton_Left]))
+		ModelHit = RayModelsIntersect(&EditorState->MainArena, EditorState->Models, EditorState->ModelsCount, Ray);
+
+		if (ModelHit.Hit)
 		{
-			EditorState->ActiveModel = true;
-			EditorState->ActiveModelID = ModelHit.ModelIndex;
+			EditorState->IsHotModelSet = true;
+			EditorState->HotModelID = ModelHit.ModelIndex;
+			
+			if (IsDown(Input->MouseButtons[PlatformMouseButton_Left]))
+			{
+				EditorState->IsActiveModelSet = true;
+				EditorState->ActiveModelID = ModelHit.ModelIndex;
+			}
+		}
+		else
+		{
+			EditorState->IsHotModelSet = false;
 		}
 	}
+	else
+	{
+		model *Model = EditorState->Models + EditorState->ActiveModelID;
+		ModelHit.ModelIndex = EditorState->ActiveModelID;
+		ModelHit.Hit = RayModelFaceIntersect(Model, Ray, &ModelHit.Face);
+	}
 
-	b32 HitTest;
 	for (u32 ModelIndex = 0;
 		ModelIndex < EditorState->ModelsCount;
 		++ModelIndex)
 	{
 		model *Model = EditorState->Models + ModelIndex;
 		
+		v3 EdgeColor = V3(0.17f, 0.5f, 0.8f);
+
 		b32 HitTest = ModelHit.Hit && (ModelHit.ModelIndex == ModelIndex);
 
 		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
@@ -378,7 +403,17 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			EditorState->Camera.Pos = Model->Offset;
 		}
 		
-		v3 EdgeColor = HitTest ? V3(0.86f, 0.70f, 0.2f) : V3(0.17f, 0.5f, 0.8f);
+		if (EditorState->IsActiveModelSet | EditorState->IsHotModelSet)
+		{
+			if (EditorState->IsActiveModelSet && (EditorState->ActiveModelID == ModelIndex))
+			{
+				EdgeColor = V3(0.86f, 0.70f, 0.2f);
+			}
+			else if (EditorState->IsHotModelSet && (EditorState->HotModelID == ModelIndex))
+			{
+				EdgeColor = V3(0, 1.0f, 0);
+			}
+		}
 
 		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, EdgeColor);
 		
