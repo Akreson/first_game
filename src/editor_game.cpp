@@ -136,6 +136,60 @@ ModelEdgeInterset(void)
 #endif
 }
 
+b32
+RayModelFaceIntersect(model *Model, ray_param Ray, face_ray_result *FaceResult)
+{
+	b32 Result = false;
+
+	for (u32 FaceIndex = 0;
+		FaceIndex < Model->FaceCount;
+		++FaceIndex)
+	{
+		model_face Face = Model->Faces[FaceIndex];
+
+		v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
+		v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
+		v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
+		v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+
+		v3 Edge1 = V0 - V1;
+		v3 Edge2 = V0 - V3;
+
+		plane_param Plane;
+		Plane.N = Normalize(Cross(Edge1, Edge2));
+		Plane.D = Dot(Plane.N, V0);
+
+		// Plane intersect
+		f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
+		if (DotRayPlane < 0)
+		{
+			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
+
+			if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
+			{
+				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
+
+				b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
+				if (!HitTest)
+				{
+					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
+				}
+
+				if (HitTest)
+				{
+					FaceResult->Index = FaceIndex;
+					FaceResult->IntersetPoint = IntersetPoint;
+
+					Result = true;
+					break;
+				}
+			}
+		}
+	}
+
+	return Result;
+}
+
 model_ray_result
 RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param Ray)
 {
@@ -204,52 +258,10 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			u32 ModelIndex = ModelsIndexArray[SortIndex].Index;
 			model *Model = Models + ModelIndex;
 
-			for (u32 FaceIndex = 0;
-				FaceIndex < Model->FaceCount;
-				++FaceIndex)
+			if (RayModelFaceIntersect(Model, Ray, &Result.Face))
 			{
-				model_face Face = Model->Faces[FaceIndex];
-
-				v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
-				v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
-				v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
-				v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
-
-				v3 Edge1 = V0 - V1;
-				v3 Edge2 = V0 - V3;
-
-				plane_param Plane;
-				Plane.N = Normalize(Cross(Edge1, Edge2));
-				Plane.D = Dot(Plane.N, V0);
-
-				// Plane intersect
-				f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
-				if (DotRayPlane < 0)
-				{
-					f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
-				
-					if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
-					{
-						v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
-
-						b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
-						if (!HitTest)
-						{
-							HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
-						}
-
-						if (HitTest)
-						{
-							Result.Hit = true;
-							Result.ModelIndex = ModelIndex;
-							Result.FaceIndex = FaceIndex;
-							Result.IntersetPoint = IntersetPoint;
-
-							FaceHitTest = true;
-							break;
-						}
-					}
-				}
+				Result.Hit = true;
+				Result.ModelIndex = ModelIndex;
 			}
 		}
 	}
@@ -273,6 +285,11 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		LoadAsset(GameState);
 
 		InitArena(&EditorState->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		
+		u32 SelectedBufferSize = MiB(1);
+		EditorState->Selected.Elements = (u32 *)PushSize(&EditorState->MainArena, SelectedBufferSize);
+		EditorState->Selected.MaxCount = SelectedBufferSize / sizeof(u32);
+
 		InitPageArena(&EditorState->MainArena, &EditorState->PageArena, MiB(10));
 
 		AddCubeModel(EditorState);
@@ -338,6 +355,15 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	model_ray_result ModelHit =
 		RayModelsIntersect(&EditorState->MainArena, EditorState->Models, EditorState->ModelsCount, Ray);
 
+	if (!EditorState->ActiveModel)
+	{
+		if (ModelHit.Hit && IsDown(Input->MouseButtons[PlatformMouseButton_Left]))
+		{
+			EditorState->ActiveModel = true;
+			EditorState->ActiveModelID = ModelHit.ModelIndex;
+		}
+	}
+
 	b32 HitTest;
 	for (u32 ModelIndex = 0;
 		ModelIndex < EditorState->ModelsCount;
@@ -347,7 +373,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		
 		b32 HitTest = ModelHit.Hit && (ModelHit.ModelIndex == ModelIndex);
 
-		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Left])))
+		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
 		{
 			EditorState->Camera.Pos = Model->Offset;
 		}
@@ -363,7 +389,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			model_face Face = Model->Faces[FaceIndex];
 			face_render_param FaceParam = {};
 			
-			if (HitTest && (FaceIndex == ModelHit.FaceIndex))
+			if (HitTest && (FaceIndex == ModelHit.Face.Index))
 			{
 				FaceParam.SelectionType = FaceSelectionType_Hot;
 				FaceParam.ActiveVert[0] = true;

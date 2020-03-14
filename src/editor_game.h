@@ -69,18 +69,39 @@ struct game_world_state
 
 };
 
+struct face_ray_result
+{
+	u32 Index;
+	v3 IntersetPoint;
+};
+
 struct model_ray_result
 {
 	b32 Hit;
 	u32 ModelIndex;
-	u32 FaceIndex;
-	v3 IntersetPoint;
+	face_ray_result Face;
 };
 
 struct model_ray_sort
 {
 	u32 Index;
 	f32 Length;
+};
+
+enum select_element_type
+{
+	SelectElementType_None,
+
+	SelectElementType_Edge,
+	SelectElementType_Face
+};
+
+struct selected_elements_buffer
+{
+	u32 *Elements;
+	u32 Count;
+	u32 MaxCount;
+	select_element_type Type;
 };
 
 struct game_editor_state
@@ -97,6 +118,8 @@ struct game_editor_state
 	u32 ActiveModelID;
 	b32 HotModel;
 	u32 HotMOdelID;
+
+	selected_elements_buffer Selected;
 };
 
 struct game_state
