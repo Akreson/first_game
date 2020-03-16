@@ -369,7 +369,7 @@ PushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source)
 inline void
 InitPageArena(memory_arena *Arena, page_memory_arena *PageArena, u32 PageArenaSize, u16 PageSize = KiB(4))
 {
-	Assert((PageSize > KiB(1)) && (PageSize < SHRT_MAX) && IsPowerOf2(PageSize));
+	Assert((PageSize >= KiB(1)) && (PageSize < SHRT_MAX) && IsPowerOf2(PageSize));
 	Assert(PageArenaSize >= PageSize);
 	Assert(!(PageArenaSize % PageSize));
 

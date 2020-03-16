@@ -274,7 +274,7 @@ void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
 	game_state *GameState = (game_state *)Memory->GameStorage;
-	game_editor_state *EditorState = &GameState->EditorState;
+	game_editor_state *Editor = &GameState->EditorState;
 
 	if (!GameState->IsInit)
 	{
@@ -283,35 +283,33 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		LoadAsset(GameState);
 
-		InitArena(&EditorState->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
+		InitArena(&Editor->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		
 		u32 SelectedBufferSize = MiB(1);
-		EditorState->Selected.Elements = (u32 *)PushSize(&EditorState->MainArena, SelectedBufferSize);
-		EditorState->Selected.MaxCount = SelectedBufferSize / sizeof(u32);
+		Editor->Selected.Elements = (u32 *)PushSize(&Editor->MainArena, SelectedBufferSize);
+		Editor->Selected.MaxCount = SelectedBufferSize / sizeof(u32);
 
-		InitPageArena(&EditorState->MainArena, &EditorState->PageArena, MiB(10));
+		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 
-		AddCubeModel(EditorState);
-		AddCubeModel(EditorState, V3(-2.0f, 1.0f, 1.0f));
-		AddCubeModel(EditorState, V3(-2.0f, 4.0f, -1.0f));
+		AddCubeModel(Editor);
+		AddCubeModel(Editor, V3(-2.0f, 1.0f, 1.0f));
+		AddCubeModel(Editor, V3(-2.0f, 4.0f, -1.0f));
 
-		EditorState->Camera.Offset = V3(0, 0, 3);
-		EditorState->Camera.Pos = V3(0);
+		Editor->Camera.Offset = V3(0, 0, 3);
+		Editor->Camera.Pos = V3(0);
 
 		GameState->IsInit = true;
 	}
 
 	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
 
-	v3 CameraOffset = EditorState->Camera.Offset;
+	v3 CameraOffset = Editor->Camera.Offset;
 
-	v2 Mouse = {};
 	if (Input)
 	{
-		Mouse.x = Input->MouseX;
-		Mouse.y = Input->MouseY;
+		Editor->UI.MouseP = V2(Input->MouseX, Input->MouseY);
 		
-		v2 dMouse = Mouse - GameState->LastMouseP;
+		Editor->UI.dMouseP = Editor->UI.MouseP - Editor->UI.LastMouseP;
 #if 0
 		char Buffer[1024];
 		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Mouse.x, (u32)Mouse.y);
@@ -320,96 +318,107 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
-			EditorState->Camera.Orbit -= dMouse.x * RotationSpeed;
-			EditorState->Camera.Pitch += dMouse.y * RotationSpeed;
+			Editor->Camera.Orbit -= Editor->UI.dMouseP.x * RotationSpeed;
+			Editor->Camera.Pitch += Editor->UI.dMouseP.y * RotationSpeed;
 		}
 
 		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
 		{
-			f32 ZoomSpeed = (CameraOffset.z + EditorState->Camera.Dolly) * 0.004f;
-			EditorState->Camera.Dolly -= dMouse.y*ZoomSpeed;
+			f32 ZoomSpeed = (CameraOffset.z + Editor->Camera.Dolly) * 0.004f;
+			Editor->Camera.Dolly -= Editor->UI.dMouseP.y*ZoomSpeed;
 		}
 
-		// TODO: Delete leter
 		if (Input->TabDown)
 		{
-			EditorState->ActiveModelID = 0;
-			EditorState->IsActiveModelSet = 0;
+			++Editor->UI.ITarget;
+			if (Editor->UI.ITarget == ModelInteractionTarget_Count)
+			{
+				Editor->UI.ITarget = 1;
+			}
+		}
+		
+		// TODO: Delete leter
+		if (Input->ShiftDown && Input->AltDown)
+		{
+			Editor->UI.ITarget = ModelInteractionTarget_None;
+			Editor->ActiveModelID = 0;
+			Editor->IsActiveModelSet = 0;
 		}
 
 		/*if (Input->CtrlDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
-			EditorState->Camera.Offset.x -= dMouse.x * RotationSpeed;
-			EditorState->Camera.Offset.y += dMouse.y * RotationSpeed;
+			Editor->Camera.Offset.x -= Editor->UI.dMouseP.x * RotationSpeed;
+			Editor->Camera.Offset.y += Editor->UI.dMouseP.y * RotationSpeed;
 
-			CameraOffset = EditorState->Camera.Offset;
+			CameraOffset = Editor->Camera.Offset;
 		}*/
 
-		GameState->LastMouseP = Mouse;
+		Editor->UI.LastMouseP = Editor->UI.MouseP;
 	}
 
-	m4x4 CameraR = XRotation(EditorState->Camera.Pitch) * YRotation(EditorState->Camera.Orbit);
-	v3 CameraOt = ((CameraOffset + V3(0, 0, EditorState->Camera.Dolly)) * CameraR) + EditorState->Camera.Pos;
-	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, EditorState->Camera.Pos);
+	m4x4 CameraR = XRotation(Editor->Camera.Pitch) * YRotation(Editor->Camera.Orbit);
+	v3 CameraOt = ((CameraOffset + V3(0, 0, Editor->Camera.Dolly)) * CameraR) + Editor->Camera.Pos;
+	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, Editor->Camera.Pos);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
 	ray_param Ray;
-	Ray.Dir = Unproject(&RenderGroup, Mouse);
+	Ray.Dir = Unproject(&RenderGroup, Editor->UI.MouseP);
 	Ray.Pos = CameraOt;
 
 	model_ray_result ModelHit = {};
 
 	// TODO: Set ui interaction in proper way
-	if (!EditorState->IsActiveModelSet)
+	if (!Editor->UI.ITarget)
 	{
-		ModelHit = RayModelsIntersect(&EditorState->MainArena, EditorState->Models, EditorState->ModelsCount, Ray);
+		ModelHit = RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount, Ray);
 
 		if (ModelHit.Hit)
 		{
-			EditorState->IsHotModelSet = true;
-			EditorState->HotModelID = ModelHit.ModelIndex;
+			Editor->IsHotModelSet = true;
+			Editor->HotModelID = ModelHit.ModelIndex;
 			
 			if (IsDown(Input->MouseButtons[PlatformMouseButton_Left]))
 			{
-				EditorState->IsActiveModelSet = true;
-				EditorState->ActiveModelID = ModelHit.ModelIndex;
+				Editor->UI.ITarget = ModelInteractionTarget_Model;
+				Editor->IsActiveModelSet = true;
+				Editor->ActiveModelID = ModelHit.ModelIndex;
 			}
 		}
 		else
 		{
-			EditorState->IsHotModelSet = false;
+			Editor->IsHotModelSet = false;
 		}
 	}
 	else
 	{
-		model *Model = EditorState->Models + EditorState->ActiveModelID;
-		ModelHit.ModelIndex = EditorState->ActiveModelID;
+		model *Model = Editor->Models + Editor->ActiveModelID;
+		ModelHit.ModelIndex = Editor->ActiveModelID;
 		ModelHit.Hit = RayModelFaceIntersect(Model, Ray, &ModelHit.Face);
 	}
 
 	for (u32 ModelIndex = 0;
-		ModelIndex < EditorState->ModelsCount;
+		ModelIndex < Editor->ModelsCount;
 		++ModelIndex)
 	{
-		model *Model = EditorState->Models + ModelIndex;
+		model *Model = Editor->Models + ModelIndex;
 		
 		v3 EdgeColor = V3(0.17f, 0.5f, 0.8f);
 
 		b32 HitTest = ModelHit.Hit && (ModelHit.ModelIndex == ModelIndex);
 
-		if (HitTest && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
+		if (ModelHit.Hit && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
 		{
-			EditorState->Camera.Pos = Model->Offset;
+			Editor->Camera.Pos = Model->Offset;
 		}
 		
-		if (EditorState->IsActiveModelSet | EditorState->IsHotModelSet)
+		if (Editor->IsActiveModelSet | Editor->IsHotModelSet)
 		{
-			if (EditorState->IsActiveModelSet && (EditorState->ActiveModelID == ModelIndex))
+			if (Editor->IsActiveModelSet && (Editor->ActiveModelID == ModelIndex))
 			{
 				EdgeColor = V3(0.86f, 0.70f, 0.2f);
 			}
-			else if (EditorState->IsHotModelSet && (EditorState->HotModelID == ModelIndex))
+			else if (Editor->IsHotModelSet && (Editor->HotModelID == ModelIndex))
 			{
 				EdgeColor = V3(0, 1.0f, 0);
 			}
@@ -424,7 +433,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			model_face Face = Model->Faces[FaceIndex];
 			face_render_param FaceParam = {};
 			
-			if (HitTest && (FaceIndex == ModelHit.Face.Index))
+			if (Editor->IsActiveModelSet && HitTest && (FaceIndex == ModelHit.Face.Index))
 			{
 				FaceParam.SelectionType = FaceSelectionType_Hot;
 				FaceParam.ActiveVert[0] = true;

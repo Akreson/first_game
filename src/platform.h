@@ -144,6 +144,42 @@ struct m4x4_inv
 #define Assert(Expression)
 #endif
 
+inline u32
+GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
+{
+	Assert(!(Alignment & (Alignment - 1)));
+
+	u32 AlignMask = Alignment - 1;
+	u32 AlignOffset = Alignment - (Ptr & AlignMask);
+
+	return AlignOffset;
+}
+
+inline u32
+GetAlignmentOffsetBack(memory_index Ptr, u32 Alignment)
+{
+	Assert(!(Alignment & (Alignment - 1)));
+
+	u32 AlignMask = Alignment - 1;
+	u32 AlignOffset = Ptr & AlignMask;
+
+	return AlignOffset;
+}
+
+inline b32
+IsAligned(void *Ptr, u32 Alignment)
+{
+	b32 Result = (umm)Ptr & (Alignment - 1);
+	return Result;
+}
+
+inline b32
+IsPowerOf2(u32 Value)
+{
+	b32 Result = !(Value & (Value - 1));
+	return Result;
+}
+
 inline void
 Copy(memory_index Size, void *DestBase, void *SourceBase)
 {

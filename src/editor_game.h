@@ -3,42 +3,6 @@
 #define MIN(A, B) (((A) < (B)) ? (A) : (B))
 #define MAX(A, B) (((A) > (B)) ? (A) : (B))
 
-inline u32
-GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
-{
-	Assert(!(Alignment & (Alignment - 1)));
-
-	u32 AlignMask = Alignment - 1;
-	u32 AlignOffset = Alignment - (Ptr & AlignMask);
-
-	return AlignOffset;
-}
-
-inline u32
-GetAlignmentOffsetBack(memory_index Ptr, u32 Alignment)
-{
-	Assert(!(Alignment & (Alignment - 1)));
-
-	u32 AlignMask = Alignment - 1;
-	u32 AlignOffset = Ptr & AlignMask;
-
-	return AlignOffset;
-}
-
-inline b32
-IsAligned(void *Ptr, u32 Alignment)
-{
-	b32 Result = (umm)Ptr & (Alignment - 1);
-	return Result;
-}
-
-inline b32
-IsPowerOf2(u32 Value)
-{
-	b32 Result = !(Value & (Value - 1));
-	return Result;
-}
-
 #include "intrinsics.cpp"
 #include "math.cpp"
 #include "string.h"
@@ -88,11 +52,24 @@ struct model_ray_sort
 	f32 Length;
 };
 
-struct model_interact
+enum model_intercation_target
 {
-	u32 Type;
-	u32 FaceID;
-	u32 EdgeID;
+	ModelInteractionTarget_None,
+
+	ModelInteractionTarget_Model,
+	ModelInteractionTarget_Face,
+	ModelInteractionTarget_Edge,
+
+	ModelInteractionTarget_Count
+};
+
+struct editor_ui
+{
+	u32 ITarget;
+
+	v2 MouseP;
+	v2 dMouseP;
+	v2 LastMouseP;
 };
 
 enum select_element_type
@@ -126,6 +103,7 @@ struct game_editor_state
 	b32 IsHotModelSet;
 	u32 HotModelID;
 
+	editor_ui UI;
 	selected_elements_buffer Selected;
 };
 
@@ -134,8 +112,6 @@ struct game_state
 	b32 IsInit;
 	
 	game_mode GameMode;
-
-	v2 LastMouseP;
 
 	font_asset_info *FontAsset;
 
