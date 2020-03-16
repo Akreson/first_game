@@ -33,17 +33,16 @@ struct game_world_state
 
 };
 
-struct face_ray_result
+struct element_ray_result
 {
-	u32 Index;
-	v3 IntersetPoint;
+	u32 ID;
+	v3 P;
 };
 
 struct model_ray_result
 {
-	b32 Hit;
 	u32 ModelIndex;
-	face_ray_result Face;
+	element_ray_result Face;
 };
 
 struct model_ray_sort
@@ -63,15 +62,6 @@ enum model_intercation_target
 	ModelInteractionTarget_Count
 };
 
-struct editor_ui
-{
-	u32 ITarget;
-
-	v2 MouseP;
-	v2 dMouseP;
-	v2 LastMouseP;
-};
-
 enum select_element_type
 {
 	SelectElementType_None,
@@ -88,6 +78,40 @@ struct selected_elements_buffer
 	select_element_type Type;
 };
 
+enum interaction_type
+{
+	InteractionType_None,
+
+	InteractionType_Select,
+};
+
+struct ui_interaction
+{
+	u32 Type;
+	u32 ID;
+};
+
+struct interacted_model
+{
+	u32 ID;
+	element_ray_result Face;
+	element_ray_result Edge;
+};
+
+struct editor_ui
+{
+	u32 ITarget;
+
+	ui_interaction HotInteraction;
+	ui_interaction Interaction;
+
+	interacted_model IModel;
+
+	v2 MouseP;
+	v2 dMouseP;
+	v2 LastMouseP;
+};
+
 struct game_editor_state
 {
 	model Models[32];
@@ -98,12 +122,7 @@ struct game_editor_state
 
 	camera Camera;
 
-	b32 IsActiveModelSet;
-	u32 ActiveModelID;
-	b32 IsHotModelSet;
-	u32 HotModelID;
-
-	editor_ui UI;
+	editor_ui WorldUI;
 	selected_elements_buffer Selected;
 };
 
