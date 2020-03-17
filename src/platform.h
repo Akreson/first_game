@@ -281,7 +281,7 @@ struct game_input
 	game_controller_input Controller;
 	game_button_state MouseButtons[PlatformMouseButton_Count];
 	f32 MouseX, MouseY, MouseZ;
-	b32 AltDown, ShiftDown, CtrlDown, TabDown;
+	game_button_state Alt, Shift, Ctrl, Tab;
 
 	f32 PrevFrameTime;
 };

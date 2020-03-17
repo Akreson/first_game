@@ -274,7 +274,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 void
 EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup, ray_param Ray)
 {
-	if (WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
+	if (WasDown(Input->Tab))
 	{
 		if (Editor->WorldUI.ITarget)
 		{
@@ -287,7 +287,7 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 	}
 
 	// TODO: Delete leter
-	if (Input->ShiftDown && Input->AltDown)
+	if (IsKepDown(Input->Alt) && IsDown(Input->Shift))
 	{
 		Editor->WorldUI.ITarget = ModelInteractionTarget_None;
 		Editor->WorldUI.Interaction = {};
@@ -390,14 +390,14 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Mouse.x, (u32)Mouse.y);
 		RenderText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
-		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
+		if (IsKepDown(Input->Alt) && IsKepDown(Input->MouseButtons[PlatformMouseButton_Left]))
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
 			Editor->Camera.Orbit -= Editor->WorldUI.dMouseP.x * RotationSpeed;
 			Editor->Camera.Pitch += Editor->WorldUI.dMouseP.y * RotationSpeed;
 		}
 
-		if (Input->AltDown && Input->MouseButtons[PlatformMouseButton_Right].EndedDown)
+		if (IsKepDown(Input->Alt) && IsKepDown(Input->MouseButtons[PlatformMouseButton_Right]))
 		{
 			f32 ZoomSpeed = (CameraOffset.z + Editor->Camera.Dolly) * 0.004f;
 			Editor->Camera.Dolly -= Editor->WorldUI.dMouseP.y*ZoomSpeed;
@@ -439,7 +439,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		v3 EdgeColor = V3(0.17f, 0.5f, 0.8f);
 		b32 IsInteractedModel = HitTest && Editor->WorldUI.IModel.ID == ModelIndex;
 
-		if (IsInteractedModel && (Input->CtrlDown && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
+		if (IsInteractedModel && (IsDown(Input->Ctrl) && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
 		{
 			Editor->Camera.Pos = Model->Offset;
 		}
@@ -465,17 +465,26 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			model_face Face = Model->Faces[FaceIndex];
 			face_render_param FaceParam = {};
 			
-			if ((Editor->WorldUI.ITarget == ModelInteractionTarget_Face ||
-				Editor->WorldUI.ITarget == ModelInteractionTarget_Edge) &&
-				IsInteractedModel)
-			{
-				if (Editor->WorldUI.IModel.Face.ID == FaceIndex)
+			if (IsInteractedModel)
+			{	
+				switch (Editor->WorldUI.ITarget)
 				{
-					FaceParam.SelectionType = FaceSelectionType_Hot;
-					FaceParam.ActiveVert[0] = true;
-					FaceParam.ActiveVert[1] = true;
-					FaceParam.ActiveVert[2] = true;
-					FaceParam.ActiveVert[3] = true;
+					case ModelInteractionTarget_Face:
+					{
+						if (Editor->WorldUI.IModel.Face.ID == FaceIndex)
+						{
+							FaceParam.SelectionType = FaceSelectionType_Hot;
+							FaceParam.ActiveVert[0] = true;
+							FaceParam.ActiveVert[1] = true;
+							FaceParam.ActiveVert[2] = true;
+							FaceParam.ActiveVert[3] = true;
+						}
+					} break;
+
+					case ModelInteractionTarget_Edge:
+					{
+
+					} break;
 				}
 			}
 

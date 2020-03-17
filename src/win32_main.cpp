@@ -375,10 +375,15 @@ WinMain(HINSTANCE Instance,
 				GameInput.MouseY = (f32)((ScreenHeight - 1) - MouseP.y);
 				GameInput.MouseZ = 0; // TODO: Support mousewheel
 
-				GameInput.AltDown = GetKeyState(VK_MENU) & (1 << 15);
-				GameInput.ShiftDown = GetKeyState(VK_SHIFT) & (1 << 15);
-				GameInput.CtrlDown = GetKeyState(VK_CONTROL) & (1 << 15);
-				GameInput.TabDown = GetKeyState(VK_TAB) & (1 << 15);
+				// TODO: Clean up
+				GameInput.Alt.TransionState = 0;
+				GameInput.Shift.TransionState = 0;
+				GameInput.Ctrl.TransionState = 0;
+				GameInput.Tab.TransionState = 0;
+				PlatformProcessButtonState(&GameInput.Alt, IsBitSet(GetKeyState(VK_MENU), 15));
+				PlatformProcessButtonState(&GameInput.Shift, IsBitSet(GetKeyState(VK_SHIFT), 15));
+				PlatformProcessButtonState(&GameInput.Ctrl, IsBitSet(GetKeyState(VK_CONTROL), 15));
+				PlatformProcessButtonState(&GameInput.Tab, IsBitSet(GetKeyState(VK_TAB), 15));
 
 				DWORD Win32MappedMouseID[] =
 				{
