@@ -4,7 +4,8 @@ enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
 	RenderEntryType_render_entry_model,
-	RenderEntryType_render_entry_model_face
+	RenderEntryType_render_entry_model_face,
+	RenderEntryType_render_entry_model_outline,
 };
 
 struct render_entry_header
@@ -28,6 +29,12 @@ struct render_entry_model
 	v3 Offset;
 	u32 StartOffset;
 	u32 ElementCount;
+};
+
+struct render_entry_model_outline
+{
+	render_entry_model *ModelEntry;
+	v3 OutlineColor;
 };
 
 struct render_entry_model_face

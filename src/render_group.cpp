@@ -133,7 +133,7 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 }
 
 void
-BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor = V3(0))
+BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor, v3 OutlineColor = V3(0), b32 SetOutline = false)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_model *ModelEntry = (render_entry_model *)PushRenderElement(Group, render_entry_model);
@@ -142,6 +142,15 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor = V3(0))
 	ModelEntry->Offset = Offset;
 	ModelEntry->Color = Color;
 	ModelEntry->EdgeColor = EdgeColor;
+
+	if (SetOutline)
+	{
+		render_entry_model_outline *ModelOutlineEntry =
+			(render_entry_model_outline *)PushRenderElement(Group, render_entry_model_outline);
+		
+		ModelOutlineEntry->ModelEntry = ModelEntry;
+		ModelOutlineEntry->OutlineColor = OutlineColor;
+	}
 
 	Assert(!Group->GroupRenderElement);
 	Group->GroupRenderElement = (void *)ModelEntry;

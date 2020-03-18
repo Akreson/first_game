@@ -117,7 +117,7 @@ int Win32OpenGLContextAttribs[] =
 #define Win32LoadOpenGLFunction(Name) {Name = (type_##Name *)wglGetProcAddress(#Name); Assert(Name)}
 
 internal HGLRC
-Win32InitOpenGL(HDC WindowDC)
+Win32InitOpenGL(HDC WindowDC, f32 ScreenWidth, f32 ScreenHeight)
 {
 	HGLRC OpenGLRC = 0;
 
@@ -151,6 +151,7 @@ Win32InitOpenGL(HDC WindowDC)
 			Win32LoadOpenGLFunction(glBindRenderbuffer);
 			Win32LoadOpenGLFunction(glRenderbufferStorage);
 			Win32LoadOpenGLFunction(glFramebufferRenderbuffer);
+			Win32LoadOpenGLFunction(glBlitFramebuffer);
 		}
 		else
 		{
@@ -214,7 +215,7 @@ Win32InitOpenGL(HDC WindowDC)
 		}
 	}
 
-	OpenGLInit();
+	OpenGLInit(ScreenWidth, ScreenHeight);
 
 	return OpenGLRC;
 }

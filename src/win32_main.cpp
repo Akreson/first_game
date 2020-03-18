@@ -331,15 +331,16 @@ WinMain(HINSTANCE Instance,
 
 		if (Window)
 		{
-			ToggleFullscreen(Window);
 			GlobalRunning = true;
+			ToggleFullscreen(Window);
 			HDC WindowDC = GetDC(Window);
-			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC);
-
-			ShowWindow(Window, SW_SHOW);
-
+			
 			f32 ScreenWidth, ScreenHeight;
 			Win32GetScreenDim(Window, &ScreenWidth, &ScreenHeight);
+
+			HGLRC OpenGLRC = Win32InitOpenGL(WindowDC, ScreenWidth, ScreenHeight);
+
+			ShowWindow(Window, SW_SHOW);
 			
 			game_memory GameMemory = {};
 			game_input GameInput = {};

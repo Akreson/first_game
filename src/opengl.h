@@ -41,6 +41,9 @@
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 
+#define GL_READ_FRAMEBUFFER               0x8CA8
+#define GL_DRAW_FRAMEBUFFER               0x8CA9
+
 #define GL_CLAMP_TO_EDGE                  0x812F
 
 typedef char GLchar;
@@ -105,6 +108,8 @@ typedef void type_glGenRenderbuffers(GLsizei n, GLuint *renderbuffers);
 typedef void type_glBindRenderbuffer(GLenum target, GLuint renderbuffer);
 typedef void type_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
 typedef void type_glFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+typedef void type_glBlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+	GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
 
 typedef void type_glEnableVertexAttribArray(GLuint index);
 typedef void type_glDisableVertexAttribArray(GLuint index);
@@ -174,6 +179,7 @@ OpenGLGlobalVariable(glGenRenderbuffers);
 OpenGLGlobalVariable(glBindRenderbuffer);
 OpenGLGlobalVariable(glRenderbufferStorage);
 OpenGLGlobalVariable(glFramebufferRenderbuffer);
+OpenGLGlobalVariable(glBlitFramebuffer)
 
 OpenGLGlobalVariable(glGetShaderiv);
 OpenGLGlobalVariable(glGetProgramiv);
@@ -196,7 +202,7 @@ struct opengl_info
 
 struct opengl_bitmap_program
 {
-	GLuint ProgID;
+	GLuint ID;
 	GLuint BitmapVAO;
 	GLuint BitmapVBO;
 
@@ -206,7 +212,7 @@ struct opengl_bitmap_program
 
 struct opengl_model_program
 {
-	GLuint ProgID; //
+	GLuint ID; //
 	GLuint ModelVAO; // TODO: Delete?
 	GLuint ModelVBO; //
 
@@ -216,13 +222,62 @@ struct opengl_model_program
 	GLuint ModelEdgeColor;
 };
 
+struct opengl_model_color_pass_program
+{
+	GLuint ID;
+
+	GLuint ModelProjID;
+	GLuint ModelTransformID;
+};
+
+struct opengl_blur_program
+{
+	GLuint ID;
+};
+
+struct opengl_outline_program
+{
+	GLuint ID;
+	GLuint OutlineColor;
+};
+
+struct outline_framebuffer
+{
+	union
+	{
+		struct
+		{
+			GLuint FBO[4];
+			GLuint Texture[4];
+		};
+		struct
+		{
+			GLuint OutlineFBO;
+			GLuint PrepassFBO;
+			GLuint BlitFBO[2];
+
+			GLuint OutlineTexture;
+			GLuint PrepassTexture;
+			GLuint BlitTexture[2];
+		};
+	};
+};
+
 struct opengl_render_info
 {
 	GLuint VertexBufferVAO;
 	GLuint VertexBufferVBO;
+	
+	GLuint FullScreenVAO;
+	GLuint FullScreenVBO;
 
 	opengl_bitmap_program BitmapProg;
 	opengl_model_program ModelProg;
+	opengl_model_color_pass_program ModelColorPassProg;
+	opengl_blur_program BlurProg;
+	opengl_outline_program OutlineProg;
+
+	outline_framebuffer OutlineFrameBuffer;
 
 	/*GLuint FrameBufferDisplayProgramID;
 	GLuint FrameBuffer;
