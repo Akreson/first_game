@@ -40,6 +40,8 @@
 #define GL_RENDERBUFFER                   0x8D41
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
+#define GL_DEPTH_STENCIL                  0x84F9
+#define GL_UNSIGNED_INT_24_8              0x84FA
 
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
@@ -200,6 +202,22 @@ struct opengl_info
 	b32 GL_EXT_framebuffer_object;
 };
 
+struct framebuffer_info
+{
+	v4 ClearColor;
+	GLuint ID;
+	u32 Color;
+	union
+	{
+		u32 DepthStensil;
+		struct
+		{
+			u32 Depth;
+			u32 Stensil;
+		};
+	};
+};
+
 struct opengl_bitmap_program
 {
 	GLuint ID;
@@ -228,6 +246,7 @@ struct opengl_model_color_pass_program
 
 	GLuint ModelProjID;
 	GLuint ModelTransformID;
+	GLuint OutlineColor;
 };
 
 struct opengl_blur_program
@@ -238,33 +257,30 @@ struct opengl_blur_program
 struct opengl_outline_program
 {
 	GLuint ID;
-	GLuint OutlineColor;
 };
 
-struct outline_framebuffer
+struct outline_framebuffers
 {
 	union
 	{
 		struct
 		{
-			GLuint FBO[4];
-			GLuint Texture[4];
+			u32 FB[4];
 		};
 		struct
 		{
-			GLuint OutlineFBO;
-			GLuint PrepassFBO;
-			GLuint BlitFBO[2];
-
-			GLuint OutlineTexture;
-			GLuint PrepassTexture;
-			GLuint BlitTexture[2];
+			u32 OutlineFB;
+			u32 PrepassFB;
+			u32 BlitFB[2];
 		};
 	};
 };
 
 struct opengl_render_info
 {
+	u32 MainFB;
+	b32 OutlineSet;
+
 	GLuint VertexBufferVAO;
 	GLuint VertexBufferVBO;
 	
@@ -277,7 +293,7 @@ struct opengl_render_info
 	opengl_blur_program BlurProg;
 	opengl_outline_program OutlineProg;
 
-	outline_framebuffer OutlineFrameBuffer;
+	outline_framebuffers OutlineFrameBuffer;
 
 	/*GLuint FrameBufferDisplayProgramID;
 	GLuint FrameBuffer;

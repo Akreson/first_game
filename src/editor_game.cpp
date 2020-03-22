@@ -453,24 +453,32 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		model *Model = Editor->Models + ModelIndex;
 		
 		v3 EdgeColor = V3(0.17f, 0.5f, 0.8f);
+		v3 OutlineColor = V3(0);
 		b32 IsInteractedModel = HitModelTest && (Editor->WorldUI.IModel.ID == ModelIndex);
 		b32 IsActiveModel = IsInteractedModel && IsActiveModelSet;
 		b32 IsHotModel = IsInteractedModel && IsHotModelSet;
+		b32 IsSetOutline = false;
 
 		if (IsInteractedModel && (IsDown(Input->Ctrl) && IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
 		{
 			Editor->Camera.Pos = Model->Offset;
 		}
-		
+
 		if (IsActiveModel)
 		{
 			EdgeColor = V3(0.86f, 0.70f, 0.2f);
+
+			if (Editor->WorldUI.ITarget == ModelInteractionTarget_Model)
+			{
+				IsSetOutline = true;
+				OutlineColor = V3(0.86f, 0.70f, 0.2f);
+			}
 		}
-
-		b32 IsSetOutline = IsHotModel || 
-			(IsActiveModel && Editor->WorldUI.ITarget == ModelInteractionTarget_Model);
-
-		v3 OutlineColor = IsSetOutline ? V3(0.86f, 0.70f, 0.2f) : V3(0);
+		else if (IsHotModel)
+		{
+			IsSetOutline = true;
+			OutlineColor = V3(0, 1, 0);
+		}
 
 		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, EdgeColor, OutlineColor, IsSetOutline);
 		
