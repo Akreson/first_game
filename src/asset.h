@@ -2,7 +2,7 @@
 
 struct bitmap_info
 {
-	void *TextureHandler;
+	u32 TextureID;
 	void *Data;
 	f32 WidthOverHeight;
 	u16 Width;

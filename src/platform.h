@@ -371,7 +371,7 @@ typedef PLATFORM_READ_FILE(platform_read_file);
 #define PLATFORM_GET_FILE_SIZE(name) u32 name(platform_file_handler *FileHandler)
 typedef PLATFORM_GET_FILE_SIZE(platform_get_file_size);
 
-#define PLATFORM_ALLOCATE_TEXTURE(name) void *name(u32 Width, u32 Height, void *Data)
+#define PLATFORM_ALLOCATE_TEXTURE(name) u32 name(u32 Width, u32 Height, void *Data)
 typedef PLATFORM_ALLOCATE_TEXTURE(platform_allocate_texture);
 
 #define PLATFORM_DEALLOCATE_TEXTURE(name) void name(u32 TextureHandler)

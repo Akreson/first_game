@@ -15,7 +15,7 @@ struct render_entry_header
 
 struct render_entry_bitmap
 {
-	bitmap_info *Bitmap;
+	u32 TextureID;
 	// TODO: Change to Position, XAxis, YAxis?
 	v2 Min;
 	v2 Max;

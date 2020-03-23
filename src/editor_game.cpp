@@ -401,7 +401,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 #if 0
 		char Buffer[1024];
-		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Mouse.x, (u32)Mouse.y);
+		sprintf(Buffer, "Mouse x:%d y:%d", (u32)Editor->WorldUI.MouseP.x, (u32)Editor->WorldUI.MouseP.y);
 		RenderText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
 		if (IsKepDown(Input->Alt) && IsKepDown(Input->MouseButtons[PlatformMouseButton_Left]))

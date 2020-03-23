@@ -79,7 +79,7 @@ PushFont(render_group *Group, bitmap_info *Glyph, v2 Min, v2 Max, v3 Color)
 {
 	render_entry_bitmap *BitmapEntry = PushRenderElement(Group, render_entry_bitmap);
 
-	BitmapEntry->Bitmap = Glyph;
+	BitmapEntry->TextureID = Glyph->TextureID;
 	BitmapEntry->Min = Min;
 	BitmapEntry->Max = Max;
 	BitmapEntry->Color = Color;
