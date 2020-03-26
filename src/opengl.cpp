@@ -393,11 +393,6 @@ UseProgramBegin(model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProgMat, m4x4
 {
 	glUseProgram(Prog->ID);
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
-
 	glUniform4f(Prog->ModelColorID, Color.r, Color.g, Color.b, Color.a);
 	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
@@ -453,11 +448,6 @@ internal void
 UseProgramBegin(model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
 
 	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
@@ -608,15 +598,14 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	CompileModelColorPassProgram(&OpenGL.ModelColorPassProg);
 	CompileBlurProgram(&OpenGL.BlurProg);
 	CompileOutlinePassProgram(&OpenGL.OutlineProg);
-
-	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
-	glGenBuffers(1, &OpenGL.VertexBufferVBO);
-
+	
 	// NOTE: Set main FBO
 	OpenGL.MainFB = CreateFramebuffer(ScreenWidth, ScreenHeight,
 		OpenGLFramebufferSetParam_Color|OpenGLFramebufferSetParam_Depth);
 
+	//
 	// NOTE: Set FBO and texture for ouline effect
+	//
 	// TODO: Use lower resolution texture for ouline effect
 	OpenGL.Prepass = CreateFramebuffer(ScreenWidth, ScreenHeight,
 		OpenGLFramebufferSetParam_Color, GL_R8);
@@ -626,11 +615,27 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 		OpenGLFramebufferSetParam_Color, GL_R8);
 	//OpenGL.OutlineSolve = CreateFramebuffer(ScreenWidth, ScreenHeight,
 	//	OpenGLFramebufferSetParam_Color);
+	
+	//
+	// NOTE Set Editor model vertex VAO
+	//
+	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
+	glGenBuffers(1, &OpenGL.VertexBufferVBO);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindVertexArray(OpenGL.VertexBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	
+	//
 	// NOTE: Set full screen VAO
+	//
 	const float Vertices[] = {
 		// first triangle
 		 1.0f,  1.0f, 1.0f, 1.0f,// top right
