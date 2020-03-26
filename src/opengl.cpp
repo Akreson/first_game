@@ -3,12 +3,6 @@
 global opengl_render_info OpenGL;
 global const char *SharedHeaderCode;
 
-global framebuffer_info Framebuffers[16];
-global u32 FramebufferCount = 0;
-
-global GLuint TexturesID[256];
-global u32 TexutreIDCount = 0;
-
 void OpenGLMessageDebugCallback(
 	GLenum source,
 	GLenum type,
@@ -22,76 +16,125 @@ void OpenGLMessageDebugCallback(
 	Assert(0)
 }
 
-internal u32
-OpenGLAllocateFramebuffers(u32 Count = 1, v4 ClearColor = V4(0))
+internal framebuffer_info
+CreateFramebuffer(u32 Width, u32 Height, u32 Flags, u32 ColorFormat = GL_RGB)
 {
-	u32 Result = 0;
+	framebuffer_info Result = {};
 
-	for (u32 Index = 0; Index < Count; ++Index)
+	b32 HasColor = Flags & OpenGLFramebufferSetParam_Color;
+	b32 HasDepth = Flags & OpenGLFramebufferSetParam_Depth;
+	b32 HasDepthStencil = Flags & OpenGLFramebufferSetParam_DepthStencil;
+
+	glGenFramebuffers(1, &Result.Handle);
+	glBindFramebuffer(GL_FRAMEBUFFER, Result.Handle);
+	
+	if (HasColor)
 	{
-		if (FramebufferCount < ArrayCount(Framebuffers))
-		{
-			Result = FramebufferCount;
-			framebuffer_info *FB = Framebuffers + FramebufferCount++;
+		glGenTextures(1, &Result.Color);
+		glBindTexture(GL_TEXTURE_2D, Result.Color);
 
-			glGenFramebuffers(1, &FB->ID);
-			FB->ClearColor = ClearColor;
-		}
-		else
-		{
-			Assert(0);
-		}
+		glTexImage2D(GL_TEXTURE_2D, 0, ColorFormat, (GLsizei)Width, (GLsizei)Height,
+			0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+			Result.Color, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
+
+	if (HasDepthStencil)
+	{
+		glGenTextures(1, &Result.DepthStencil);
+		glBindTexture(GL_TEXTURE_2D, Result.DepthStencil);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, (GLsizei)Width, (GLsizei)Height,
+			0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, 0);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
+			Result.DepthStencil, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	else if (HasDepth)
+	{
+		glGenTextures(1, &Result.Depth);
+		glBindTexture(GL_TEXTURE_2D, Result.Depth);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (GLsizei)Width, (GLsizei)Height,
+			0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+			Result.Depth, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		Assert(0);
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	return Result;
 }
 
+#if 0
 internal inline framebuffer_info *
 GetFrameBufferInfo(u32 ID)
 {
-	framebuffer_info *Result = Framebuffers + ID;
+	framebuffer_info *Result = OpenGL.Framebuffers + ID;
 	return Result;
 }
+#endif
 
-internal u32
-OpenGLInternalAllocateTexture(u32 Width, u32 Height,
-	u32 Wrap, u32 Filtering, u32 InternalFormat, u32 Format,
+internal void
+OpenGLInternalAllocateTexture(GLuint *Handle, u32 Width, u32 Height,
+	b32 Filter, u32 InternalFormat, u32 Format,
 	u32 PixelType, void *Data = 0)
 {
-	u32 Result;
+	glGenTextures(1, Handle);
+	glBindTexture(GL_TEXTURE_2D, *Handle);
 
-	if (TexutreIDCount < ArrayCount(TexturesID))
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, Filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, Filter);
+	glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, (GLsizei)Width, (GLsizei)Height,
+		0, Format, PixelType, Data);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+// TODO: Provide more options?
+PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
+{
+	u32 TextureID = 0;
+
+	if (OpenGL.TexutreIDCount < ArrayCount(OpenGL.TexturesID))
 	{
-		Result = TexutreIDCount++;
+		TextureID = OpenGL.TexutreIDCount++;
 
-		glGenTextures(1, &TexturesID[Result]);
-		glBindTexture(GL_TEXTURE_2D, TexturesID[Result]);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, Wrap);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, Wrap);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, Filtering);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, Filtering);
-		glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, (GLsizei)Width, (GLsizei)Height,
-			0, Format, PixelType, Data);
-
-		glBindTexture(GL_TEXTURE_2D, 0);
+		OpenGLInternalAllocateTexture(&OpenGL.TexturesID[TextureID],
+			Width, Height, GL_LINEAR, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, Data);
 	}
 	else
 	{
 		Assert(0);
 	}
 
-	return Result;
-}
-
-// TODO: Provide more options?
-PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
-{
-	GLuint TextureIndex = OpenGLInternalAllocateTexture(
-		Width, Height, GL_CLAMP_TO_EDGE, GL_LINEAR,
-		GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, Data);
-
-	return (u32)TextureIndex;
+	return TextureID;
 }
 
 PLATFORM_DEALLOCATE_TEXTURE(OpenGLDeallocateTexture)
@@ -179,18 +222,20 @@ OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode
 }
 
 internal void
-CompileBitmapProgram(opengl_bitmap_program *Prog)
+CompileBitmapProgram(bitmap_program *Prog)
 {
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec4 vertex;
+	layout (location = 0) in vec2 Vertex;
+	layout (location = 1) in vec2 TextCoord;
+
 	out vec2 TexCoords;
 	
 	uniform mat4 Proj;
 
 	void main()
 	{
-		TexCoords = vertex.zw;
-		gl_Position = Proj * vec4(vertex.xy, 0, 1.0);
+		TexCoords = TextCoord;
+		gl_Position = Proj * vec4(Vertex, 0, 1.0);
 	}
 
 	)FOO";
@@ -203,9 +248,9 @@ CompileBitmapProgram(opengl_bitmap_program *Prog)
 	
 	void main()
 	{
-		vec4 TexTexel = texture(BitmapTexture, TexCoords);
-		TexTexel.rgb *= Color;
-		FragColor = TexTexel;
+		vec4 Texel = texture(BitmapTexture, TexCoords);
+		Texel.rgb *= Color;
+		FragColor = Texel;
 	}
 	)FOO";
 
@@ -224,7 +269,11 @@ CompileBitmapProgram(opengl_bitmap_program *Prog)
 
 	glBindBuffer(GL_ARRAY_BUFFER, Prog->BitmapVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 4), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 4), (void*)(sizeof(f32) * 2));
 	glEnableVertexAttribArray(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -233,26 +282,22 @@ CompileBitmapProgram(opengl_bitmap_program *Prog)
 }
 
 internal void
-UseProgramBegin(opengl_bitmap_program *Prog, v3 Color, m4x4 *ProgMat)
+UseProgramBegin(bitmap_program *Prog, v3 Color, m4x4 *ProgMat)
 {
 	glUseProgram(Prog->ID);
 
 	glUniform3f(Prog->ColorID, Color.r, Color.g, Color.b);
 	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindVertexArray(Prog->BitmapVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, Prog->BitmapVBO);
 }
 
 internal void
-UseProgramEnd(opengl_bitmap_program *Prog)
+UseProgramEnd(bitmap_program *Prog)
 {
 	glUseProgram(0);
 }
 
 internal void
-CompileModelProgram(opengl_model_program *Prog)
+CompileModelProgram(model_program *Prog)
 {
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec4 aPos;
@@ -344,7 +389,7 @@ CompileModelProgram(opengl_model_program *Prog)
 }
 
 internal void
-UseProgramBegin(opengl_model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProgMat, m4x4 *ModelMat)
+UseProgramBegin(model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProgMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
 
@@ -363,15 +408,15 @@ UseProgramBegin(opengl_model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProgMa
 }
 
 internal void
-UseProgramEnd(opengl_model_program *Prog)
+UseProgramEnd(model_program *Prog)
 {
 	glUseProgram(0);
 }
 
 // NOTE: It's not exactly right set outline color here, look just ok.
-// TODO: Find to set in proper way outline color in opengl_outline_program?
+// TODO: Find to set in proper way outline color in outline_program?
 void
-CompileModelColorPassProgram(opengl_model_color_pass_program *Prog)
+CompileModelColorPassProgram(model_color_pass_program *Prog)
 {
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec4 aPos;
@@ -388,12 +433,10 @@ CompileModelColorPassProgram(opengl_model_color_pass_program *Prog)
 
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
-
-	uniform vec3 OutlineColor;
 	
 	void main()
 	{
-		FragColor = vec4(OutlineColor, 1.0f);
+		FragColor = vec4(1.0f);
 	}
 	)FOO";
 
@@ -403,12 +446,11 @@ CompileModelColorPassProgram(opengl_model_color_pass_program *Prog)
 	glUseProgram(ProgID);
 	Prog->ModelProjID = glGetUniformLocation(ProgID, "Proj");
 	Prog->ModelTransformID = glGetUniformLocation(ProgID, "ModelTransform");
-	Prog->OutlineColor = glGetUniformLocation(ProgID, "OutlineColor");
 	glUseProgram(0);
 }
 
 internal void
-UseProgramBegin(opengl_model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat, v3 Color)
+UseProgramBegin(model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
 
@@ -419,20 +461,19 @@ UseProgramBegin(opengl_model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *Mode
 
 	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
-	glUniform3f(Prog->OutlineColor, Color.r, Color.g, Color.b);
 }
 
 internal void
-UseProgramEnd(opengl_model_color_pass_program *Prog)
+UseProgramEnd(model_color_pass_program *Prog)
 {
 	glUseProgram(0);
 }
 
 internal void
-CompileBlurProgram(opengl_blur_program *Prog)
+CompileBlurProgram(blur_program *Prog)
 {
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec3 Vertex;
+	layout (location = 0) in vec2 Vertex;
 	layout (location = 1) in vec2 TextCoord;
 
 	out vec2 TexCoords;
@@ -440,7 +481,7 @@ CompileBlurProgram(opengl_blur_program *Prog)
 	void main()
 	{
 		TexCoords = TextCoord;
-		gl_Position = vec4(Vertex, 1.0);
+		gl_Position = vec4(Vertex, 0, 1.0);
 	}
 
 	)FOO";
@@ -455,15 +496,13 @@ CompileBlurProgram(opengl_blur_program *Prog)
 	{
 		vec2 TexelSize = 1.0f / textureSize(Texture, 0);
 		
-		vec3 Color = texture(Texture, TexCoords).rgb;
-		Color += texture(Texture, TexCoords + (vec2(-1.0f, 1.0f) * TexelSize)).rgb;
-		Color += texture(Texture, TexCoords + (vec2(1.0f, 1.0f) * TexelSize)).rgb;
-		Color += texture(Texture, TexCoords + (vec2(1.0f, -1.0f) * TexelSize)).rgb;
-		Color += texture(Texture, TexCoords + (vec2(-1.0f, -1.0f) * TexelSize)).rgb;
-		Color += texture(Texture, TexCoords + (vec2(-1.0f, 0) * TexelSize)).rgb;
-		Color += texture(Texture, TexCoords + (vec2(1.0f, 0) * TexelSize)).rgb;
+		float Color = texture(Texture, TexCoords).r;
+		Color += texture(Texture, TexCoords + (vec2(-1.0f, 1.0f) * TexelSize)).r;
+		Color += texture(Texture, TexCoords + (vec2(1.0f, 1.0f) * TexelSize)).r;
+		Color += texture(Texture, TexCoords + (vec2(1.0f, -1.0f) * TexelSize)).r;
+		Color += texture(Texture, TexCoords + (vec2(-1.0f, -1.0f) * TexelSize)).r;
 
-		FragColor = vec4(Color / 7.0f, 1.0f);
+		FragColor = vec4(Color / 5.0f, 0, 0, 1.0f);
 	}
 	)FOO";
 
@@ -471,22 +510,22 @@ CompileBlurProgram(opengl_blur_program *Prog)
 }
 
 internal void
-UseProgramBegin(opengl_blur_program *Prog)
+UseProgramBegin(blur_program *Prog)
 {
 	glUseProgram(Prog->ID);
 }
 
 internal void
-UseProgramEnd(opengl_blur_program *Prog)
+UseProgramEnd(blur_program *Prog)
 {
 	glUseProgram(0);
 }
 
 void
-CompileOutlinePassProgram(opengl_outline_program *Prog)
+CompileOutlinePassProgram(outline_program *Prog)
 {
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec3 Vertex;
+	layout (location = 0) in vec2 Vertex;
 	layout (location = 1) in vec2 TextCoord;
 
 	out vec2 TexCoords;
@@ -494,7 +533,7 @@ CompileOutlinePassProgram(opengl_outline_program *Prog)
 	void main()
 	{
 		TexCoords = TextCoord;
-		gl_Position = vec4(Vertex, 1.0f);
+		gl_Position = vec4(Vertex, 0, 1.0f);
 	}
 
 	)FOO";
@@ -507,20 +546,25 @@ CompileOutlinePassProgram(opengl_outline_program *Prog)
 	uniform sampler2D PrepassTex;
 	uniform sampler2D BlurTex;
 	uniform sampler2D MainTex;
+	uniform vec3 OutlineColor;
 
 	float when_neq(vec3 x, vec3 y) {
 	  return abs(sign(x - y)).x;
 	}
+
+	float when_neq(float x, float y) {
+	  return abs(sign(x - y));
+	}
 	
 	void main()
 	{
-		vec3 PrepassColor = texture(PrepassTex, TexCoords).rgb;
-		vec3 BlurColor = texture(BlurTex, TexCoords).rgb;
-		vec3 MainColor = texture(MainTex, TexCoords).rgb;;
+		vec3 MainColor = texture(MainTex, TexCoords).rgb;
+		float PrepassColor = texture(PrepassTex, TexCoords).r;
+		float BlurColor = texture(BlurTex, TexCoords).r;
 		
-		vec3 DiffColor = max(vec3(0), BlurColor - PrepassColor);
+		vec3 DiffColor = vec3(max(0, BlurColor - PrepassColor));
 		
-		FragColor = vec4(MainColor + DiffColor * 1.4, 1.0f);
+		FragColor = vec4(MainColor + ((DiffColor * 1.2) * OutlineColor), 1.0f);
 	}
 	)FOO";
 
@@ -531,17 +575,19 @@ CompileOutlinePassProgram(opengl_outline_program *Prog)
 	glUniform1i(glGetUniformLocation(ProgID, "PrepassTex"), 0);
 	glUniform1i(glGetUniformLocation(ProgID, "BlurTex"), 1);
 	glUniform1i(glGetUniformLocation(ProgID, "MainTex"), 2);
+	Prog->OutlineColor = glGetUniformLocation(ProgID, "OutlineColor");
 	glUseProgram(0);
 }
 
 internal void
-UseProgramBegin(opengl_outline_program *Prog)
+UseProgramBegin(outline_program *Prog, v3 Color)
 {
 	glUseProgram(Prog->ID);
+	glUniform3f(Prog->OutlineColor, Color.r, Color.g, Color.b);
 }
 
 internal void
-UseProgramEnd(opengl_outline_program *Prog)
+UseProgramEnd(outline_program *Prog)
 {
 	glUseProgram(0);
 }
@@ -549,7 +595,7 @@ UseProgramEnd(opengl_outline_program *Prog)
 void
 OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 {
-#ifdef DEVELOP_MODE
+#ifdef DEBUG_MODE
 	glDebugMessageCallback(OpenGLMessageDebugCallback, 0);
 #endif
 
@@ -567,53 +613,33 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
 
 	// NOTE: Set main FBO
-	OpenGL.MainFB = OpenGLAllocateFramebuffers(1, V4(0.16f, 0.16f, 0.16f, 1.0f));
-
-	framebuffer_info *MainFB = GetFrameBufferInfo(OpenGL.MainFB);
-	glBindFramebuffer(GL_FRAMEBUFFER, MainFB->ID);
-
-	MainFB->Color = OpenGLInternalAllocateTexture(ScreenWidth, ScreenHeight,
-		GL_CLAMP_TO_EDGE, GL_NEAREST, GL_RGBA, GL_RGB, GL_UNSIGNED_BYTE);
-	MainFB->DepthStensil = OpenGLInternalAllocateTexture(ScreenWidth, ScreenHeight,
-		GL_CLAMP_TO_EDGE, GL_NEAREST, GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8);
-
-	glBindTexture(GL_TEXTURE_2D, TexturesID[MainFB->Color]);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-		TexturesID[MainFB->Color], 0);
-	glBindTexture(GL_TEXTURE_2D, TexturesID[MainFB->DepthStensil]);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
-		TexturesID[MainFB->DepthStensil], 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	OpenGL.MainFB = CreateFramebuffer(ScreenWidth, ScreenHeight,
+		OpenGLFramebufferSetParam_Color|OpenGLFramebufferSetParam_Depth);
 
 	// NOTE: Set FBO and texture for ouline effect
 	// TODO: Use lower resolution texture for ouline effect
-	for (u32 Index = 0; Index < 4; ++Index)
-	{
-		u32 FBIndex = OpenGLAllocateFramebuffers();
-		framebuffer_info *FB = GetFrameBufferInfo(FBIndex);
-		OpenGL.OutlineFrameBuffer.FB[Index] = FBIndex;
-
-		glBindFramebuffer(GL_FRAMEBUFFER, FB->ID);
-		FB->Color = OpenGLInternalAllocateTexture(ScreenWidth, ScreenHeight,
-			GL_CLAMP_TO_EDGE, GL_NEAREST, GL_RGB, GL_RGB, GL_UNSIGNED_BYTE);
-
-		glBindTexture(GL_TEXTURE_2D, TexturesID[FB->Color]);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-			TexturesID[FB->Color], 0);
-	}
+	OpenGL.Prepass = CreateFramebuffer(ScreenWidth, ScreenHeight,
+		OpenGLFramebufferSetParam_Color, GL_R8);
+	OpenGL.BlurBlit[0] = CreateFramebuffer(ScreenWidth, ScreenHeight,
+		OpenGLFramebufferSetParam_Color, GL_R8);
+	OpenGL.BlurBlit[1] = CreateFramebuffer(ScreenWidth, ScreenHeight,
+		OpenGLFramebufferSetParam_Color, GL_R8);
+	//OpenGL.OutlineSolve = CreateFramebuffer(ScreenWidth, ScreenHeight,
+	//	OpenGLFramebufferSetParam_Color);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	// NOTE: Set full screen VAO
 	const float Vertices[] = {
-		-1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-		1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-
-		-1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-		1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-		1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		// first triangle
+		 1.0f,  1.0f, 1.0f, 1.0f,// top right
+		 1.0f, -1.0f, 1.0f, 0.0f,// bottom right
+		-1.0f,  1.0f, 0.0f, 1.0f,// top left 
+		// second triangle
+		 1.0f, -1.0f, 1.0f, 0.0f,// bottom right
+		-1.0f, -1.0f, 0.0f, 0.0f,// bottom left
+		-1.0f,  1.0f, 0.0f, 1.0f // top left
 	};
 
 	glGenVertexArrays(1, &OpenGL.FullScreenVAO);
@@ -624,9 +650,9 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), (GLvoid *)&Vertices[0], GL_STATIC_DRAW);
 
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (sizeof(f32) * 5), (void*)0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 4), (void*)0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 5), (void*)(sizeof(f32) * 3));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 4), (void*)(sizeof(f32) * 2));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -642,27 +668,16 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	glBindVertexArray(OpenGL.VertexBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 	glBufferData(GL_ARRAY_BUFFER, Commands->VertexBufferOffset, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	for (u32 FBIndex = 0; FBIndex < FramebufferCount; ++FBIndex)
-	{
-		framebuffer_info *FB = GetFrameBufferInfo(FBIndex);
-		v4 ClearColor = FB->ClearColor;
-
-		glBindFramebuffer(GL_FRAMEBUFFER, FB->ID);
-		glClearColor(ClearColor.r, ClearColor.g, ClearColor.b, ClearColor.a);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	}
-
-	framebuffer_info *MainFB = GetFrameBufferInfo(OpenGL.MainFB);
-	glBindFramebuffer(GL_FRAMEBUFFER, MainFB->ID);
+	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
+	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.MainFB.Handle);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0, 0, 0, 0);
 
 	for (u32 BufferOffset = 0;
 		BufferOffset < Commands->PushBufferSize;
@@ -670,12 +685,13 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	{
 		render_entry_header *Header = (render_entry_header *)(Commands->PushBufferBase + BufferOffset);
 		BufferOffset += sizeof(render_entry_header);
+		void *Data = (Commands->PushBufferBase + BufferOffset);
 
 		switch (Header->Type)
 		{
 			case RenderEntryType_render_entry_bitmap:
 			{
-				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)(Commands->PushBufferBase + BufferOffset);
+				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)Data;
 				BufferOffset += sizeof(render_entry_bitmap);
 
 				v2 MinPos = BitmapEntry->Min;
@@ -693,24 +709,25 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				};
 
 				UseProgramBegin(&OpenGL.BitmapProg, BitmapEntry->Color, &Commands->OrthoProj.Forward);
-				
+
 				glBindVertexArray(OpenGL.BitmapProg.BitmapVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapProg.BitmapVBO);
 
-				glBindTexture(GL_TEXTURE_2D, TexturesID[BitmapEntry->TextureID]);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, OpenGL.TexturesID[BitmapEntry->TextureID]);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertices), Vertices);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 
 				glBindVertexArray(0);
 				glBindTexture(GL_TEXTURE_2D, 0);
-				
+
 				UseProgramEnd(&OpenGL.BitmapProg);
 			} break;
 
 			case RenderEntryType_render_entry_model:
 			{
-				render_entry_model *ModelEntry = (render_entry_model *)(Commands->PushBufferBase + BufferOffset);
+				render_entry_model *ModelEntry = (render_entry_model *)Data;
 				BufferOffset += sizeof(render_entry_model);
 
 				m4x4 ModelTransform = Identity();
@@ -718,12 +735,12 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
-				
+
 				UseProgramBegin(&OpenGL.ModelProg, ModelEntry->Color, ModelEntry->EdgeColor,
 					&Commands->PersProj.Forward, &ModelTransform);
 
 				glDrawArrays(GL_TRIANGLES, ModelEntry->StartOffset / sizeof(render_model_face_vertex), ModelEntry->ElementCount);
-			
+
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
 
@@ -733,27 +750,31 @@ OpenGLRenderCommands(game_render_commands *Commands)
 			// TODO: Clean up
 			case RenderEntryType_render_entry_model_outline:
 			{
-				OpenGL.OutlineSet = true;
+				glDisable(GL_BLEND);
 
-				render_entry_model_outline *OutlineEntry = (render_entry_model_outline *)(Commands->PushBufferBase + BufferOffset);
+				render_entry_model_outline *OutlineEntry = (render_entry_model_outline *)Data;
 				BufferOffset += sizeof(render_entry_model_outline);
 
 				render_entry_model *OutlineModel = OutlineEntry->ModelEntry;
+				
+				OpenGL.OutlineSet = true;
+				OpenGL.OutlineColor = OutlineEntry->OutlineColor;
 
 				m4x4 ModelTransform = Identity();
 				SetTranslation(&ModelTransform, OutlineModel->Offset);
 
-				framebuffer_info *PrepassFB = GetFrameBufferInfo(OpenGL.OutlineFrameBuffer.PrepassFB);
-				framebuffer_info *BlitFB[2];
-				BlitFB[0] = GetFrameBufferInfo(OpenGL.OutlineFrameBuffer.BlitFB[0]);
-				BlitFB[1] = GetFrameBufferInfo(OpenGL.OutlineFrameBuffer.BlitFB[1]);
+				glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.BlurBlit[0].Handle);
+				glClear(GL_COLOR_BUFFER_BIT);
+				glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.BlurBlit[1].Handle);
+				glClear(GL_COLOR_BUFFER_BIT);
 
-				glBindFramebuffer(GL_FRAMEBUFFER, PrepassFB->ID);
+				glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.Prepass.Handle);
+				glClear(GL_COLOR_BUFFER_BIT);
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
-				UseProgramBegin(&OpenGL.ModelColorPassProg,	&Commands->PersProj.Forward, &ModelTransform, OutlineEntry->OutlineColor);
+				UseProgramBegin(&OpenGL.ModelColorPassProg, &Commands->PersProj.Forward, &ModelTransform);
 				glDrawArrays(GL_TRIANGLES, OutlineModel->StartOffset / sizeof(render_model_face_vertex), OutlineModel->ElementCount);
 
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -768,10 +789,9 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				u32 PingPongIndex = 1;
 				for (u32 PassIndex = 0; PassIndex < 10; ++PassIndex)
 				{
-					framebuffer_info *FB = BlitFB[!PingPongIndex];
-					glBindFramebuffer(GL_FRAMEBUFFER, FB->ID);
+					glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.BlurBlit[!PingPongIndex].Handle);
 
-					GLuint TextureID = PassIndex ? TexturesID[BlitFB[PingPongIndex]->Color] : TexturesID[PrepassFB->Color];
+					GLuint TextureID = PassIndex ? OpenGL.BlurBlit[PingPongIndex].Color : OpenGL.Prepass.Color;
 					glBindTexture(GL_TEXTURE_2D, TextureID);
 					glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -780,36 +800,37 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				UseProgramEnd(&OpenGL.BlurProg);
 
 				glBindVertexArray(0);
-				glBindFramebuffer(GL_FRAMEBUFFER, MainFB->ID);
+				glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.MainFB.Handle);
+
+				glEnable(GL_BLEND);
 			} break;
 		}
 	}
 
 	if (OpenGL.OutlineSet)
 	{
-		framebuffer_info *PrepassFB = GetFrameBufferInfo(OpenGL.OutlineFrameBuffer.PrepassFB);
-		framebuffer_info *BluredFB = GetFrameBufferInfo(OpenGL.OutlineFrameBuffer.BlitFB[1]);
-
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glBindVertexArray(OpenGL.FullScreenVAO);
 
-		UseProgramBegin(&OpenGL.OutlineProg);
+		UseProgramBegin(&OpenGL.OutlineProg, OpenGL.OutlineColor);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, TexturesID[PrepassFB->Color]);
+		glBindTexture(GL_TEXTURE_2D, OpenGL.Prepass.Color);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, TexturesID[BluredFB->Color]);
+		glBindTexture(GL_TEXTURE_2D, OpenGL.BlurBlit[1].Color);
 		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, TexturesID[MainFB->Color]);
+		glBindTexture(GL_TEXTURE_2D, OpenGL.MainFB.Color);
 
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		UseProgramEnd(&OpenGL.OutlineProg);
 
 		glBindVertexArray(0);
+
+		OpenGL.OutlineSet = false;
 	}
 	else
 	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, MainFB->ID);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, OpenGL.MainFB.Handle);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
 		glBlitFramebuffer(

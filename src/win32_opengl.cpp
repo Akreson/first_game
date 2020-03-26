@@ -20,7 +20,6 @@ Win32SetPixelFormat(HDC WindowDC)
 			WGL_GREEN_BITS_ARB, 8,
 			WGL_BLUE_BITS_ARB, 8,
 			WGL_ALPHA_BITS_ARB, 8,
-			WGL_DEPTH_BITS_ARB, 24,
 			0
 		};
 

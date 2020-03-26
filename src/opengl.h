@@ -1,9 +1,16 @@
 #pragma once
 
+#define GL_RGBA32F                        0x8814
+#define GL_RGB32F                         0x8815
+#define GL_RGBA16F                        0x881A
+#define GL_RGB16F                         0x881B
+
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
+
+#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 
 #define GL_ARRAY_BUFFER                   0x8892
 
@@ -34,6 +41,27 @@
 #define GL_TEXTURE14                      0x84CE
 #define GL_TEXTURE15                      0x84CF
 
+#define GL_R8                             0x8229
+#define GL_R16                            0x822A
+#define GL_RG8                            0x822B
+#define GL_RG16                           0x822C
+#define GL_R16F                           0x822D
+#define GL_R32F                           0x822E
+#define GL_RG16F                          0x822F
+#define GL_RG32F                          0x8230
+#define GL_R8I                            0x8231
+#define GL_R8UI                           0x8232
+#define GL_R16I                           0x8233
+#define GL_R16UI                          0x8234
+#define GL_R32I                           0x8235
+#define GL_R32UI                          0x8236
+#define GL_RG8I                           0x8237
+#define GL_RG8UI                          0x8238
+#define GL_RG16I                          0x8239
+#define GL_RG16UI                         0x823A
+#define GL_RG32I                          0x823B
+#define GL_RG32UI                         0x823C
+
 #define GL_FRAMEBUFFER                    0x8D40
 #define GL_DEPTH_ATTACHMENT               0x8D00
 #define GL_COLOR_ATTACHMENT0              0x8CE0
@@ -41,7 +69,11 @@
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 #define GL_DEPTH_STENCIL                  0x84F9
+
 #define GL_UNSIGNED_INT_24_8              0x84FA
+#define GL_DEPTH_COMPONENT16              0x81A5
+#define GL_DEPTH_COMPONENT24              0x81A6
+#define GL_DEPTH_COMPONENT32              0x81A7
 
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
@@ -202,23 +234,26 @@ struct opengl_info
 	b32 GL_EXT_framebuffer_object;
 };
 
+enum opengl_framebuffer_set_params
+{
+	OpenGLFramebufferSetParam_Color = (1 << 0),
+	OpenGLFramebufferSetParam_Depth = (1 << 1),
+	OpenGLFramebufferSetParam_Stencil = (1 << 2),
+	OpenGLFramebufferSetParam_DepthStencil = (1 << 3),
+};
+
 struct framebuffer_info
 {
-	v4 ClearColor;
-	GLuint ID;
-	u32 Color;
+	GLuint Handle;
+	GLuint Color;
 	union
 	{
-		u32 DepthStensil;
-		struct
-		{
-			u32 Depth;
-			u32 Stensil;
-		};
+		GLuint Depth;
+		GLuint DepthStencil;
 	};
 };
 
-struct opengl_bitmap_program
+struct bitmap_program
 {
 	GLuint ID;
 	GLuint BitmapVAO;
@@ -228,7 +263,7 @@ struct opengl_bitmap_program
 	GLuint ProjID;
 };
 
-struct opengl_model_program
+struct model_program
 {
 	GLuint ID; //
 	GLuint ModelVAO; // TODO: Delete?
@@ -240,7 +275,7 @@ struct opengl_model_program
 	GLuint ModelEdgeColor;
 };
 
-struct opengl_model_color_pass_program
+struct model_color_pass_program
 {
 	GLuint ID;
 
@@ -249,14 +284,15 @@ struct opengl_model_color_pass_program
 	GLuint OutlineColor;
 };
 
-struct opengl_blur_program
+struct blur_program
 {
 	GLuint ID;
 };
 
-struct opengl_outline_program
+struct outline_program
 {
 	GLuint ID;
+	GLuint OutlineColor;
 };
 
 struct outline_framebuffers
@@ -278,8 +314,7 @@ struct outline_framebuffers
 
 struct opengl_render_info
 {
-	u32 MainFB;
-	b32 OutlineSet;
+	framebuffer_info MainFB;
 
 	GLuint VertexBufferVAO;
 	GLuint VertexBufferVBO;
@@ -287,18 +322,22 @@ struct opengl_render_info
 	GLuint FullScreenVAO;
 	GLuint FullScreenVBO;
 
-	opengl_bitmap_program BitmapProg;
-	opengl_model_program ModelProg;
-	opengl_model_color_pass_program ModelColorPassProg;
-	opengl_blur_program BlurProg;
-	opengl_outline_program OutlineProg;
+	bitmap_program BitmapProg;
+	model_program ModelProg;
+	model_color_pass_program ModelColorPassProg;
+	blur_program BlurProg;
+	outline_program OutlineProg;
 
-	outline_framebuffers OutlineFrameBuffer;
+	framebuffer_info Prepass;
+	framebuffer_info BlurBlit[2];
+	framebuffer_info OutlineSolve;
 
-	/*GLuint FrameBufferDisplayProgramID;
-	GLuint FrameBuffer;
-	GLuint FrameBufferText;
-	GLuint DepthRBO;
-	GLuint FrameBufferVAO;
-	GLuint FrameBufferVBO;*/
+	b32 OutlineSet;
+	v3 OutlineColor;
+
+	GLuint TexturesID[256];
+	u32 TexutreIDCount;
+
+	//framebuffer_info Framebuffers[16];
+	//u32 FramebufferCount;
 };
