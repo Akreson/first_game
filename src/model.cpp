@@ -122,7 +122,6 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 	return Rect;
 }
 
-// TODO: Complete
 void
 GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 {

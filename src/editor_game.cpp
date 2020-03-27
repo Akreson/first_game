@@ -137,7 +137,7 @@ RayModelEdgeInterset(void)
 }
 
 b32
-RayModelFaceIntersect(model *Model, ray_param Ray, element_ray_result *FaceResult)
+RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
 {
 	b32 Result = false;
 
@@ -155,7 +155,7 @@ RayModelFaceIntersect(model *Model, ray_param Ray, element_ray_result *FaceResul
 		v3 Edge1 = V0 - V1;
 		v3 Edge2 = V0 - V3;
 
-		plane_param Plane;
+		plane_params Plane;
 		Plane.N = Normalize(Cross(Edge1, Edge2));
 		Plane.D = Dot(Plane.N, V0);
 
@@ -191,7 +191,7 @@ RayModelFaceIntersect(model *Model, ray_param Ray, element_ray_result *FaceResul
 }
 
 b32
-RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param Ray, interacted_model *Result)
+RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_params Ray, interacted_model *Result)
 {
 	b32 Hit = false;
 	temp_memory TempMem = BeginTempMemory(Arena);
@@ -272,7 +272,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 }
 
 void
-EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup, ray_param Ray)
+EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup, ray_params Ray)
 {
 	if (WasDown(Input->Tab))
 	{
@@ -434,7 +434,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt, Editor->Camera.Pos);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 
-	ray_param Ray;
+	ray_params Ray;
 	Ray.Dir = Unproject(&RenderGroup, Editor->WorldUI.MouseP);
 	Ray.Pos = CameraOt;
 

@@ -296,6 +296,7 @@ UseProgramEnd(bitmap_program *Prog)
 	glUseProgram(0);
 }
 
+// Fix output SelectColor for edge when BarCoord.w == 0;
 internal void
 CompileModelProgram(model_program *Prog)
 {
@@ -350,13 +351,14 @@ CompileModelProgram(model_program *Prog)
 
 		vec3 SelectColor = vec3(0.86f, 0.65f, 0.2f);
 		vec3 HotFaceColor = vec3(1.0f);
+		float Thickness = 2.5f;
 
 		float MinD = min(min(BarCoord.x, BarCoord.y), BarCoord.z);
 		float dMinD = fwidth(MinD);
-		float Thickness = dMinD*2.5f;
-		float Factor = smoothstep(0, Thickness, MinD);
+		float Factor = smoothstep(0, Thickness*dMinD, MinD);
 		float InvFactor = 1.0f - Factor;
-		float A = step(1.0f - dMinD, BarCoord.w);
+		float SelectFactor = 1.0f - (fwidth(BarCoord.w)*Thickness);
+		float A = step(SelectFactor, BarCoord.w);
 		
 		vec3 FinalEdgeColor = mix(EdgeColor, SelectColor, A);
 
@@ -367,7 +369,7 @@ CompileModelProgram(model_program *Prog)
 		// TODO: Properly specify mix factor
 		vec3 FinalFaceColor = mix(Color.xyz, FinalSelectionFaceColor, 0.3f);
 
-		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvFactor), Color.w);
+		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvFactor), Color.a);
 	}
 	)FOO";
 
@@ -552,9 +554,9 @@ CompileOutlinePassProgram(outline_program *Prog)
 		float PrepassColor = texture(PrepassTex, TexCoords).r;
 		float BlurColor = texture(BlurTex, TexCoords).r;
 		
-		vec3 DiffColor = vec3(max(0, BlurColor - PrepassColor));
+		float DiffColor = max(0, BlurColor - PrepassColor);
 		
-		FragColor = vec4(MainColor + ((DiffColor * 1.2) * OutlineColor), 1.0f);
+		FragColor = vec4(MainColor + (vec3(DiffColor * 1.2) * OutlineColor), 1.0f);
 	}
 	)FOO";
 

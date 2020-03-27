@@ -11,13 +11,13 @@ struct rect3
 	v3 Max;
 };
 
-struct ray_param
+struct ray_params
 {
 	v3 Dir;
 	v3 Pos;
 };
 
-struct plane_param
+struct plane_params
 {
 	v3 N;
 	f32 D;
@@ -546,7 +546,7 @@ IsPointInTriangle(v3 A, v3 B, v3 C, v3 P)
 
 // TODO: Consider to optimize
 b32
-RayAABBIntersect(ray_param Ray, rect3 AABB, v3 AABBOffset)
+RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 {
 	b32 Result = true;
 
