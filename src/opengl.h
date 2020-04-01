@@ -295,24 +295,7 @@ struct outline_program
 	GLuint OutlineColor;
 };
 
-struct outline_framebuffers
-{
-	union
-	{
-		struct
-		{
-			u32 FB[4];
-		};
-		struct
-		{
-			u32 OutlineFB;
-			u32 PrepassFB;
-			u32 BlitFB[2];
-		};
-	};
-};
-
-struct opengl_render_info
+struct opengl_renderer_info
 {
 	framebuffer_info MainFB;
 
@@ -334,9 +317,6 @@ struct opengl_render_info
 
 	b32 OutlineSet;
 	v3 OutlineColor;
-
-	GLuint TexturesID[256];
-	u32 TexutreIDCount;
 
 	//framebuffer_info Framebuffers[16];
 	//u32 FramebufferCount;

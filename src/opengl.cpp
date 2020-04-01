@@ -1,6 +1,6 @@
 #include "opengl.h"
 
-global opengl_render_info OpenGL;
+global opengl_renderer_info OpenGL;
 global const char *SharedHeaderCode;
 
 void OpenGLMessageDebugCallback(
@@ -90,51 +90,24 @@ CreateFramebuffer(u32 Width, u32 Height, u32 Flags, u32 ColorFormat = GL_RGB)
 	return Result;
 }
 
-#if 0
-internal inline framebuffer_info *
-GetFrameBufferInfo(u32 ID)
-{
-	framebuffer_info *Result = OpenGL.Framebuffers + ID;
-	return Result;
-}
-#endif
-
-internal void
-OpenGLInternalAllocateTexture(GLuint *Handle, u32 Width, u32 Height,
-	b32 Filter, u32 InternalFormat, u32 Format,
-	u32 PixelType, void *Data = 0)
-{
-	glGenTextures(1, Handle);
-	glBindTexture(GL_TEXTURE_2D, *Handle);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, Filter);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, Filter);
-	glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, (GLsizei)Width, (GLsizei)Height,
-		0, Format, PixelType, Data);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
 // TODO: Provide more options?
 PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
 {
-	u32 TextureID = 0;
+	renderer_texture Result;
 
-	if (OpenGL.TexutreIDCount < ArrayCount(OpenGL.TexturesID))
-	{
-		TextureID = OpenGL.TexutreIDCount++;
+	glGenTextures(1, &*(GLuint *)&Result.Handle);
+	glBindTexture(GL_TEXTURE_2D, Result.Handle);
 
-		OpenGLInternalAllocateTexture(&OpenGL.TexturesID[TextureID],
-			Width, Height, GL_LINEAR, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, Data);
-	}
-	else
-	{
-		Assert(0);
-	}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)Width, (GLsizei)Height,
+		0, GL_RGBA, GL_UNSIGNED_INT, Data);
 
-	return TextureID;
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return Result;
 }
 
 PLATFORM_DEALLOCATE_TEXTURE(OpenGLDeallocateTexture)
@@ -665,6 +638,13 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glBindVertexArray(0);
 }
 
+inline void
+OpenGLBindTex(GLenum Target, GLenum Slot, GLuint Handle)
+{
+	glActiveTexture(Slot);
+	glBindTexture(Target, Handle);
+}
+
 void
 OpenGLRenderCommands(game_render_commands *Commands)
 {
@@ -720,8 +700,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(OpenGL.BitmapProg.BitmapVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapProg.BitmapVBO);
 
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, OpenGL.TexturesID[BitmapEntry->TextureID]);
+				OpenGLBindTex(GL_TEXTURE_2D, GL_TEXTURE0, (GLuint)BitmapEntry->Texture.Handle);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertices), Vertices);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -821,12 +800,9 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 		UseProgramBegin(&OpenGL.OutlineProg, OpenGL.OutlineColor);
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, OpenGL.Prepass.Color);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, OpenGL.BlurBlit[1].Color);
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, OpenGL.MainFB.Color);
+		OpenGLBindTex(GL_TEXTURE_2D, GL_TEXTURE0, OpenGL.Prepass.Color);
+		OpenGLBindTex(GL_TEXTURE_2D, GL_TEXTURE1, OpenGL.BlurBlit[1].Color);
+		OpenGLBindTex(GL_TEXTURE_2D, GL_TEXTURE2, OpenGL.MainFB.Color);
 
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		UseProgramEnd(&OpenGL.OutlineProg);

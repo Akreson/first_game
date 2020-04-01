@@ -16,7 +16,7 @@ PatchFontData(font_asset_info *FontAsset)
 		bitmap_info *GlyphBitmap = FontAsset->Glyphs + GlyphIndex;
 		GlyphBitmap->Data = (void *)((u8 *)PtrToMetrics + (u64)GlyphBitmap->Data);
 		// TODO: Allocate in other place?
-		GlyphBitmap->TextureID = PlatformAPI.AllocateTexture(GlyphBitmap->Width, GlyphBitmap->Height, GlyphBitmap->Data);
+		GlyphBitmap->Texture = PlatformAPI.AllocateTexture(GlyphBitmap->Width, GlyphBitmap->Height, GlyphBitmap->Data);
 	}
 }
 

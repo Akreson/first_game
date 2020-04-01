@@ -2,7 +2,7 @@
 
 struct bitmap_info
 {
-	u32 TextureID;
+	renderer_texture Texture;
 	void *Data;
 	f32 WidthOverHeight;
 	u16 Width;
@@ -25,7 +25,6 @@ struct font_asset_info
 			f32 *VerticalAdjast;
 			bitmap_info *Glyphs; // NOTE: Must be last
 		};
-
 	};
 
 	u32 GlyphCount;
