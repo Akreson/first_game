@@ -548,8 +548,6 @@ IsPointInTriangle(v3 A, v3 B, v3 C, v3 P)
 b32
 RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 {
-	b32 Result = true;
-
 	v3 InvD = 1.0 / Ray.Dir;
 
 	v3 Min = (AABB.Min + AABBOffset);
@@ -560,10 +558,5 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 	f32 tMin = MAX(MAX(MIN(tMinV.x, tMaxV.x), MIN(tMinV.y, tMaxV.y)), MIN(tMinV.z, tMaxV.z));
 	f32 tMax = MIN(MIN(MAX(tMinV.x, tMaxV.x), MAX(tMinV.y, tMaxV.y)), MAX(tMinV.z, tMaxV.z));
 
-	if ((tMax < 0) || (tMin > tMax))
-	{
-		Result = false;
-	}
-
-	return Result;
+	return !((tMax < 0) || (tMin > tMax));
 }
