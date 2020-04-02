@@ -492,7 +492,7 @@ Row3x3(v3 X, v3 Y, v3 Z)
 }
 
 inline m4x4_inv
-CameraViewTransform(m4x4 R, v3 P, v3 O)
+CameraViewTransform(m4x4 R, v3 P)
 {
 	m4x4_inv Result;
 

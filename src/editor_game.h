@@ -98,6 +98,8 @@ struct interact_model
 	element_ray_result Edge;
 };
 
+#define ITargetType(ITarget, Type) ((ITarget) == ModelInteractionTarget_##Type)
+
 struct editor_world_ui
 {
 	u32 ITarget;
@@ -124,6 +126,11 @@ struct game_editor_state
 
 	editor_world_ui WorldUI;
 	selected_elements_buffer Selected;
+
+	v3 EdgeColor;
+	v3 SelectColor;
+	v3 ActiveOutlineColor;
+	v3 HotOutlineColor;
 };
 
 struct game_state

@@ -274,19 +274,20 @@ internal void
 CompileModelProgram(model_program *Prog)
 {
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec4 aPos;
-	layout (location = 1) in vec4 aBarCoord;
+	layout (location = 0) in vec3 aPos;
+	layout (location = 1) in vec3 aBarCoord;
+	layout (location = 2) in vec3 aMetaInfo;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
-	out vec4 BarCoord;
-	out float FaceSelectionParam;
-
+	out vec3 BarCoord;
+	out vec3 MetaInfo;
+	
 	void main()
 	{
 		BarCoord = aBarCoord;
-		FaceSelectionParam = aPos.w;
+		MetaInfo = aMetaInfo;
 		gl_Position = Proj * ModelTransform * vec4(aPos.xyz, 1.0f);
 	}
 
@@ -304,43 +305,43 @@ CompileModelProgram(model_program *Prog)
 	uniform vec4 Color;
 	uniform vec3 EdgeColor;
 
-	in vec4 BarCoord;
-	in float FaceSelectionParam;
-
-	float when_eq(float x, float y) {
-	  return 1.0 - abs(sign(x - y));
-	}
-
-	float edgeFactor(){
-		vec3 dBarCoord = fwidth(BarCoord.xyz);
-		vec3 a3 = smoothstep(vec3(0.0), dBarCoord*2.5, BarCoord.xyz);
-		float Result = min(min(a3.x, a3.y), a3.z);
-		return Result;
-	}
+	in vec3 BarCoord;
+	in vec3 MetaInfo;
 
 	void main()
 	{
 		//vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
 
 		vec3 SelectColor = vec3(0.86f, 0.65f, 0.2f);
-		vec3 HotFaceColor = vec3(1.0f);
+		vec3 HotFaceColor = vec3(1.3f);
 		float Thickness = 2.5f;
-
+	
+		// NOTE: Edge color calc.
 		float MinD = min(min(BarCoord.x, BarCoord.y), BarCoord.z);
 		float dMinD = fwidth(MinD);
 		float Factor = smoothstep(0, Thickness*dMinD, MinD);
 		float InvFactor = 1.0f - Factor;
-		float SelectFactor = 1.0f - (fwidth(BarCoord.w)*Thickness);
-		float A = step(SelectFactor, BarCoord.w);
+
+		float SelectEdgeFactor = 1.0f - (fwidth(MetaInfo.y)*Thickness);
+		SelectEdgeFactor = step(SelectEdgeFactor, MetaInfo.y);
 		
-		vec3 FinalEdgeColor = mix(EdgeColor, SelectColor, A);
+		float HotEdgeFactor = 1.0f - (fwidth(MetaInfo.z)*Thickness);
+		HotEdgeFactor = step(HotEdgeFactor, MetaInfo.z);
+		
+		vec3 FinalEdgeColor = mix(EdgeColor, SelectColor, SelectEdgeFactor);
+		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
+		
+		// NOTE: Face color calc
+		float FaceSelectionParam = MetaInfo.x;
 
 		float SelectFaceColorFactor = step(FaceSelectionType_Select, FaceSelectionParam);
-		float HotFaceColorFactor = (1.0f - SelectFaceColorFactor) * step(FaceSelectionType_Hot, FaceSelectionParam);
-		vec3 FinalSelectionFaceColor = SelectColor*SelectFaceColorFactor + HotFaceColor*HotFaceColorFactor;
+		FaceSelectionParam -= SelectFaceColorFactor * FaceSelectionType_Select;
 
-		// TODO: Properly specify mix factor
-		vec3 FinalFaceColor = mix(Color.xyz, FinalSelectionFaceColor, 0.3f);
+		float HotFaceColorFactor = step(FaceSelectionType_Hot, FaceSelectionParam);
+		FaceSelectionParam -= HotFaceColorFactor * FaceSelectionType_Hot;
+
+		vec3 FinalFaceColor = mix(Color.rgb, (SelectColor*Color.rgb), SelectFaceColorFactor);
+		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), HotFaceColorFactor);
 
 		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvFactor), Color.a);
 	}
@@ -601,9 +602,11 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 4));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 3));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 6));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

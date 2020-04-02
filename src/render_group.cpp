@@ -86,30 +86,19 @@ PushFont(render_group *Group, bitmap_info *Glyph, v2 Min, v2 Max, v3 Color)
 }
 
 inline render_model_face_vertex
-ConstructFaceVertex(v4 Vertex, v4 MetaInfo)
+ConstructFaceVertex(v3 Vertex, v3 BarCoords, v3 MetaInfo)
 {
 	render_model_face_vertex Result;
 
 	Result.Vertex = Vertex;
+	Result.BarCoords = BarCoords;
 	Result.MetaInfo = MetaInfo;
 
 	return Result;
 }
 
-enum face_selection_type
-{
-	FaceSelectionType_Hot = (1 << 0),
-	FaceSelectionType_Select = (1 << 1)
-};
-
-struct face_render_param
-{
-	b8 ActiveVert[4];
-	u16 SelectionFlags;
-};
-
 void
-PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_param FaceParam = {})
+PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_params FaceParam = {})
 {
 	Assert(Group->GroupRenderElement);
 	game_render_commands *Commands = Group->Commands;
@@ -118,22 +107,29 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
-	f32 ActiveVert0 = FaceParam.ActiveVert[0] ? 1.0f : 0;
-	f32 ActiveVert1 = FaceParam.ActiveVert[1] ? 1.0f : 0;
-	f32 ActiveVert2 = FaceParam.ActiveVert[2] ? 1.0f : 0;
-	f32 ActiveVert3 = FaceParam.ActiveVert[3] ? 1.0f : 0;
+	float ActiveArray[2] = {0, 1.0f};
+
+	f32 ActiveVert0 = ActiveArray[FaceParam.ActiveVert[0]];
+	f32 ActiveVert1 = ActiveArray[FaceParam.ActiveVert[1]];
+	f32 ActiveVert2 = ActiveArray[FaceParam.ActiveVert[2]];
+	f32 ActiveVert3 = ActiveArray[FaceParam.ActiveVert[3]];
+
+	f32 HotVert0 = ActiveArray[FaceParam.HotVert[0]];
+	f32 HotVert1 = ActiveArray[FaceParam.HotVert[1]];
+	f32 HotVert2 = ActiveArray[FaceParam.HotVert[2]];
+	f32 HotVert3 = ActiveArray[FaceParam.HotVert[3]];
 
 	f32 SelectionType = 0;
-	if (FaceParam.SelectionFlags & FaceSelectionType_Hot) SelectionType = 1.0f;
-	if (FaceParam.SelectionFlags & FaceSelectionType_Select) SelectionType = 2.0f;
+	if (FaceParam.SelectionFlags & FaceSelectionType_Hot) SelectionType += 1.0f;
+	if (FaceParam.SelectionFlags & FaceSelectionType_Select) SelectionType += 2.0f;
 
-	*FaceVertex++ = ConstructFaceVertex(V4(VertexStorage[Face.V0], SelectionType), V4(1, 1, 0, ActiveVert0));
-	*FaceVertex++ = ConstructFaceVertex(V4(VertexStorage[Face.V1], SelectionType), V4(0, 1, 0, ActiveVert1));
-	*FaceVertex++ = ConstructFaceVertex(V4(VertexStorage[Face.V2], SelectionType), V4(0, 0, 1, ActiveVert2));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0], V3(1, 1, 0), V3(SelectionType, ActiveVert0, HotVert0));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0), V3(SelectionType, ActiveVert1, HotVert1));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2], V3(0, 0, 1), V3(SelectionType, ActiveVert2, HotVert2));
 
-	*FaceVertex++ = ConstructFaceVertex(V4(VertexStorage[Face.V0], SelectionType), V4(1, 0, 1, ActiveVert0));
-	*FaceVertex++ = ConstructFaceVertex(V4(VertexStorage[Face.V2], SelectionType), V4(0, 1, 0, ActiveVert2));
-	*FaceVertex++ = ConstructFaceVertex(V4(VertexStorage[Face.V3], SelectionType), V4(0, 0, 1, ActiveVert3));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1), V3(SelectionType, ActiveVert0, HotVert0));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2], V3(0, 1, 0), V3(SelectionType, ActiveVert2, HotVert2));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3], V3(0, 0, 1), V3(SelectionType, ActiveVert3, HotVert3));
 
 	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }

@@ -192,7 +192,7 @@ AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
 }
 
 void
-AddCubeModel(game_editor_state *EditorState, v3 Offset = V3(0), v4 Color = V4(0, 0, 0, 1.0f))
+AddCubeModel(game_editor_state *EditorState, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
 {
 	model *Model = AddModel(EditorState, Color, Offset);
 	GeneratingCube(&EditorState->PageArena, Model);

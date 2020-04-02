@@ -8,6 +8,19 @@ enum render_entry_type
 	RenderEntryType_render_entry_model_outline,
 };
 
+enum face_selection_type
+{
+	FaceSelectionType_Hot = (1 << 0),
+	FaceSelectionType_Select = (1 << 1)
+};
+
+struct face_render_params
+{
+	b8 ActiveVert[4];
+	b8 HotVert[4];
+	u16 SelectionFlags;
+};
+
 struct render_entry_header
 {
 	u16 Type;
@@ -50,8 +63,9 @@ struct render_entry_model_face
 
 struct render_model_face_vertex
 {
-	v4 Vertex;
-	v4 MetaInfo;
+	v3 Vertex;
+	v3 BarCoords;
+	v3 MetaInfo;
 };
 
 struct render_group
