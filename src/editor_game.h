@@ -33,6 +33,12 @@ struct game_world_state
 
 };
 
+struct model_outline_params
+{
+	b32 IsSet;
+	v3 Color;
+};
+
 enum model_intercation_target
 {
 	ModelInteractionTarget_None,
@@ -52,11 +58,11 @@ enum select_element_type
 	SelectElementType_Face
 };
 
-enum interaction_type
+enum ui_interaction_type
 {
-	InteractionType_None,
+	UI_InteractionType_None,
 
-	InteractionType_Select,
+	UI_InteractionType_Select,
 };
 
 struct selected_elements_buffer
@@ -85,10 +91,11 @@ struct model_ray_sort
 	f32 Length;
 };
 
+// TODO: Improve
 struct ui_interaction
 {
 	u32 Type;
-	u32 ID;
+	u32 ID[3];
 };
 
 struct interact_model
@@ -104,14 +111,16 @@ struct editor_world_ui
 {
 	u32 ITarget;
 
-	ui_interaction HotInteraction;
 	ui_interaction Interaction;
+	ui_interaction HotInteraction;
+	ui_interaction NextHotInteraction;
 
 	interact_model IModel;
 
 	v2 MouseP;
 	v2 dMouseP;
 	v2 LastMouseP;
+	ray_params MouseRay;
 };
 
 struct game_editor_state

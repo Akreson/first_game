@@ -107,7 +107,7 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
-	float ActiveArray[2] = {0, 1.0f};
+	f32 ActiveArray[2] = {0, 1.0f};
 
 	f32 ActiveVert0 = ActiveArray[FaceParam.ActiveVert[0]];
 	f32 ActiveVert1 = ActiveArray[FaceParam.ActiveVert[1]];
@@ -135,7 +135,7 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 }
 
 void
-BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor, v3 OutlineColor = V3(0), b32 SetOutline = false)
+BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor, model_outline_params Outline = {})
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_model *ModelEntry = (render_entry_model *)PushRenderElement(Group, render_entry_model);
@@ -145,13 +145,13 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor, v3 Outlin
 	ModelEntry->Color = Color;
 	ModelEntry->EdgeColor = EdgeColor;
 
-	if (SetOutline)
+	if (Outline.IsSet)
 	{
 		render_entry_model_outline *ModelOutlineEntry =
 			(render_entry_model_outline *)PushRenderElement(Group, render_entry_model_outline);
 		
 		ModelOutlineEntry->ModelEntry = ModelEntry;
-		ModelOutlineEntry->OutlineColor = OutlineColor;
+		ModelOutlineEntry->OutlineColor = Outline.Color;
 	}
 
 	Assert(!Group->GroupRenderElement);
