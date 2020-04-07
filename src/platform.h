@@ -144,6 +144,11 @@ struct renderer_texture
 	u64 Handle;
 };
 
+struct renderer_mesh
+{
+	u64 Handle;
+};
+
 #if DEVELOP_MODE
 #define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
 #else
@@ -186,6 +191,7 @@ IsPowerOf2(u32 Value)
 	return Result;
 }
 
+// TODO: Change copy to just be _rep movs_?
 inline void
 Copy(memory_index Size, void *DestBase, void *SourceBase)
 {

@@ -179,12 +179,11 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Model->EdgeCount = ArrayCount(Edges);
 }
 
-
 inline model *
-AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
+AddModel(game_editor_state *Editor, v4 Color, v3 Offset)
 {
-	model *Model = EditorState->Models + EditorState->ModelsCount++;
-	Assert(EditorState->ModelsCount < ArrayCount(EditorState->Models));
+	model *Model = Editor->Models + Editor->ModelsCount++;
+	Assert(Editor->ModelsCount < ArrayCount(Editor->Models));
 	Model->Color = Color;
 	Model->Offset = Offset;
 
@@ -192,9 +191,154 @@ AddModel(game_editor_state *EditorState, v4 Color, v3 Offset)
 }
 
 void
-AddCubeModel(game_editor_state *EditorState, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
+AddCubeModel(game_editor_state *Editor, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
 {
-	model *Model = AddModel(EditorState, Color, Offset);
-	GeneratingCube(&EditorState->PageArena, Model);
+	model *Model = AddModel(Editor, Color, Offset);
+	GeneratingCube(&Editor->PageArena, Model);
 	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+}
+
+struct tris_u32
+{
+	u32 I0;
+	u32 I1;
+	u32 I2;
+};
+
+inline void
+AddTris(memory_arena *Arena, tris_u32 *TrisArr, u32 I0, u32 I1, u32 I2)
+{
+	tris_u32 Tris = {I0, I1, I2};
+
+	*TrisArr++ = Tris;
+	PushStruct(Arena, tris_u32, 1);
+}
+
+inline static_mesh *
+AddStaticMesh(game_editor_state *Editor)
+{
+	static_mesh *Result = Editor->StaticMesh + Editor->StaticMeshCount;
+	Assert(Editor->StaticMeshCount < ArrayCount(Editor->StaticMesh));
+
+	return Result;
+}
+
+// NOTE: Using sphere method
+void
+CreateStaticSphere(memory_arena *MainArena, memory_arena *TranArena, static_mesh *Sphere,
+	f32 Radius, u32 StackCount, u32 SliceCount)
+{
+	temp_memory TempMem = BeginTempMemory(TranArena);
+
+	u32 VertexCount = 2 + ((StackCount - 2) * SliceCount);
+	Assert(VertexCount <= _UI16_MAX);
+
+	f32 Theta = Pi32 / StackCount;
+	f32 Phi = Tau32 / SliceCount;
+	f32 HalfRadius = Radius / 2.0f;
+
+	// NOTE: Generate vertecis
+	v3 *VertArr = PushStruct(TranArena, v3, VertexCount);
+	v3 *Vert = VertArr;
+	*Vert++ = V3(0, -HalfRadius, 0);
+	for (u32 StackIndex = 1;
+		++StackIndex;
+		StackIndex < (StackCount - 1))
+	{
+		f32 StackRadius = Sin(Theta * (f32)StackIndex) * Radius;
+		f32 YStackPos = StackRadius - HalfRadius;
+
+		for (u32 SliceIndex = 0;
+			++SliceIndex;
+			SliceIndex < (SliceCount - 1))
+		{
+			v3 V;
+			V.x = Cos(Phi * (f32)SliceIndex) * StackRadius;
+			V.y = YStackPos;
+			V.z = Sin(Phi * (f32)SliceIndex) * StackRadius;
+			*Vert++ = V;
+		}
+	}
+	*Vert++ = V3(0, HalfRadius, 0);
+
+	// NOTE: Generate indecis
+
+	u32 FirstSliceVertOffset = 1;
+	tris_u32 *TrisStart = PushStruct(TranArena, tris_u32, 1);
+	tris_u32 *TrisEnd = TrisStart;
+
+	for (u32 SliceIndex = 0;
+		++SliceIndex;
+		SliceIndex < (SliceCount - 1))
+	{
+		u32 VertIndex = SliceIndex + FirstSliceVertOffset;
+		AddTris(TranArena, TrisEnd, 0, VertIndex, VertIndex + 1);
+	}
+	AddTris(TranArena, TrisEnd, 0, SliceCount + 1, 1);
+
+	for (u32 StackIndex = 1;
+		++StackIndex;
+		StackIndex < (StackCount - 3))
+	{
+		for (u32 SliceIndex = 0;
+			++SliceIndex;
+			SliceIndex < (SliceCount - 1))
+		{
+			u32 VertIndex = SliceIndex + FirstSliceVertOffset;
+
+			u32 I0 = VertIndex + (StackIndex * SliceCount);
+			u32 I1 = VertIndex + ((StackIndex + 1) * SliceCount);
+			u32 I2 = (VertIndex + 1) + ((StackIndex + 1) * SliceCount);
+			u32 I3 = (VertIndex + 1) + (StackIndex * SliceCount);
+
+			AddTris(TranArena, TrisEnd, I0, I1, I2);
+			AddTris(TranArena, TrisEnd, I0, I2, I3);
+		}
+
+		u32 VertIndex = FirstSliceVertOffset + (StackIndex * SliceCount);
+
+		u32 I0 = (VertIndex + (SliceCount - 1)) + (StackIndex * SliceCount);
+		u32 I1 = (VertIndex + (SliceCount - 1)) + (StackIndex * SliceCount);
+		u32 I2 = VertIndex + ((StackIndex + 1) * SliceCount);
+		u32 I3 = VertIndex + (StackIndex * SliceCount);
+
+		AddTris(TranArena, TrisEnd, I0, I1, I2);
+		AddTris(TranArena, TrisEnd, I0, I2, I3);
+	}
+
+	FirstSliceVertOffset = (VertexCount - 1) - SliceCount;
+	for (u32 SliceIndex = 0;
+		++SliceIndex;
+		SliceIndex < (SliceCount - 1))
+	{
+		u32 VertIndex = SliceIndex + FirstSliceVertOffset;
+		AddTris(TranArena, TrisEnd, VertIndex, VertexCount - 1, VertIndex + 1);
+	}
+	AddTris(TranArena, TrisEnd, 0, SliceCount + 1, 1);
+
+	u32 VertexArrSize = VertexCount * sizeof(v3);
+	u32 TrisCount = TrisEnd - TrisStart;
+	u32 TrisArrSize = TrisCount * sizeof(tris_u32);
+
+	Sphere->Data = PushSize(MainArena, VertexArrSize + TrisArrSize);
+	Sphere->Tris = (u8 *)Sphere->Vertex + VertexArrSize;
+	Sphere->VertexCount = VertexCount;
+	Sphere->TrisCount = TrisCount;
+	Copy(VertexArrSize, Sphere->Vertex, VertArr);
+	Copy(TrisArrSize, Sphere->Vertex, TrisStart);
+	
+	EndTempMemory(TempMem);
+}
+
+// TODO: Complete: allocate on gpu, debug
+void 
+CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 SliceCount)
+{
+	Assert(StackCount >= 3);
+	Assert(SliceCount >= 3);
+
+	static_mesh *Sphere = AddStaticMesh(Editor);
+	CreateStaticSphere(&Editor->MainArena, &Editor->TranArena,
+		Sphere, Radius, StackCount, SliceCount);
+	
 }

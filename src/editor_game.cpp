@@ -234,7 +234,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 		}
 	}
 
-	// NOTE: Find intersetc model face for non convex case
+	// NOTE: Find intersect model face for non convex case
 	if (ModelsHitCount)
 	{
 		for (u32 SortIndex = 0;
@@ -283,7 +283,7 @@ InteractionAreEqual(ui_interaction A, ui_interaction B)
 	return Result;
 }
 
-void
+internal void inline
 UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
 	editor_world_ui *WorldUI = &Editor->WorldUI;
@@ -480,12 +480,17 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		InitArena(&Editor->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		
+		// TODO: Create TranArena and PageArena as separate arena?
+		
+		Editor->TranArena = SubArena(&Editor->MainArena, MiB(5));
+		
 		u32 SelectedBufferSize = MiB(1);
 		Editor->Selected.Elements = (u32 *)PushSize(&Editor->MainArena, SelectedBufferSize);
 		Editor->Selected.MaxCount = SelectedBufferSize / sizeof(u32);
 
 		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 
+		// NOTE: For Test
 		AddCubeModel(Editor);
 		AddCubeModel(Editor, V3(-2.0f, 1.0f, 1.0f));
 		AddCubeModel(Editor, V3(-2.0f, 4.0f, -1.0f));

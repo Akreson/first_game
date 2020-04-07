@@ -69,6 +69,15 @@ InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 	Arena->Used = 0;
 }
 
+memory_arena
+SubArena(memory_arena *Arena, umm Size)
+{
+	memory_arena Result = {};
+
+	Result.Size = Size;
+	Result.Base = (u8 *)PushSize(Arena, Size, 64);
+}
+
 inline temp_memory
 BeginTempMemory(memory_arena *Arena)
 {

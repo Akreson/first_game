@@ -2,11 +2,11 @@
 
 struct bitmap_info
 {
-	renderer_texture Texture;
 	void *Data;
 	f32 WidthOverHeight;
 	u16 Width;
 	u16 Height;
+	renderer_texture Texture;
 };
 
 // TODO: replace patching?

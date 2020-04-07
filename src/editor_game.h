@@ -7,9 +7,9 @@
 #include "math.cpp"
 #include "string.h"
 #include "memory_arena.h"
-#include "asset.h"
 #include "model.h"
 #include "render_group.h"
+#include "asset.h"
 
 enum game_mode
 {
@@ -105,6 +105,24 @@ struct interact_model
 	element_ray_result Edge;
 };
 
+struct static_mesh
+{
+	union
+	{
+		void *Data;
+
+		struct
+		{
+			v3 *Vertex;
+			void *Tris;
+		};
+	};
+	u32 VertexCount;
+	u32 TrisCount;
+
+	renderer_mesh Mesh;
+};
+
 #define ITargetType(ITarget, Type) ((ITarget) == ModelInteractionTarget_##Type)
 
 struct editor_world_ui
@@ -128,7 +146,11 @@ struct game_editor_state
 	model Models[32];
 	u16 ModelsCount;
 
+	static_mesh StaticMesh[16];
+	u16 StaticMeshCount;
+
 	memory_arena MainArena;
+	memory_arena TranArena;
 	page_memory_arena PageArena;
 
 	camera Camera;
