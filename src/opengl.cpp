@@ -16,6 +16,91 @@ void OpenGLMessageDebugCallback(
 	Assert(0)
 }
 
+// TODO: Provide more options?
+PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
+{
+	renderer_texture Result;
+
+	glGenTextures(1, &*(GLuint *)&Result.Handle);
+	glBindTexture(GL_TEXTURE_2D, Result.Handle);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)Width, (GLsizei)Height,
+		0, GL_RGBA, GL_UNSIGNED_INT, Data);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return Result;
+}
+
+PLATFORM_DEALLOCATE_TEXTURE(OpenGLDeallocateTexture)
+{
+	GLuint Handle = (u32)TextureHandler;
+	glDeleteTextures(1, &Handle);
+}
+
+PLATFORM_ALLOCATE_MESH(OpenGLAllocateMesh)
+{
+	renderer_mesh Result;
+
+	GLuint VAO;
+	GLuint VBO;
+	GLuint EBO;
+
+	Assert(Params.VertexData);
+	Assert(Params.Tris);
+
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glGenBuffers(1, &EBO);
+
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+	u32 ElementSize = sizeof(v3);
+	u32 NormalsSize = (Params.Flags & AllocMeshParam_NormalSet) ? sizeof(v3) : 0;
+	u32 UVSize = (Params.Flags & AllocMeshParam_UVSet) ? sizeof(v2) : 0;
+
+	ElementSize += NormalsSize + UVSize;
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, ElementSize, (void*)0);
+	u32 NextElementIndex = 1;
+
+	if (NormalsSize)
+	{
+		glEnableVertexAttribArray(NextElementIndex);
+		glVertexAttribPointer(NextElementIndex, 3, GL_FLOAT, GL_FALSE, ElementSize, (void*)sizeof(v3));
+		++NextElementIndex;
+	}
+
+	if (UVSize)
+	{
+		glEnableVertexAttribArray(NextElementIndex);
+		glVertexAttribPointer(NextElementIndex, 2, GL_FLOAT, GL_FALSE, ElementSize, (void*)(sizeof(v3)*2));
+	}
+
+	glBufferData(GL_ARRAY_BUFFER, Params.VertexCount * ElementSize, Params.VertexData, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, Params.TrisCount * (sizeof(u32) * 3), Params.Tris, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	Result.Handle = (u64)VAO;
+	Result.ElementCount = Params.TrisCount * 3;
+	return Result;
+}
+
+PLATFORM_DEALLOCATE_MESH(OpenGLDeallocateMesh)
+{
+
+}
+
 internal framebuffer_info
 CreateFramebuffer(u32 Width, u32 Height, u32 Flags, u32 ColorFormat = GL_RGB)
 {
@@ -27,7 +112,7 @@ CreateFramebuffer(u32 Width, u32 Height, u32 Flags, u32 ColorFormat = GL_RGB)
 
 	glGenFramebuffers(1, &Result.Handle);
 	glBindFramebuffer(GL_FRAMEBUFFER, Result.Handle);
-	
+
 	if (HasColor)
 	{
 		glGenTextures(1, &Result.Color);
@@ -88,31 +173,6 @@ CreateFramebuffer(u32 Width, u32 Height, u32 Flags, u32 ColorFormat = GL_RGB)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	return Result;
-}
-
-// TODO: Provide more options?
-PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
-{
-	renderer_texture Result;
-
-	glGenTextures(1, &*(GLuint *)&Result.Handle);
-	glBindTexture(GL_TEXTURE_2D, Result.Handle);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)Width, (GLsizei)Height,
-		0, GL_RGBA, GL_UNSIGNED_INT, Data);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return Result;
-}
-
-PLATFORM_DEALLOCATE_TEXTURE(OpenGLDeallocateTexture)
-{
-	glDeleteTextures(1, &TextureHandler);
 }
 
 internal opengl_info
@@ -269,7 +329,6 @@ UseProgramEnd(bitmap_program *Prog)
 	glUseProgram(0);
 }
 
-// Fix output SelectColor for edge when BarCoord.w == 0;
 internal void
 CompileModelProgram(model_program *Prog)
 {
@@ -558,6 +617,62 @@ UseProgramEnd(outline_program *Prog)
 	glUseProgram(0);
 }
 
+internal void
+CompileStaticMeshProgram(static_mesh_program *Prog)
+{
+	const char *VertexCode = R"FOO(
+	layout (location = 0) in vec3 aPos;
+
+	uniform mat4 Proj;
+	uniform mat4 ModelTransform;
+
+	void main()
+	{
+		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
+	}
+
+	)FOO";
+
+	// TODO: Set model color?
+	// TODO: Compute color for selected edge in right way
+
+	const char *FragmentCode = R"FOO(
+	out vec4 FragColor;
+
+	uniform vec3 MeshColor;
+	
+	void main()
+	{
+		FragColor = vec4(1.0);
+	}
+	)FOO";
+
+	GLuint ProgID = OpenGLCreateProgram((GLchar *)SharedHeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	Prog->ID = ProgID;
+
+	glUseProgram(ProgID);
+	Prog->ProjID = glGetUniformLocation(ProgID, "Proj");
+	Prog->TransformID = glGetUniformLocation(ProgID, "ModelTransform");
+	Prog->ColorID = glGetUniformLocation(ProgID, "MeshColor");
+	glUseProgram(0);
+}
+
+internal void
+UseProgramBegin(static_mesh_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat, v3 Color)
+{
+	glUseProgram(Prog->ID);
+
+	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->TransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
+	glUniform3f(Prog->ColorID, Color.r, Color.g, Color.b);
+}
+
+internal void
+UseProgramEnd(static_mesh_program *Prog)
+{
+	glUseProgram(0);
+}
+
 void
 OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 {
@@ -574,6 +689,8 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	CompileModelColorPassProgram(&OpenGL.ModelColorPassProg);
 	CompileBlurProgram(&OpenGL.BlurProg);
 	CompileOutlinePassProgram(&OpenGL.OutlineProg);
+
+	CompileStaticMeshProgram(&OpenGL.StaticMeshProg);
 	
 	// NOTE: Set main FBO
 	OpenGL.MainFB = CreateFramebuffer(ScreenWidth, ScreenHeight,
@@ -658,6 +775,10 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_FRONT);
+	//glFrontFace(GL_CCW);
+
 	glBindVertexArray(OpenGL.VertexBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 	glBufferData(GL_ARRAY_BUFFER, Commands->VertexBufferOffset, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
@@ -734,6 +855,21 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(0);
 
 				UseProgramEnd(&OpenGL.ModelProg);
+			} break;
+
+			case RenderEntryType_render_entry_sphere:
+			{
+				render_entry_sphere *SphereEntry = (render_entry_sphere *)Data;
+				BufferOffset += sizeof(render_entry_sphere);
+
+				m4x4 I = Identity();
+
+				UseProgramBegin(&OpenGL.StaticMeshProg,
+					&Commands->PersProj.Forward, &I, SphereEntry->Color);
+
+				glBindVertexArray((GLuint)SphereEntry->Mesh.Handle);
+				glDrawElements(GL_TRIANGLES, SphereEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
+				UseProgramEnd(&OpenGL.StaticMeshProg);
 			} break;
 
 			// TODO: Clean up

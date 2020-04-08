@@ -13,6 +13,7 @@
 #define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 
 #define GL_ARRAY_BUFFER                   0x8892
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
 
 #define GL_STREAM_DRAW                    0x88E0
 #define GL_STREAM_READ                    0x88E1
@@ -295,6 +296,15 @@ struct outline_program
 	GLuint OutlineColor;
 };
 
+struct static_mesh_program
+{
+	GLuint ID;
+
+	GLuint ProjID;
+	GLuint TransformID;
+	GLuint ColorID;
+};
+
 struct opengl_renderer_info
 {
 	framebuffer_info MainFB;
@@ -310,6 +320,8 @@ struct opengl_renderer_info
 	model_color_pass_program ModelColorPassProg;
 	blur_program BlurProg;
 	outline_program OutlineProg;
+
+	static_mesh_program StaticMeshProg;
 
 	framebuffer_info Prepass;
 	framebuffer_info BlurBlit[2];

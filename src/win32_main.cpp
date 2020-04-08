@@ -360,6 +360,8 @@ WinMain(HINSTANCE Instance,
 			PlatformAPI.GetFileSize = Win32GetFileSize;
 			PlatformAPI.AllocateTexture = OpenGLAllocateTexture;
 			PlatformAPI.DeallocateTexture = OpenGLDeallocateTexture;
+			PlatformAPI.AllocateMesh = OpenGLAllocateMesh;
+			PlatformAPI.DeallocateMesh = OpenGLDeallocateMesh;
 
 			LARGE_INTEGER LastCounter = Win32GetClock();
 

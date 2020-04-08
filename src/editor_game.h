@@ -105,24 +105,6 @@ struct interact_model
 	element_ray_result Edge;
 };
 
-struct static_mesh
-{
-	union
-	{
-		void *Data;
-
-		struct
-		{
-			v3 *Vertex;
-			void *Tris;
-		};
-	};
-	u32 VertexCount;
-	u32 TrisCount;
-
-	renderer_mesh Mesh;
-};
-
 #define ITargetType(ITarget, Type) ((ITarget) == ModelInteractionTarget_##Type)
 
 struct editor_world_ui

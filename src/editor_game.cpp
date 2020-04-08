@@ -491,7 +491,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 
 		// NOTE: For Test
-		AddCubeModel(Editor);
+		//AddCubeModel(Editor);
 		AddCubeModel(Editor, V3(-2.0f, 1.0f, 1.0f));
 		AddCubeModel(Editor, V3(-2.0f, 4.0f, -1.0f));
 
@@ -503,6 +503,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Editor->ActiveOutlineColor = V3(0.86f, 0.70f, 0.2f);
 		Editor->HotOutlineColor = V3(0, 1, 0);
 
+		// TODO: Debug for stack index more then 3
+		CreateStaticSphere(Editor, 1.0f, 3, 3);
+
 		GameState->IsInit = true;
 	}
 
@@ -510,6 +513,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 	v3 CameraOffset = Editor->Camera.Offset;
 	editor_world_ui *WorldUI = &Editor->WorldUI;
+
+	PushSphere(&RenderGroup, Editor->StaticMesh[0].Mesh);
 
 	if (Input)
 	{

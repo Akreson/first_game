@@ -76,6 +76,8 @@ SubArena(memory_arena *Arena, umm Size)
 
 	Result.Size = Size;
 	Result.Base = (u8 *)PushSize(Arena, Size, 64);
+
+	return Result;
 }
 
 inline temp_memory

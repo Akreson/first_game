@@ -138,17 +138,6 @@ struct m4x4_inv
 	m4x4 Inverse;
 };
 
-// TODO: Remove from platform.h
-struct renderer_texture
-{
-	u64 Handle;
-};
-
-struct renderer_mesh
-{
-	u64 Handle;
-};
-
 #if DEVELOP_MODE
 #define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
 #else
@@ -374,6 +363,8 @@ enum file_type
 	FileType_FontFile,
 };
 
+#include "render_group.h"
+
 #define PLATFORM_GET_FILE_HANDLER_FOR_FILE(name) platform_file_handler name(file_type FileType)
 typedef PLATFORM_GET_FILE_HANDLER_FOR_FILE(platform_get_file_handler_for_file);
 
@@ -386,8 +377,14 @@ typedef PLATFORM_GET_FILE_SIZE(platform_get_file_size);
 #define PLATFORM_ALLOCATE_TEXTURE(name) renderer_texture name(u32 Width, u32 Height, void *Data)
 typedef PLATFORM_ALLOCATE_TEXTURE(platform_allocate_texture);
 
-#define PLATFORM_DEALLOCATE_TEXTURE(name) void name(u32 TextureHandler)
+#define PLATFORM_DEALLOCATE_TEXTURE(name) void name(u64 TextureHandler)
 typedef PLATFORM_DEALLOCATE_TEXTURE(platform_deallocate_texture);
+
+#define PLATFORM_ALLOCATE_MESH(name) renderer_mesh name(render_alloc_mesh_params Params)
+typedef PLATFORM_ALLOCATE_MESH(platform_allocate_mesh);
+
+#define PLATFORM_DEALLOCATE_MESH(name) void name(u64 MeshHandle)
+typedef PLATFORM_DEALLOCATE_MESH(platform_deallocate_mesh);
 
 struct platform_api
 {
@@ -395,5 +392,7 @@ struct platform_api
 	platform_get_file_size *GetFileSize;
 	platform_allocate_texture *AllocateTexture;
 	platform_deallocate_texture *DeallocateTexture;
+	platform_allocate_mesh *AllocateMesh;
+	platform_deallocate_mesh *DeallocateMesh;
 	platform_get_file_handler_for_file *GetFileHandlerForFile;
 };

@@ -34,4 +34,29 @@ struct font_asset_info
 	f32 LineGap;
 };
 
+struct tris_u32
+{
+	u32 I0;
+	u32 I1;
+	u32 I2;
+};
+
+struct static_mesh
+{
+	union
+	{
+		void *Data;
+
+		struct
+		{
+			v3 *Vertex;
+			void *Tris;
+		};
+	};
+	u32 VertexCount;
+	u32 TrisCount;
+
+	renderer_mesh Mesh;
+};
+
 #define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs) / sizeof(void*))

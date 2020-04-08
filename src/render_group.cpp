@@ -178,3 +178,19 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
 	PushFace(Group, VertexStorage, Face);
 	EndPushModel(Group);
 }
+
+struct render_entry_sphere
+{
+	renderer_mesh Mesh;
+	v3 Color;
+};
+
+void
+PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
+{
+	game_render_commands *Commands = Group->Commands;
+	render_entry_sphere *SphereEntry = (render_entry_sphere *)PushRenderElement(Group, render_entry_sphere);
+
+	SphereEntry->Mesh = Mesh;
+	SphereEntry->Color = Color;
+}
