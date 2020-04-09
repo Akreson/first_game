@@ -775,6 +775,9 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	// NOTE: Seems i have bug with wireframe rendering (image get staking)
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 	//glEnable(GL_CULL_FACE);
 	//glCullFace(GL_FRONT);
 	//glFrontFace(GL_CCW);

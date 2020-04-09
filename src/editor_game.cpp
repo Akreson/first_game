@@ -503,8 +503,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Editor->ActiveOutlineColor = V3(0.86f, 0.70f, 0.2f);
 		Editor->HotOutlineColor = V3(0, 1, 0);
 
-		// TODO: Debug for stack index more then 3
-		CreateStaticSphere(Editor, 1.0f, 3, 3);
+		CreateStaticSphere(Editor, 0.6f, 20, 20);
 
 		GameState->IsInit = true;
 	}
