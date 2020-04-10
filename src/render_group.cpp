@@ -11,6 +11,19 @@ InitRenderGroup(game_render_commands *Commands, game_input *Input, font_asset_in
 	return Result;
 }
 
+inline render_alloc_mesh_params
+SetAllocMeshParams(void *VertexData, u32 *Tris, u32 VertexCount, u32 TrisCount, u32 Flags = 0)
+{
+	render_alloc_mesh_params Result;
+	Result.VertexData = VertexData;
+	Result.VertexCount = VertexCount;
+	Result.Tris = Tris;
+	Result.TrisCount = TrisCount;
+	Result.Flags = Flags;
+
+	return Result;
+}
+
 void
 SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4_inv *CameraViewTransform)
 {

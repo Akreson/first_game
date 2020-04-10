@@ -40,246 +40,55 @@ RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Scree
 	}
 }
 
-b32
-RayModelEdgeInterset(model *Model, element_ray_result *FaceResult, element_ray_result *EdgeResult)
+inline ui_id
+IDFromModel(u32 ModelIndex, u32 FaceIndex = 0, u32 EdgeIndex = 0)
 {
-	model_face Face = Model->Faces[FaceResult->ID];
-	v3 IntersectP = FaceResult->P;
-
-	// NOTE: Closest vertex match
-	u32 VertexRelativeIndex[2];
-	f32 LengthsToVertex[4];
-
-	LengthsToVertex[0] = LengthSq(Model->Vertex[Face.V0] - IntersectP);
-	LengthsToVertex[1] = LengthSq(Model->Vertex[Face.V1] - IntersectP);
-	LengthsToVertex[2] = LengthSq(Model->Vertex[Face.V2] - IntersectP);
-	LengthsToVertex[3] = LengthSq(Model->Vertex[Face.V3] - IntersectP);
-
-	// NOTE: Get 2 smallest length
-	for (u32 MinLengthIndex = 0;
-		MinLengthIndex < ArrayCount(VertexRelativeIndex);
-		++MinLengthIndex)
-	{
-		f32 MinLength = FLOAT_MAX;
-		u32 CurrentMinLengthIndex;
-
-		for (u32 LengthIndex = 0;
-			LengthIndex < ArrayCount(LengthsToVertex);
-			++LengthIndex)
-		{
-			f32 CheckLength = LengthsToVertex[LengthIndex];
-			if (CheckLength < MinLength)
-			{
-				CurrentMinLengthIndex = LengthIndex;
-				MinLength = CheckLength;
-			}
-		}
-
-		VertexRelativeIndex[MinLengthIndex] = CurrentMinLengthIndex;
-		LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
-	}
-
-	//NOTE: Edge match
-	u32 AbsIndexV0 = Face.VertexID[VertexRelativeIndex[0]];
-	u32 AbsIndexV1 = Face.VertexID[VertexRelativeIndex[1]];
-
-	model_edge MatchEdge;
-	b32 SuccesMatch = false;
-	for (u32 EdgeIndex = 0;
-		EdgeIndex < ArrayCount(Face.EdgeID);
-		++EdgeIndex)
-	{
-		u32 MatchCount = 0;
-		u32 EdgeAbsIndex = Face.EdgeID[EdgeIndex];
-		model_edge Edge = Model->Edges[EdgeAbsIndex];
-
-		b32 MatchV0 = ((Edge.V0 == AbsIndexV0) || (Edge.V0 == AbsIndexV1));
-		b32 MatchV1 = ((Edge.V1 == AbsIndexV0) || (Edge.V1 == AbsIndexV1));
-
-		if (MatchV0 && MatchV1)
-		{
-			MatchEdge = Edge;
-			SuccesMatch = true;
-			EdgeResult->ID = EdgeAbsIndex;
-			break;
-		}
-	}
-	Assert(SuccesMatch);
-
-	v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
-	v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
-
-	v3 NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
-	v3 DistVector = IntersectP - EdgeV0;
-
-	f32 LengthOnEdge = Dot(NormalizeEdgeDir, DistVector);
-	LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
-
-	v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
-	f32 DistanceToEdge = Length(PointOnEdge - IntersectP);
-
-	EdgeResult->P = PointOnEdge;
-
-	return DistanceToEdge < 0.03f ? true : false;
-}
-
-b32
-RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
-{
-	b32 Result = false;
-
-	for (u32 FaceIndex = 0;
-		FaceIndex < Model->FaceCount;
-		++FaceIndex)
-	{
-		model_face Face = Model->Faces[FaceIndex];
-
-		v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
-		v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
-		v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
-		v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
-
-		v3 Edge1 = V0 - V1;
-		v3 Edge2 = V0 - V3;
-
-		plane_params Plane;
-		Plane.N = Normalize(Cross(Edge1, Edge2));
-		Plane.D = Dot(Plane.N, V0);
-
-		// Plane intersect
-		f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
-		if (DotRayPlane < 0)
-		{
-			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
-
-			if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
-			{
-				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
-
-				b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
-				if (!HitTest)
-				{
-					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
-				}
-
-				if (HitTest)
-				{
-					FaceResult->ID = FaceIndex;
-					FaceResult->P = IntersetPoint;
-
-					Result = true;
-					break;
-				}
-			}
-		}
-	}
-
-	return Result;
-}
-
-b32
-RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_params Ray, interact_model *Result)
-{
-	b32 Hit = false;
-	temp_memory TempMem = BeginTempMemory(Arena);
-
-	u32 ModelsHitCount = 0;
-	u32 ModelsSortArraySize = 20;
-	model_ray_sort *ModelsSortArray = (model_ray_sort *)PushArray(Arena, model_ray_sort, ModelsSortArraySize);
-
-	// NOTE: Gather all intersect models
-	for (u32 ModelIndex = 0;
-		ModelIndex < ModelCount;
-		++ModelIndex)
-	{
-		model *Model = Models + ModelIndex;
-
-		b32 HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
-
-		if (HitTest)
-		{
-			model_ray_sort *SortEntry = ModelsSortArray + ModelsHitCount++;
-
-			v3 CenterOfAABB = ((Model->AABB.Min + Model->Offset) + (Model->AABB.Max + Model->Offset)) / 2.0f;
-
-			SortEntry->Index = ModelIndex;
-			SortEntry->Length = LengthSq(CenterOfAABB - Ray.Pos);
-
-			if (ModelsHitCount >= ModelsSortArraySize)
-			{
-				PushArray(Arena, u32, ModelsSortArraySize);
-				ModelsSortArraySize += ModelsSortArraySize;
-			}
-		}
-	}
-
-	// NOTE: Sort by length from ray position to center of AABB
-	for (u32 Outer = 0;
-		Outer < ModelsHitCount;
-		++Outer)
-	{
-		for (u32 Inner = 0;
-			Inner < (ModelsHitCount - 1);
-			++Inner)
-		{
-			model_ray_sort *A = ModelsSortArray + Inner;
-			model_ray_sort *B = ModelsSortArray + Inner + 1;
-
-			if (A->Length > B->Length)
-			{
-				model_ray_sort Temp = *B;
-				*B = *A;
-				*A = Temp;
-			}
-		}
-	}
-
-	// NOTE: Find intersect model face for non convex case
-	if (ModelsHitCount)
-	{
-		for (u32 SortIndex = 0;
-			(SortIndex < ModelsHitCount);
-			++SortIndex)
-		{
-			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
-			model *Model = Models + ModelIndex;
-
-			if (RayModelFaceIntersect(Model, Ray, &Result->Face))
-			{
-				Hit = true;
-				Result->ID = ModelIndex;
-				break;
-			}
-		}
-	}
-
-	EndTempMemory(TempMem);
-
-	return Hit;
-}
-
-inline ui_interaction
-SetSelectInteraction(interact_model *IModel)
-{
-	ui_interaction Result;
-
-	Result.Type = UI_InteractionType_Select;
-	Result.ID[0] = IModel->ID;
-	Result.ID[1] = IModel->Face.ID;
-	Result.ID[2] = IModel->Edge.ID;
+	ui_id Result;
+	Result.ID[0] = ModelIndex;
+	Result.ID[1] = (FaceIndex << 32) | EdgeIndex;
 
 	return Result;
 }
 
 inline b32
-InteractionAreEqual(ui_interaction A, ui_interaction B)
+AreEqual(ui_id A, ui_id B)
 {
-	b32 Result = 
-		(A.Type == B.Type) &&
-		(A.ID[0] == B.ID[0]) &&
-		(A.ID[1] == B.ID[1]) &&
-		(A.ID[2] == B.ID[2]);
+	return ((A.ID[0] == B.ID[0]) && (A.ID[1] == B.ID[1]));
+}
 
+inline u32
+SetIntrTypeID(u16 Target, u16 Type)
+{
+	u32 Result = (Target << 16) | Type;
+	return Result;
+}
+
+inline ui_interaction
+SetSelectInteraction(interact_model *IModel, u16 Target)
+{
+	ui_interaction Result;
+
+	Result.TypeID = SetIntrTypeID(Target, UI_InteractionType_Select);
+	Result.ID = IDFromModel(IModel->ID, IModel->Face.ID, IModel->Edge.ID);
+
+	return Result;
+}
+
+inline ui_interaction
+SetSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0)
+{
+	ui_interaction Result;
+
+	Result.Type = SetIntrTypeID(Target, UI_InteractionType_Select);;
+	Result.ID = IDFromModel(ModelID, FaceID, EdgeID);
+
+	return Result;
+}
+
+inline b32
+AreEqual(ui_interaction A, ui_interaction B)
+{
+	b32 Result = AreEqual(A.ID, B.ID) && (A.Type == B.Type);
 	return Result;
 }
 
@@ -287,38 +96,38 @@ internal void inline
 UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
 	editor_world_ui *WorldUI = &Editor->WorldUI;
+	interact_model *IModel = &WorldUI->IModel;
+	*IModel = {};
 
 	switch (WorldUI->ITarget)
 	{
-		case ModelInteractionTarget_None:
+		case UI_InteractionTarget_None:
 		{
 			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
-				WorldUI->MouseRay, &WorldUI->IModel))
+				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
 			{
-				WorldUI->NextHotInteraction = SetSelectInteraction(&WorldUI->IModel);
+				WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
 			}
 		} break;
 
-		case ModelInteractionTarget_Face:
-		case ModelInteractionTarget_Edge:
+		case UI_InteractionTarget_ModelFace:
+		case UI_InteractionTarget_ModelEdge:
 		{
 			model *Model = Editor->Models + WorldUI->IModel.ID;
 			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
 			{
-				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &WorldUI->IModel.Face))
+				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
-					WorldUI->IModel.Edge = {};
-
-					if (ITargetType(WorldUI->ITarget, Edge))
+					if (ITargetType(WorldUI->ITarget, ModelEdge))
 					{
-						if (RayModelEdgeInterset(Model, &WorldUI->IModel.Face, &WorldUI->IModel.Edge))
+						if (RayModelEdgeInterset(Model, &IModel->Face, &IModel->Edge))
 						{
 
 						}
 					}
 				}
 
-				WorldUI->NextHotInteraction = SetSelectInteraction(&WorldUI->IModel);
+				WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
 			}
 		} break;
 	}
@@ -352,27 +161,18 @@ EndInteraction(game_editor_state *Editor, game_input *Input, render_group *Rende
 			{
 				switch (WorldUI->ITarget)
 				{
-					case ModelInteractionTarget_None:
+					case UI_InteractionTarget_None:
 					{
 						if ((IsDown(Input->Ctrl) &&
 							IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
 						{
-							model *Model = Editor->Models + WorldUI->Interaction.ID[0];
+							model *Model = Editor->Models + WorldUI->IModel.ID;
 							Editor->Camera.Pos = Model->Offset;
 						}
 						else
 						{
-							WorldUI->ITarget = ModelInteractionTarget_Model;
+							WorldUI->ITarget = UI_InteractionTarget_Model;
 						}
-					} break;
-					case ModelInteractionTarget_Model:
-					{
-					} break;
-					case ModelInteractionTarget_Face:
-					{
-					} break;
-					case ModelInteractionTarget_Edge:
-					{
 					} break;
 				}
 			} break;
@@ -390,16 +190,16 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 		if (WorldUI->ITarget)
 		{
 			++WorldUI->ITarget;
-			if (WorldUI->ITarget == ModelInteractionTarget_Count)
+			if (WorldUI->ITarget == UI_InteractionTarget_ModelCount)
 			{
-				WorldUI->ITarget = 1;
+				WorldUI->ITarget = UI_InteractionTarget_Model;
 			}
 		}
 	}
 
 	if (IsKepDown(Input->Alt) && IsGoDown(Input->Shift))
 	{
-		WorldUI->ITarget = ModelInteractionTarget_None;
+		WorldUI->ITarget = UI_InteractionTarget_None;
 		WorldUI->Interaction = {};
 	}
 }
@@ -426,7 +226,11 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 	}
 	else
 	{
-		EndInteraction(Editor, Input, RenderGroup);
+		if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]) ||
+			WasDown(Input->MouseButtons[PlatformMouseButton_Right]))
+		{
+			EndInteraction(Editor, Input, RenderGroup);
+		}
 	}
 
 	WorldUI->NextHotInteraction = {};
@@ -437,11 +241,9 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 {
 	face_render_params Result = {};
 
-	ui_interaction SelectInteraction = SetSelectInteraction(&Editor->WorldUI.IModel);
-
 	switch (Editor->WorldUI.ITarget)
 	{
-		case ModelInteractionTarget_Face:
+		case UI_InteractionTarget_ModelFace:
 		{
 			if (Editor->WorldUI.HotInteraction.Type == UI_InteractionType_Select)
 			{
@@ -456,11 +258,21 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 			}
 		} break;
 
-		case ModelInteractionTarget_Edge:
+		case UI_InteractionTarget_ModelEdge:
 		{
 
 		} break;
 	}
+
+	return Result;
+}
+
+inline b32
+IsActiveModel(editor_world_ui *UI, u32 ModelID)
+{
+	b32 Result = (UI->IModel.ID == ModelID) &&
+		(UI->ITarget >= UI_InteractionTarget_Model ||
+		UI->ITarget < UI_InteractionTarget_ModelCount);
 
 	return Result;
 }
@@ -560,47 +372,38 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 	EditorUIInteraction(Editor, Input, &RenderGroup);
 
-	// TODO: Change later
-
-	b32 IsHotModelSet = !WorldUI->ITarget && (WorldUI->HotInteraction.Type == UI_InteractionType_Select);
-	b32 IsActiveModelSet = WorldUI->ITarget;
-	b32 HitModelTest = IsActiveModelSet || IsHotModelSet;
-
 	for (u32 ModelIndex = 0;
 		ModelIndex < Editor->ModelsCount;
 		++ModelIndex)
 	{
 		model *Model = Editor->Models + ModelIndex;
+		ui_interaction SelectInteraction = SetSelectInteraction(ModelIndex);
+		b32 IsHot = AreEqual(SelectInteraction, WorldUI->HotInteraction);
+		b32 IsActive = IsActiveModel(WorldUI, ModelIndex);
 		
 		v3 EdgeColor = V3(0);
 		model_outline_params Outline = {};
-		b32 IsInteractedModel = HitModelTest && (WorldUI->IModel.ID == ModelIndex);
-		b32 IsActiveModel = IsInteractedModel && IsActiveModelSet;
-		b32 IsHotModel = IsInteractedModel && IsHotModelSet;
 
-		if (IsInteractedModel)
+		if (IsActive)
 		{
-			if (IsActiveModel)
+			switch (WorldUI->ITarget)
 			{
-				switch (WorldUI->ITarget)
+				case UI_InteractionTarget_Model:
 				{
-					case ModelInteractionTarget_Model:
-					{
-						Outline.IsSet = true;
-						Outline.Color = Editor->ActiveOutlineColor;
-					} break;
+					Outline.IsSet = true;
+					Outline.Color = Editor->ActiveOutlineColor;
+				} break;
 
-					case ModelInteractionTarget_Edge:
-					{
-						EdgeColor = Editor->EdgeColor;
-					} break;
-				}
+				case UI_InteractionTarget_ModelEdge:
+				{
+					EdgeColor = Editor->EdgeColor;
+				} break;
 			}
-			else if (IsHotModel)
-			{
-				Outline.IsSet = true;
-				Outline.Color = Editor->HotOutlineColor;
-			}
+		}
+		else if (IsHot)
+		{
+			Outline.IsSet = true;
+			Outline.Color = Editor->HotOutlineColor;
 		}
 
 		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, EdgeColor, Outline);
@@ -612,7 +415,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			model_face Face = Model->Faces[FaceIndex];
 			face_render_params FaceParam = {};
 			
-			if (IsActiveModel)
+			if (IsActive)
 			{	
 				FaceParam = SetFaceRenderParams(Editor, Model, FaceIndex);
 			}

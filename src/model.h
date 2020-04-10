@@ -60,3 +60,9 @@ struct model
 	u16 VertexCount;
 	u16 EdgeCount;
 };
+
+struct element_ray_result
+{
+	u32 ID;
+	v3 P;
+};

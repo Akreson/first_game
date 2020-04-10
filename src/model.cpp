@@ -330,20 +330,6 @@ CreateStaticSphere(memory_arena *MainArena, memory_arena *TranArena, static_mesh
 	EndTempMemory(TempMem);
 }
 
-inline render_alloc_mesh_params
-SetAllocMeshParams(void *VertexData, u32 *Tris, u32 VertexCount, u32 TrisCount, u32 Flags = 0)
-{
-	render_alloc_mesh_params Result;
-	Result.VertexData = VertexData;
-	Result.VertexCount = VertexCount;
-	Result.Tris = Tris;
-	Result.TrisCount = TrisCount;
-	Result.Flags = Flags;
-
-	return Result;
-}
-
-// TODO: Complete: allocate on gpu, debug
 static_mesh *
 CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 SliceCount)
 {
@@ -357,4 +343,223 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 		SetAllocMeshParams(Sphere->Vertex, (u32 *)Sphere->Tris, Sphere->VertexCount, Sphere->TrisCount));
 
 	return Sphere;
+}
+
+b32
+RayModelEdgeInterset(model *Model, element_ray_result *FaceResult, element_ray_result *EdgeResult)
+{
+	model_face Face = Model->Faces[FaceResult->ID];
+	v3 IntersectP = FaceResult->P;
+
+	// NOTE: Closest vertex match
+	u32 VertexRelativeIndex[2];
+	f32 LengthsToVertex[4];
+
+	LengthsToVertex[0] = LengthSq(Model->Vertex[Face.V0] - IntersectP);
+	LengthsToVertex[1] = LengthSq(Model->Vertex[Face.V1] - IntersectP);
+	LengthsToVertex[2] = LengthSq(Model->Vertex[Face.V2] - IntersectP);
+	LengthsToVertex[3] = LengthSq(Model->Vertex[Face.V3] - IntersectP);
+
+	// NOTE: Get 2 smallest length
+	for (u32 MinLengthIndex = 0;
+		MinLengthIndex < ArrayCount(VertexRelativeIndex);
+		++MinLengthIndex)
+	{
+		f32 MinLength = FLOAT_MAX;
+		u32 CurrentMinLengthIndex;
+
+		for (u32 LengthIndex = 0;
+			LengthIndex < ArrayCount(LengthsToVertex);
+			++LengthIndex)
+		{
+			f32 CheckLength = LengthsToVertex[LengthIndex];
+			if (CheckLength < MinLength)
+			{
+				CurrentMinLengthIndex = LengthIndex;
+				MinLength = CheckLength;
+			}
+		}
+
+		VertexRelativeIndex[MinLengthIndex] = CurrentMinLengthIndex;
+		LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
+	}
+
+	//NOTE: Edge match
+	u32 AbsIndexV0 = Face.VertexID[VertexRelativeIndex[0]];
+	u32 AbsIndexV1 = Face.VertexID[VertexRelativeIndex[1]];
+
+	model_edge MatchEdge;
+	b32 SuccesMatch = false;
+	for (u32 EdgeIndex = 0;
+		EdgeIndex < ArrayCount(Face.EdgeID);
+		++EdgeIndex)
+	{
+		u32 MatchCount = 0;
+		u32 EdgeAbsIndex = Face.EdgeID[EdgeIndex];
+		model_edge Edge = Model->Edges[EdgeAbsIndex];
+
+		b32 MatchV0 = ((Edge.V0 == AbsIndexV0) || (Edge.V0 == AbsIndexV1));
+		b32 MatchV1 = ((Edge.V1 == AbsIndexV0) || (Edge.V1 == AbsIndexV1));
+
+		if (MatchV0 && MatchV1)
+		{
+			MatchEdge = Edge;
+			SuccesMatch = true;
+			EdgeResult->ID = EdgeAbsIndex;
+			break;
+		}
+	}
+	Assert(SuccesMatch);
+
+	v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
+	v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
+
+	v3 NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
+	v3 DistVector = IntersectP - EdgeV0;
+
+	f32 LengthOnEdge = Dot(NormalizeEdgeDir, DistVector);
+	LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
+
+	v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
+	f32 DistanceToEdge = Length(PointOnEdge - IntersectP);
+
+	EdgeResult->P = PointOnEdge;
+
+	return DistanceToEdge < 0.03f ? true : false;
+}
+
+b32
+RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
+{
+	b32 Result = false;
+
+	for (u32 FaceIndex = 0;
+		FaceIndex < Model->FaceCount;
+		++FaceIndex)
+	{
+		model_face Face = Model->Faces[FaceIndex];
+
+		v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
+		v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
+		v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
+		v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+
+		v3 Edge1 = V0 - V1;
+		v3 Edge2 = V0 - V3;
+
+		plane_params Plane;
+		Plane.N = Normalize(Cross(Edge1, Edge2));
+		Plane.D = Dot(Plane.N, V0);
+
+		// Plane intersect
+		f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
+		if (DotRayPlane < 0)
+		{
+			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
+
+			if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
+			{
+				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
+
+				b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
+				if (!HitTest)
+				{
+					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
+				}
+
+				if (HitTest)
+				{
+					FaceResult->ID = FaceIndex;
+					FaceResult->P = IntersetPoint;
+
+					Result = true;
+					break;
+				}
+			}
+		}
+	}
+
+	return Result;
+}
+
+b32
+RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_params Ray, u32 *ModelID,
+	element_ray_result *Face)
+{
+	b32 Result = false;
+	temp_memory TempMem = BeginTempMemory(Arena);
+
+	u32 ModelsHitCount = 0;
+	u32 ModelsSortArraySize = 20;
+	model_ray_sort *ModelsSortArray = (model_ray_sort *)PushArray(Arena, model_ray_sort, ModelsSortArraySize);
+
+	// NOTE: Gather all intersect models
+	for (u32 ModelIndex = 0;
+		ModelIndex < ModelCount;
+		++ModelIndex)
+	{
+		model *Model = Models + ModelIndex;
+
+		b32 HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
+
+		if (HitTest)
+		{
+			model_ray_sort *SortEntry = ModelsSortArray + ModelsHitCount++;
+
+			v3 CenterOfAABB = ((Model->AABB.Min + Model->Offset) + (Model->AABB.Max + Model->Offset)) / 2.0f;
+
+			SortEntry->Index = ModelIndex;
+			SortEntry->Length = LengthSq(CenterOfAABB - Ray.Pos);
+
+			if (ModelsHitCount >= ModelsSortArraySize)
+			{
+				PushArray(Arena, u32, ModelsSortArraySize);
+				ModelsSortArraySize += ModelsSortArraySize;
+			}
+		}
+	}
+
+	// NOTE: Sort by length from ray position to center of AABB
+	for (u32 Outer = 0;
+		Outer < ModelsHitCount;
+		++Outer)
+	{
+		for (u32 Inner = 0;
+			Inner < (ModelsHitCount - 1);
+			++Inner)
+		{
+			model_ray_sort *A = ModelsSortArray + Inner;
+			model_ray_sort *B = ModelsSortArray + Inner + 1;
+
+			if (A->Length > B->Length)
+			{
+				model_ray_sort Temp = *B;
+				*B = *A;
+				*A = Temp;
+			}
+		}
+	}
+
+	// NOTE: Find intersect model face for non convex case
+	if (ModelsHitCount)
+	{
+		for (u32 SortIndex = 0;
+			(SortIndex < ModelsHitCount);
+			++SortIndex)
+		{
+			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
+			model *Model = Models + ModelIndex;
+
+			if (RayModelFaceIntersect(Model, Ray, Face))
+			{
+				Result = true;
+				*ModelID = ModelIndex;
+				break;
+			}
+		}
+	}
+
+	EndTempMemory(TempMem);
+
+	return Result;
 }

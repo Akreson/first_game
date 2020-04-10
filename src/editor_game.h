@@ -39,15 +39,22 @@ struct model_outline_params
 	v3 Color;
 };
 
-enum model_intercation_target
+enum ui_intercation_target
 {
-	ModelInteractionTarget_None,
+	UI_InteractionTarget_None,
 
-	ModelInteractionTarget_Model,
-	ModelInteractionTarget_Face,
-	ModelInteractionTarget_Edge,
+	UI_InteractionTarget_Model,
+	UI_InteractionTarget_ModelFace,
+	UI_InteractionTarget_ModelEdge,
 
-	ModelInteractionTarget_Count
+	UI_InteractionTarget_ModelCount,
+};
+
+enum ui_interaction_type
+{
+	UI_InteractionType_None,
+
+	UI_InteractionType_Select,
 };
 
 enum select_element_type
@@ -58,25 +65,12 @@ enum select_element_type
 	SelectElementType_Face
 };
 
-enum ui_interaction_type
-{
-	UI_InteractionType_None,
-
-	UI_InteractionType_Select,
-};
-
 struct selected_elements_buffer
 {
 	u32 *Elements;
 	u32 Count;
 	u32 MaxCount;
 	select_element_type Type;
-};
-
-struct element_ray_result
-{
-	u32 ID;
-	v3 P;
 };
 
 struct model_ray_result
@@ -91,11 +85,25 @@ struct model_ray_sort
 	f32 Length;
 };
 
+struct ui_id
+{
+	u64 ID[2];
+};
+
 // TODO: Improve
 struct ui_interaction
 {
-	u32 Type;
-	u32 ID[3];
+	union
+	{
+		u32 TypeID;
+		struct
+		{
+			u16 Target;
+			u16 Type;
+		};
+	};
+
+	ui_id ID; //
 };
 
 struct interact_model
@@ -105,7 +113,7 @@ struct interact_model
 	element_ray_result Edge;
 };
 
-#define ITargetType(ITarget, Type) ((ITarget) == ModelInteractionTarget_##Type)
+#define ITargetType(ITarget, Type) ((ITarget) == UI_InteractionTarget_##Type)
 
 struct editor_world_ui
 {
