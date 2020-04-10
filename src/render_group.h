@@ -41,10 +41,29 @@ enum face_selection_type
 	FaceSelectionType_Select = (1 << 1)
 };
 
+enum face_vertex_renderer_params
+{
+	FaceVertexParams_Active = 0x1,
+	FaceVertexParams_Hot = 0x1,
+	FaceVertexParams_SetAll = 0x01010101,
+};
+
 struct face_render_params
 {
-	b8 ActiveVert[4];
-	b8 HotVert[4];
+	union
+	{
+		struct
+		{
+			b8 ActiveVert[4];
+			b8 HotVert[4];
+		};
+
+		struct
+		{
+			u32 Active;
+			u32 Hot;
+		};
+	};
 	u16 SelectionFlags;
 };
 

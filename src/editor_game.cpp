@@ -79,7 +79,7 @@ SetSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0
 {
 	ui_interaction Result;
 
-	Result.Type = SetIntrTypeID(Target, UI_InteractionType_Select);;
+	Result.TypeID = SetIntrTypeID(Target, UI_InteractionType_Select);;
 	Result.ID = IDFromModel(ModelID, FaceID, EdgeID);
 
 	return Result;
@@ -88,7 +88,7 @@ SetSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0
 inline b32
 AreEqual(ui_interaction A, ui_interaction B)
 {
-	b32 Result = AreEqual(A.ID, B.ID) && (A.Type == B.Type);
+	b32 Result = AreEqual(A.ID, B.ID) && (A.TypeID == B.TypeID);
 	return Result;
 }
 
@@ -97,16 +97,16 @@ UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_g
 {
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	interact_model *IModel = &WorldUI->IModel;
-	*IModel = {};
 
 	switch (WorldUI->ITarget)
 	{
 		case UI_InteractionTarget_None:
 		{
+			*IModel = {};
 			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
 				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
 			{
-				WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
+				WorldUI->NextHotInteraction = SetSelectInteraction(IModel->ID, 0, 0, WorldUI->ITarget);
 			}
 		} break;
 
@@ -114,20 +114,20 @@ UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_g
 		case UI_InteractionTarget_ModelEdge:
 		{
 			model *Model = Editor->Models + WorldUI->IModel.ID;
+			IModel->Face = {};
+
 			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
 			{
 				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
+					IModel->Edge = {};
 					if (ITargetType(WorldUI->ITarget, ModelEdge))
 					{
-						if (RayModelEdgeInterset(Model, &IModel->Face, &IModel->Edge))
-						{
-
-						}
+						RayModelEdgeInterset(Model, &IModel->Face, &IModel->Edge);
 					}
+					
+					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
 				}
-
-				WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
 			}
 		} break;
 	}
@@ -164,12 +164,12 @@ EndInteraction(game_editor_state *Editor, game_input *Input, render_group *Rende
 					case UI_InteractionTarget_None:
 					{
 						if ((IsDown(Input->Ctrl) &&
-							IsDown(Input->MouseButtons[PlatformMouseButton_Right])))
+							WasDown(Input->MouseButtons[PlatformMouseButton_Right])))
 						{
 							model *Model = Editor->Models + WorldUI->IModel.ID;
 							Editor->Camera.Pos = Model->Offset;
 						}
-						else
+						else if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
 						{
 							WorldUI->ITarget = UI_InteractionTarget_Model;
 						}
@@ -211,18 +211,21 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 
 	ProcessWorldUIInput(WorldUI, Input);
 
+	if (WorldUI->UpdateITarget)
+	{
+		UpdateUIInteractionTarget(Editor, Input, RenderGroup);
+	}
+
 	// TODO: Set ui interaction in proper way
 	if (!WorldUI->Interaction.Type)
 	{
-		UpdateUIInteractionTarget(Editor, Input, RenderGroup);
+		WorldUI->HotInteraction = WorldUI->NextHotInteraction;
 
 		if (IsDown(Input->MouseButtons[PlatformMouseButton_Left]) ||
 			IsDown(Input->MouseButtons[PlatformMouseButton_Right]))
 		{
 			BeginInteraction(Editor, Input, RenderGroup);
 		}
-		
-		WorldUI->HotInteraction = WorldUI->NextHotInteraction;
 	}
 	else
 	{
@@ -236,43 +239,82 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 	WorldUI->NextHotInteraction = {};
 }
 
-internal face_render_params
-SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
-{
-	face_render_params Result = {};
-
-	switch (Editor->WorldUI.ITarget)
-	{
-		case UI_InteractionTarget_ModelFace:
-		{
-			if (Editor->WorldUI.HotInteraction.Type == UI_InteractionType_Select)
-			{
-				if (Editor->WorldUI.IModel.Face.ID == FaceIndex)
-				{
-					Result.SelectionFlags |= FaceSelectionType_Hot;
-					Result.ActiveVert[0] = true;
-					Result.ActiveVert[1] = true;
-					Result.ActiveVert[2] = true;
-					Result.ActiveVert[3] = true;
-				}
-			}
-		} break;
-
-		case UI_InteractionTarget_ModelEdge:
-		{
-
-		} break;
-	}
-
-	return Result;
-}
-
 inline b32
 IsActiveModel(editor_world_ui *UI, u32 ModelID)
 {
 	b32 Result = (UI->IModel.ID == ModelID) &&
-		(UI->ITarget >= UI_InteractionTarget_Model ||
-		UI->ITarget < UI_InteractionTarget_ModelCount);
+		((UI->ITarget >= UI_InteractionTarget_Model) &&
+		(UI->ITarget < UI_InteractionTarget_ModelCount));
+
+	return Result;
+}
+
+internal face_render_params
+SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
+{
+	face_render_params Result = {};
+	editor_world_ui *WorldUI = &Editor->WorldUI;
+
+	if (WorldUI->HotInteraction.Type == UI_InteractionType_Select)
+	{
+		switch (WorldUI->ITarget)
+		{
+			case UI_InteractionTarget_ModelFace:
+			{
+				if (WorldUI->IModel.Face.ID == FaceIndex)
+				{
+					Result.SelectionFlags |= FaceSelectionType_Hot;
+					Result.Active = FaceVertexParams_SetAll;
+				}
+				else
+				{
+					model_face IFace = Model->Faces[WorldUI->IModel.Face.ID];
+					model_face CompFace = Model->Faces[FaceIndex];
+
+					// TODO: Find way cleaning up
+					for (u32 SearchIndex = 0;
+						SearchIndex < ArrayCount(IFace.EdgeID);
+						++SearchIndex)
+					{
+						for (u32 CompIndex = 0;
+							CompIndex < ArrayCount(CompFace.EdgeID);
+							++CompIndex)
+						{
+							u32 CompEdgeIndex = CompFace.EdgeID[CompIndex];
+							if (IFace.EdgeID[SearchIndex] == CompEdgeIndex)
+							{
+								model_edge Edge = Model->Edges[CompEdgeIndex];
+								
+								for (u32 EdgeVIndex = 0;
+									EdgeVIndex < ArrayCount(Edge.VertexID);
+									++EdgeVIndex)
+								{		
+									u32 EdgeVertexID = Edge.VertexID[EdgeVIndex];
+									for (u32 FaceVIndex = 0;
+										FaceVIndex < ArrayCount(CompFace.VertexID);
+										++FaceVIndex)
+									{
+										u32 FaceVertexID = CompFace.VertexID[FaceVIndex];
+										if (EdgeVertexID == FaceVertexID)
+										{
+											Result.ActiveVert[FaceVIndex] = FaceVertexParams_Active;
+										}
+									}
+								}
+
+								break;
+							}
+						}
+					}
+				}
+			} break;
+
+			case UI_InteractionTarget_ModelEdge:
+			{
+
+			} break;
+		}
+	}
 
 	return Result;
 }
@@ -314,6 +356,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Editor->SelectColor = V3(0.86f, 0.70f, 0.2f);
 		Editor->ActiveOutlineColor = V3(0.86f, 0.70f, 0.2f);
 		Editor->HotOutlineColor = V3(0, 1, 0);
+
+		Editor->WorldUI.UpdateITarget = true;
 
 		CreateStaticSphere(Editor, 0.6f, 20, 20);
 

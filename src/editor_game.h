@@ -98,8 +98,8 @@ struct ui_interaction
 		u32 TypeID;
 		struct
 		{
-			u16 Target;
 			u16 Type;
+			u16 Target;
 		};
 	};
 
@@ -109,6 +109,7 @@ struct ui_interaction
 struct interact_model
 {
 	u32 ID;
+
 	element_ray_result Face;
 	element_ray_result Edge;
 };
@@ -117,6 +118,7 @@ struct interact_model
 
 struct editor_world_ui
 {
+	u32 UpdateITarget;
 	u32 ITarget;
 
 	ui_interaction Interaction;

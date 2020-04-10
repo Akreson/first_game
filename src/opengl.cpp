@@ -329,6 +329,8 @@ UseProgramEnd(bitmap_program *Prog)
 	glUseProgram(0);
 }
 
+// TODO: Fix bug with colored non selected edge for
+// small view degree on non slected face
 internal void
 CompileModelProgram(model_program *Prog)
 {
