@@ -202,10 +202,8 @@ inline void
 AddTris(memory_arena *Arena, tris_u32 **TrisArrPtr, u32 I0, u32 I1, u32 I2)
 {
 	tris_u32 Tris = {I0, I1, I2};
-
-	/*tris_u32 *TrisArr = *TrisArrPtr;
-	*TrisArr++ = Tris;*/
 	*(*TrisArrPtr)++ = Tris;
+
 	PushStruct(Arena, tris_u32);
 }
 
@@ -350,15 +348,16 @@ RayModelEdgeInterset(model *Model, element_ray_result *FaceResult, element_ray_r
 {
 	model_face Face = Model->Faces[FaceResult->ID];
 	v3 IntersectP = FaceResult->P;
-
+	v3 _IntersectP = FaceResult->P - Model->Offset;
+	
 	// NOTE: Closest vertex match
 	u32 VertexRelativeIndex[2];
 	f32 LengthsToVertex[4];
 
-	LengthsToVertex[0] = LengthSq(Model->Vertex[Face.V0] - IntersectP);
-	LengthsToVertex[1] = LengthSq(Model->Vertex[Face.V1] - IntersectP);
-	LengthsToVertex[2] = LengthSq(Model->Vertex[Face.V2] - IntersectP);
-	LengthsToVertex[3] = LengthSq(Model->Vertex[Face.V3] - IntersectP);
+	LengthsToVertex[0] = LengthSq((Model->Vertex[Face.V0] + Model->Offset) - IntersectP);
+	LengthsToVertex[1] = LengthSq((Model->Vertex[Face.V1] + Model->Offset) - IntersectP);
+	LengthsToVertex[2] = LengthSq((Model->Vertex[Face.V2] + Model->Offset) - IntersectP);
+	LengthsToVertex[3] = LengthSq((Model->Vertex[Face.V3] + Model->Offset) - IntersectP);
 
 	// NOTE: Get 2 smallest length
 	for (u32 MinLengthIndex = 0;
@@ -421,7 +420,8 @@ RayModelEdgeInterset(model *Model, element_ray_result *FaceResult, element_ray_r
 	LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
 
 	v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
-	f32 DistanceToEdge = Length(PointOnEdge - IntersectP);
+	v3 Diff = PointOnEdge - IntersectP;
+	f32 DistanceToEdge = MAX(MAX(Diff.x, Diff.y), Diff.z);
 
 	EdgeResult->P = PointOnEdge;
 

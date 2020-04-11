@@ -103,7 +103,7 @@ main(int argc, char **argv)
 		FontAsset->OnePastLastUnicodeCode = OnePastLastUnicodeCode;
 
 		stbtt_InitFont(&FontInfo, (u8 *)TTFFile.Content, 0);
-		f32 Scale = stbtt_ScaleForPixelHeight(&FontInfo, 120.0f);
+		f32 Scale = stbtt_ScaleForPixelHeight(&FontInfo, 100.0f);
 
 		s32 AscenderHeight;
 		s32 DescenderHeight;
@@ -112,7 +112,7 @@ main(int argc, char **argv)
 
 		// NOTE: Store metrics in scale value
 		FontAsset->AscenderHeight = (f32)AscenderHeight*Scale;
-		FontAsset->DescenderHeight =(f32)DescenderHeight*Scale;
+		FontAsset->DescenderHeight = (f32)DescenderHeight*Scale;
 		FontAsset->LineGap = (f32)LineGap*Scale;
 
 		for (u32 UnicodeIndex = FirstUnicodeCode;

@@ -7,10 +7,8 @@
 #include <cstdio>
 
 void
-RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
+RenderText(render_group *Group, font_asset_info *FontAsset, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
 {
-	font_asset_info *FontAsset = Group->FontAsset;
-
 	ScreenY -= FontAsset->AscenderHeight*Scale;
 
 	// TODO: Use codepoint?
@@ -31,7 +29,7 @@ RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Scree
 			f32 XPos = ScreenX;
 			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height * Scale);
 
-			PushFont(Group, Glyph, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
+			PushFont(Group, Glyph->Texture, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
 		}
 
 		ScreenX += GetHorizontalAdvance(FontAsset, PrevGlyphIndex, GlyphIndex, Scale);
@@ -249,6 +247,7 @@ IsActiveModel(editor_world_ui *UI, u32 ModelID)
 	return Result;
 }
 
+// TODO: Test code, replace in future
 internal face_render_params
 SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 {
@@ -271,7 +270,6 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					model_face IFace = Model->Faces[WorldUI->IModel.Face.ID];
 					model_face CompFace = Model->Faces[FaceIndex];
 
-					// TODO: Find way cleaning up
 					for (u32 SearchIndex = 0;
 						SearchIndex < ArrayCount(IFace.EdgeID);
 						++SearchIndex)
@@ -311,7 +309,34 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 
 			case UI_InteractionTarget_ModelEdge:
 			{
+				u32 IEdgeIndex = WorldUI->IModel.Edge.ID;
+				model_edge IEdge = Model->Edges[WorldUI->IModel.Edge.ID];
 
+				model_face CompFace = Model->Faces[FaceIndex];
+				for (u32 SearchIndex = 0;
+					SearchIndex < ArrayCount(CompFace.EdgeID);
+					++SearchIndex)
+				{
+					if (CompFace.EdgeID[SearchIndex] == IEdgeIndex)
+					{
+						for (u32 EdgeVIndex = 0;
+							EdgeVIndex < ArrayCount(IEdge.VertexID);
+							++EdgeVIndex)
+						{
+							u32 EdgeVertexID = IEdge.VertexID[EdgeVIndex];
+							for (u32 FaceVIndex = 0;
+								FaceVIndex < ArrayCount(CompFace.VertexID);
+								++FaceVIndex)
+							{
+								u32 FaceVertexID = CompFace.VertexID[FaceVIndex];
+								if (EdgeVertexID == FaceVertexID)
+								{
+									Result.ActiveVert[FaceVIndex] = FaceVertexParams_Active;
+								}
+							}
+						}
+					}
+				}
 			} break;
 		}
 	}
@@ -319,6 +344,37 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 	return Result;
 }
 
+inline model_highlight_params
+SetModelHighlight(game_editor_state *Editor, b32 IsActive, b32 IsHot, u32 ITarget)
+{
+	model_highlight_params Result = {};
+
+	if (IsActive)
+	{
+		switch (ITarget)
+		{
+			case UI_InteractionTarget_Model:
+			{
+				Result.OutlineIsSet = true;
+				Result.OutlineColor = Editor->ActiveOutlineColor;
+			} break;
+
+			case UI_InteractionTarget_ModelEdge:
+			{
+				Result.EdgeColor = Editor->EdgeColor;
+			} break;
+		}
+	}
+	else if (IsHot)
+	{
+		Result.OutlineIsSet = true;
+		Result.OutlineColor = Editor->HotOutlineColor;
+	}
+
+	return Result;
+}
+
+// TODO: Support ui interaction in lower screen resolution
 void
 UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *RenderCommands)
 {
@@ -330,6 +386,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitArena(&GameState->GameArena, Memory->GameStorageSize - sizeof(game_state),
 			((u8 *)Memory->GameStorage + sizeof(game_state)));
 
+		// TODO: Fix font rendering
 		LoadAsset(GameState);
 
 		InitArena(&Editor->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
@@ -364,7 +421,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		GameState->IsInit = true;
 	}
 
-	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
+	render_group RenderGroup = InitRenderGroup(RenderCommands, Input);
 
 	v3 CameraOffset = Editor->Camera.Offset;
 	editor_world_ui *WorldUI = &Editor->WorldUI;
@@ -379,7 +436,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 #if 0
 		char Buffer[1024];
 		sprintf(Buffer, "Mouse x:%d y:%d", (u32)WorldUI->MouseP.x, (u32)WorldUI->MouseP.y);
-		RenderText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
+		RenderText(&RenderGroup, GameState->FontAsset, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
 		if (IsKepDown(Input->Alt) && IsKepDown(Input->MouseButtons[PlatformMouseButton_Left]))
 		{
@@ -424,33 +481,10 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		ui_interaction SelectInteraction = SetSelectInteraction(ModelIndex);
 		b32 IsHot = AreEqual(SelectInteraction, WorldUI->HotInteraction);
 		b32 IsActive = IsActiveModel(WorldUI, ModelIndex);
-		
-		v3 EdgeColor = V3(0);
-		model_outline_params Outline = {};
 
-		if (IsActive)
-		{
-			switch (WorldUI->ITarget)
-			{
-				case UI_InteractionTarget_Model:
-				{
-					Outline.IsSet = true;
-					Outline.Color = Editor->ActiveOutlineColor;
-				} break;
+		model_highlight_params ModelHiLi = SetModelHighlight(Editor, IsActive, IsHot, WorldUI->ITarget);
 
-				case UI_InteractionTarget_ModelEdge:
-				{
-					EdgeColor = Editor->EdgeColor;
-				} break;
-			}
-		}
-		else if (IsHot)
-		{
-			Outline.IsSet = true;
-			Outline.Color = Editor->HotOutlineColor;
-		}
-
-		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, EdgeColor, Outline);
+		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, ModelHiLi);
 		
 		for (u32 FaceIndex = 0;
 			FaceIndex < Model->FaceCount;
@@ -470,5 +504,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		EndPushModel(&RenderGroup);
 	}
 
-	//RenderText(&RenderGroup, (char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0, RenderGroup.ScreenDim.y, 0.45f);
+	RenderText(&RenderGroup, GameState->FontAsset,
+		(char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0,
+		RenderGroup.ScreenDim.y, 0.45f);
 }

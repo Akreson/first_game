@@ -21,7 +21,7 @@ PLATFORM_ALLOCATE_TEXTURE(OpenGLAllocateTexture)
 {
 	renderer_texture Result;
 
-	glGenTextures(1, &*(GLuint *)&Result.Handle);
+	glGenTextures(1, (GLuint *)&Result.Handle);
 	glBindTexture(GL_TEXTURE_2D, Result.Handle);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

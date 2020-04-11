@@ -117,7 +117,6 @@ struct render_model_face_vertex
 struct render_group
 {
 	game_render_commands *Commands;
-	struct font_asset_info *FontAsset;
 
 	void *GroupRenderElement;
 

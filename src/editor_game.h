@@ -33,10 +33,11 @@ struct game_world_state
 
 };
 
-struct model_outline_params
+struct model_highlight_params
 {
-	b32 IsSet;
-	v3 Color;
+	v3 EdgeColor;
+	v3 OutlineColor;
+	b32 OutlineIsSet;
 };
 
 enum ui_intercation_target

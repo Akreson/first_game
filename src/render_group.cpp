@@ -1,11 +1,10 @@
 
 inline render_group
-InitRenderGroup(game_render_commands *Commands, game_input *Input, font_asset_info *FontAsset)
+InitRenderGroup(game_render_commands *Commands, game_input *Input)
 {
 	render_group Result = {};
 
 	Result.Commands = Commands;
-	Result.FontAsset = FontAsset;
 	Result.ScreenDim = Commands->ScreenDim;
 
 	return Result;
@@ -88,11 +87,11 @@ PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
 #define PushRenderElement(Group, Type) (Type *)PushRenderElement_(Group, sizeof(Type), RenderEntryType_##Type)
 
 internal void
-PushFont(render_group *Group, bitmap_info *Glyph, v2 Min, v2 Max, v3 Color)
+PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 {
 	render_entry_bitmap *BitmapEntry = PushRenderElement(Group, render_entry_bitmap);
 
-	BitmapEntry->Texture = Glyph->Texture;
+	BitmapEntry->Texture = Glyph;
 	BitmapEntry->Min = Min;
 	BitmapEntry->Max = Max;
 	BitmapEntry->Color = Color;
@@ -148,7 +147,7 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 }
 
 void
-BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor, model_outline_params Outline = {})
+BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params ModelHiLi)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_model *ModelEntry = (render_entry_model *)PushRenderElement(Group, render_entry_model);
@@ -156,15 +155,15 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, v3 EdgeColor, model_out
 	ModelEntry->StartOffset = Commands->VertexBufferOffset;
 	ModelEntry->Offset = Offset;
 	ModelEntry->Color = Color;
-	ModelEntry->EdgeColor = EdgeColor;
+	ModelEntry->EdgeColor = ModelHiLi.EdgeColor;
 
-	if (Outline.IsSet)
+	if (ModelHiLi.OutlineIsSet)
 	{
 		render_entry_model_outline *ModelOutlineEntry =
 			(render_entry_model_outline *)PushRenderElement(Group, render_entry_model_outline);
 		
 		ModelOutlineEntry->ModelEntry = ModelEntry;
-		ModelOutlineEntry->OutlineColor = Outline.Color;
+		ModelOutlineEntry->OutlineColor = ModelHiLi.OutlineColor;
 	}
 
 	Assert(!Group->GroupRenderElement);
@@ -187,7 +186,10 @@ inline void
 PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
 	v4 Color = V4(1), v3 Offset = V3(0), v3 EdgeColor = V3(0))
 {
-	BeginPushModel(Group, Color, Offset, EdgeColor);
+	model_highlight_params ModelHiLi = {};
+	ModelHiLi.EdgeColor = EdgeColor;
+
+	BeginPushModel(Group, Color, Offset, ModelHiLi);
 	PushFace(Group, VertexStorage, Face);
 	EndPushModel(Group);
 }
