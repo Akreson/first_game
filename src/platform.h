@@ -149,8 +149,14 @@ GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)
 {
 	Assert(!(Alignment & (Alignment - 1)));
 
+	u32 AlignOffset = 0;
 	u32 AlignMask = Alignment - 1;
-	u32 AlignOffset = Alignment - (Ptr & AlignMask);
+	u32 OffsetFromMask = (Ptr & AlignMask);
+
+	if (OffsetFromMask)
+	{
+		AlignOffset = Alignment - OffsetFromMask;
+	}
 
 	return AlignOffset;
 }
