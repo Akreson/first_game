@@ -206,6 +206,28 @@ operator*(v3 A, f32 B)
 	return Result;
 }
 
+inline v3
+operator-(v3 A, f32 B)
+{
+	v3 Result;
+	Result.x = A.x - B;
+	Result.y = A.y - B;
+	Result.z = A.z - B;
+
+	return Result;
+}
+
+inline v3
+operator+(v3 A, f32 B)
+{
+	v3 Result;
+	Result.x = A.x + B;
+	Result.y = A.y + B;
+	Result.z = A.z + B;
+
+	return Result;
+}
+
 // TODO: use sse mul?
 inline v4
 operator*(v4 A, v4 B)

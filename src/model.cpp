@@ -390,7 +390,7 @@ GetPlaneNormal(model *Model, u32 FaceIndex)
 }
 
 b32
-RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult)
+RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {
 #if 0
 	model_face Face = Model->Faces[FaceResult->ID];
@@ -475,10 +475,11 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 	return DistanceToEdge < 0.03f ? true : false;
 #else
 	b32 Result = false;
-	v3 PointOnEdge;
+	v3 ResultPointOnEdge;
 	u32 ClosestIndex = 0;
+	f32 ClosestRayP = FLOAT_MAX;
 
-	// NOTE: 0-edge line, 1-line get from closest point on sphere
+	// NOTE: 0 - edge ray, 1 - mouse ray
 	for (u32 EdgeIndex = 0;
 		EdgeIndex < Model->EdgeCount;
 		++EdgeIndex)
@@ -491,24 +492,18 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 		{
 			capsule_params Capsule;
 			// TODO: Adjust radius based on distance
-			Capsule.R = 0.1f;
+			Capsule.R = IntrRadius;
 			Capsule.V0 = Model->Vertex[Edge.V0] + Model->Offset;
 			Capsule.V1 = Model->Vertex[Edge.V1] + Model->Offset;
 			Capsule.Dir = Capsule.V0 - Capsule.V1;
 			v3 NormCapDir = Normalize(Capsule.Dir);
 
-			v3 LineSegmentV0 = Ray.Pos + (Ray.Dir * Dot(Capsule.V0 - Ray.Pos, Ray.Dir));
-			v3 LineSegmentV1 = Ray.Pos + (Ray.Dir * Dot(Capsule.V1 - Ray.Pos, Ray.Dir));
-
-			v3 LineSegmentDir = LineSegmentV0 - LineSegmentV1;
-			v3 NormLineSegmentDir = Normalize(LineSegmentDir);
-
-			v3 R = Capsule.V0 - LineSegmentV0;
-			f32 CDotC = Dot(Capsule.Dir, Capsule.Dir);
-			f32 CDotL = Dot(Capsule.Dir, LineSegmentDir);
-			f32 CDotR = Dot(Capsule.Dir, R);
-			f32 LDotL = Dot(LineSegmentDir, LineSegmentDir);
-			f32 LDotR = Dot(LineSegmentDir, R);
+			v3 R = Capsule.V0 - Ray.Pos;
+			f32 CDotC = Dot(NormCapDir, NormCapDir);
+			f32 CDotL = Dot(NormCapDir, Ray.Dir);
+			f32 CDotR = Dot(NormCapDir, R);
+			f32 LDotL = Dot(Ray.Dir, Ray.Dir);
+			f32 LDotR = Dot(Ray.Dir, R);
 
 			f32 Det = (CDotC * LDotL) - (CDotL * CDotL);
 
@@ -516,17 +511,21 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			f32 t1 = (CDotC * LDotR - CDotL * CDotR) / Det;
 		
 			v3 P0 = Capsule.V0 + (NormCapDir * t0);
-			v3 P1 = LineSegmentV0 + (NormLineSegmentDir * t1);
+			v3 P1 = Ray.Pos + (Ray.Dir * t1);
 
 			f32 CapRSquare = Capsule.R * Capsule.R;
 			f32 Dist = Length(P0 - P1);
 
+			// TODO: Add check for length bounds overflow
 			if (Dist <= Capsule.R)
 			{
-				ClosestIndex = EdgeIndex;
-				PointOnEdge = P0;
-				Result = true;
-				break;
+				if (Dist < ClosestRayP)
+				{
+					ClosestRayP = Dist;
+					ClosestIndex = EdgeIndex;
+					ResultPointOnEdge = P1;
+					Result = true;
+				}
 			}
 		}
 	}
@@ -534,11 +533,10 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 	if (Result)
 	{
 		EdgeResult->ID = ClosestIndex;
-		EdgeResult->P = PointOnEdge;
+		EdgeResult->P = ResultPointOnEdge;
 	}
 
 	return Result;
-#endif
 }
 
 b32
