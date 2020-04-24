@@ -109,7 +109,6 @@ UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_g
 		} break;
 
 		case UI_InteractionTarget_ModelFace:
-		case UI_InteractionTarget_ModelEdge:
 		{
 			model *Model = Editor->Models + WorldUI->IModel.ID;
 			IModel->Face = {};
@@ -118,12 +117,21 @@ UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_g
 			{
 				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
-					IModel->Edge = {};
-					if (ITargetType(WorldUI->ITarget, ModelEdge))
-					{
-						RayModelEdgeInterset(Model, &IModel->Face, &IModel->Edge);
-					}
-					
+					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
+				}
+			}
+		} break;
+
+		case UI_InteractionTarget_ModelEdge:
+		{
+			model *Model = Editor->Models + WorldUI->IModel.ID;
+			IModel->Edge = {};
+
+			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
+			{
+				// TODO: Add sphere capsule radius to aabb
+				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge))
+				{	
 					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
 				}
 			}
@@ -183,7 +191,7 @@ EndInteraction(game_editor_state *Editor, game_input *Input, render_group *Rende
 inline void
 ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 {
-	if (WasDown(Input->Tab))
+	if (WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
 	{
 		if (WorldUI->ITarget)
 		{
@@ -402,7 +410,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 
 		// NOTE: For Test
-		//AddCubeModel(Editor);
+		AddCubeModel(Editor);
 		AddCubeModel(Editor, V3(-2.0f, 1.0f, 1.0f));
 		AddCubeModel(Editor, V3(-2.0f, 4.0f, -1.0f));
 
@@ -426,7 +434,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	v3 CameraOffset = Editor->Camera.Offset;
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 
-	PushSphere(&RenderGroup, Editor->StaticMesh[0].Mesh);
+	//PushSphere(&RenderGroup, Editor->StaticMesh[0].Mesh);
 
 	if (Input)
 	{

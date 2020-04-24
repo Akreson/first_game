@@ -342,9 +342,57 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 	return Sphere;
 }
 
-b32
-RayModelEdgeInterset(model *Model, element_ray_result *FaceResult, element_ray_result *EdgeResult)
+internal plane_params
+GetPlaneFromFace(model *Model, u32 FaceIndex)
 {
+	plane_params Result;
+
+	model_face Face = Model->Faces[FaceIndex];
+
+	v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
+	v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
+	v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
+	v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+
+	v3 Edge1 = V0 - V1;
+	v3 Edge2 = V0 - V3;
+
+	Result.N = Normalize(Cross(Edge1, Edge2));
+	Result.D = Dot(Result.N, V0);
+
+	return Result;
+}
+
+struct capsule_params
+{
+	v3 V0, V1;
+	v3 Dir;
+	f32 R;
+};
+
+v3
+GetPlaneNormal(model *Model, u32 FaceIndex)
+{
+	v3 Result;
+
+	model_face Face = Model->Faces[FaceIndex];
+
+	v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
+	v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
+	v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
+	v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+
+	v3 Edge1 = V0 - V1;
+	v3 Edge2 = V0 - V3;
+
+	Result = Normalize(Cross(Edge1, Edge2));
+	return Result;
+}
+
+b32
+RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult)
+{
+#if 0
 	model_face Face = Model->Faces[FaceResult->ID];
 	v3 IntersectP = FaceResult->P;
 	v3 _IntersectP = FaceResult->P - Model->Offset;
@@ -425,6 +473,72 @@ RayModelEdgeInterset(model *Model, element_ray_result *FaceResult, element_ray_r
 	EdgeResult->P = PointOnEdge;
 
 	return DistanceToEdge < 0.03f ? true : false;
+#else
+	b32 Result = false;
+	v3 PointOnEdge;
+	u32 ClosestIndex = 0;
+
+	// NOTE: 0-edge line, 1-line get from closest point on sphere
+	for (u32 EdgeIndex = 0;
+		EdgeIndex < Model->EdgeCount;
+		++EdgeIndex)
+	{
+		model_edge Edge = Model->Edges[EdgeIndex];
+		v3 PlaneN0 = GetPlaneNormal(Model, Edge.Face0);
+		v3 PlaneN1 = GetPlaneNormal(Model, Edge.Face1);
+
+		if ((Dot(PlaneN0, Ray.Dir) < 0) || (Dot(PlaneN1, Ray.Dir) < 0))
+		{
+			capsule_params Capsule;
+			// TODO: Adjust radius based on distance
+			Capsule.R = 0.1f;
+			Capsule.V0 = Model->Vertex[Edge.V0] + Model->Offset;
+			Capsule.V1 = Model->Vertex[Edge.V1] + Model->Offset;
+			Capsule.Dir = Capsule.V0 - Capsule.V1;
+			v3 NormCapDir = Normalize(Capsule.Dir);
+
+			v3 LineSegmentV0 = Ray.Pos + (Ray.Dir * Dot(Capsule.V0 - Ray.Pos, Ray.Dir));
+			v3 LineSegmentV1 = Ray.Pos + (Ray.Dir * Dot(Capsule.V1 - Ray.Pos, Ray.Dir));
+
+			v3 LineSegmentDir = LineSegmentV0 - LineSegmentV1;
+			v3 NormLineSegmentDir = Normalize(LineSegmentDir);
+
+			v3 R = Capsule.V0 - LineSegmentV0;
+			f32 CDotC = Dot(Capsule.Dir, Capsule.Dir);
+			f32 CDotL = Dot(Capsule.Dir, LineSegmentDir);
+			f32 CDotR = Dot(Capsule.Dir, R);
+			f32 LDotL = Dot(LineSegmentDir, LineSegmentDir);
+			f32 LDotR = Dot(LineSegmentDir, R);
+
+			f32 Det = (CDotC * LDotL) - (CDotL * CDotL);
+
+			f32 t0 = (CDotL * LDotR - CDotR * LDotL) / Det;
+			f32 t1 = (CDotC * LDotR - CDotL * CDotR) / Det;
+		
+			v3 P0 = Capsule.V0 + (NormCapDir * t0);
+			v3 P1 = LineSegmentV0 + (NormLineSegmentDir * t1);
+
+			f32 CapRSquare = Capsule.R * Capsule.R;
+			f32 Dist = Length(P0 - P1);
+
+			if (Dist <= Capsule.R)
+			{
+				ClosestIndex = EdgeIndex;
+				PointOnEdge = P0;
+				Result = true;
+				break;
+			}
+		}
+	}
+
+	if (Result)
+	{
+		EdgeResult->ID = ClosestIndex;
+		EdgeResult->P = PointOnEdge;
+	}
+
+	return Result;
+#endif
 }
 
 b32
