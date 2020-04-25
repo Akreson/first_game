@@ -90,16 +90,6 @@ AreEqual(ui_interaction A, ui_interaction B)
 	return Result;
 }
 
-inline rect3
-AddRadiusTo(rect3 A, f32 B)
-{
-	rect3 Result;
-	Result.Min = A.Min - B;
-	Result.Max = A.Max + B;
-
-	return Result;
-}
-
 internal void inline
 UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
@@ -140,7 +130,6 @@ UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_g
 			f32 EdgeIntersetRadius = 0.015f;
 			if (RayAABBIntersect(WorldUI->MouseRay, AddRadiusTo(Model->AABB, EdgeIntersetRadius), Model->Offset))
 			{
-				// TODO: Add sphere capsule radius to aabb
 				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
 				{	
 					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);

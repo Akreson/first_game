@@ -370,7 +370,7 @@ struct capsule_params
 	f32 R;
 };
 
-v3
+inline v3
 GetPlaneNormal(model *Model, u32 FaceIndex)
 {
 	v3 Result;
@@ -389,92 +389,12 @@ GetPlaneNormal(model *Model, u32 FaceIndex)
 	return Result;
 }
 
+// TODO: Optimize or change to another method
+// Check if precompute and then check face visibility
+// give benefit
 b32
 RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {
-#if 0
-	model_face Face = Model->Faces[FaceResult->ID];
-	v3 IntersectP = FaceResult->P;
-	v3 _IntersectP = FaceResult->P - Model->Offset;
-	
-	// NOTE: Closest vertex match
-	u32 VertexRelativeIndex[2];
-	f32 LengthsToVertex[4];
-
-	LengthsToVertex[0] = LengthSq((Model->Vertex[Face.V0] + Model->Offset) - IntersectP);
-	LengthsToVertex[1] = LengthSq((Model->Vertex[Face.V1] + Model->Offset) - IntersectP);
-	LengthsToVertex[2] = LengthSq((Model->Vertex[Face.V2] + Model->Offset) - IntersectP);
-	LengthsToVertex[3] = LengthSq((Model->Vertex[Face.V3] + Model->Offset) - IntersectP);
-
-	// NOTE: Get 2 smallest length
-	for (u32 MinLengthIndex = 0;
-		MinLengthIndex < ArrayCount(VertexRelativeIndex);
-		++MinLengthIndex)
-	{
-		f32 MinLength = FLOAT_MAX;
-		u32 CurrentMinLengthIndex;
-
-		for (u32 LengthIndex = 0;
-			LengthIndex < ArrayCount(LengthsToVertex);
-			++LengthIndex)
-		{
-			f32 CheckLength = LengthsToVertex[LengthIndex];
-			if (CheckLength < MinLength)
-			{
-				CurrentMinLengthIndex = LengthIndex;
-				MinLength = CheckLength;
-			}
-		}
-
-		VertexRelativeIndex[MinLengthIndex] = CurrentMinLengthIndex;
-		LengthsToVertex[CurrentMinLengthIndex] = FLOAT_MAX;
-	}
-
-	//NOTE: Edge match
-	u32 AbsIndexV0 = Face.VertexID[VertexRelativeIndex[0]];
-	u32 AbsIndexV1 = Face.VertexID[VertexRelativeIndex[1]];
-
-	model_edge MatchEdge;
-	b32 SuccesMatch = false;
-	for (u32 EdgeIndex = 0;
-		EdgeIndex < ArrayCount(Face.EdgeID);
-		++EdgeIndex)
-	{
-		u32 MatchCount = 0;
-		u32 EdgeAbsIndex = Face.EdgeID[EdgeIndex];
-		model_edge Edge = Model->Edges[EdgeAbsIndex];
-
-		b32 MatchV0 = ((Edge.V0 == AbsIndexV0) || (Edge.V0 == AbsIndexV1));
-		b32 MatchV1 = ((Edge.V1 == AbsIndexV0) || (Edge.V1 == AbsIndexV1));
-
-		if (MatchV0 && MatchV1)
-		{
-			MatchEdge = Edge;
-			SuccesMatch = true;
-			EdgeResult->ID = EdgeAbsIndex;
-			break;
-		}
-	}
-	Assert(SuccesMatch);
-
-	v3 EdgeV0 = Model->Vertex[MatchEdge.V0] + Model->Offset;
-	v3 EdgeV1 = Model->Vertex[MatchEdge.V1] + Model->Offset;
-
-	v3 NormalizeEdgeDir = Normalize(EdgeV1 - EdgeV0);
-	v3 DistVector = IntersectP - EdgeV0;
-
-	f32 LengthOnEdge = Dot(NormalizeEdgeDir, DistVector);
-	LengthOnEdge = LengthOnEdge < 0 ? LengthOnEdge * -1.0f : LengthOnEdge;
-
-	v3 PointOnEdge = EdgeV0 + (NormalizeEdgeDir * LengthOnEdge);
-	v3 Diff = PointOnEdge - IntersectP;
-	f32 DistanceToEdge = MAX(MAX(Diff.x, Diff.y), Diff.z);
-
-	EdgeResult->P = PointOnEdge;
-
-	return DistanceToEdge < 0.03f ? true : false;
-#endif
-
 	b32 Result = false;
 	v3 ResultPointOnEdge;
 	u32 ClosestIndex = 0;
@@ -492,13 +412,17 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 		if ((Dot(PlaneN0, Ray.Dir) < 0) || (Dot(PlaneN1, Ray.Dir) < 0))
 		{
 			capsule_params Capsule;
+
 			// TODO: Adjust radius based on distance
 			Capsule.R = IntrRadius;
 			Capsule.V0 = Model->Vertex[Edge.V0] + Model->Offset;
 			Capsule.V1 = Model->Vertex[Edge.V1] + Model->Offset;
-			Capsule.Dir = Capsule.V0 - Capsule.V1;
+			Capsule.Dir = Capsule.V1 - Capsule.V0;
+
+			f32 CapsuleRSquare = Square(Capsule.R);
 			v3 NormCapDir = Normalize(Capsule.Dir);
 
+			// NOTE: Ray-Ray intersection
 			v3 R = Capsule.V0 - Ray.Pos;
 			f32 CDotC = Dot(NormCapDir, NormCapDir);
 			f32 CDotL = Dot(NormCapDir, Ray.Dir);
@@ -511,20 +435,19 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			f32 t0 = (CDotL * LDotR - CDotR * LDotL) / Det;
 			f32 t1 = (CDotC * LDotR - CDotL * CDotR) / Det;
 		
-			v3 P0 = Capsule.V0 + (NormCapDir * t0);
-			v3 P1 = Ray.Pos + (Ray.Dir * t1);
+			v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
+			v3 PointOnRay = Ray.Pos + (Ray.Dir * t1);
 
 			f32 CapRSquare = Capsule.R * Capsule.R;
-			f32 Dist = Length(P0 - P1);
+			f32 Dist = Length(PointOnEdge - PointOnRay);
 
-			// TODO: Add check for length bounds overflow
-			if (Dist <= Capsule.R)
+			if ((t0 >= 0) && (t0 <= 1.0f))
 			{
-				if (Dist < ClosestRayP)
+				if ((Dist <= Capsule.R) && (Dist < ClosestRayP))
 				{
 					ClosestRayP = Dist;
 					ClosestIndex = EdgeIndex;
-					ResultPointOnEdge = P1;
+					ResultPointOnEdge = PointOnEdge;
 					Result = true;
 				}
 			}

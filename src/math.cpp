@@ -242,6 +242,13 @@ operator*(v4 A, v4 B)
 }
 
 inline f32
+Square(f32 A)
+{
+	f32 Result = A * A;
+	return Result;
+}
+
+inline f32
 Dot(v3 A, v3 B)
 {
 	f32 Result = A.x*B.x + A.y*B.y + A.z*B.z;
@@ -266,6 +273,13 @@ inline v3
 Normalize(v3 A)
 {
 	v3 Result = A * (1.0f / Length(A));
+	return Result;
+}
+
+inline v3
+Normalize(v3 A, f32 Length)
+{
+	v3 Result = A * (1.0f / Length);
 	return Result;
 }
 
@@ -563,6 +577,16 @@ IsPointInTriangle(v3 A, v3 B, v3 C, v3 P)
 	f32 DirMesureUW = Dot(U, W);
 
 	b32 Result = (DirMesureUV > 0) && (DirMesureUW > 0);
+	return Result;
+}
+
+inline rect3
+AddRadiusTo(rect3 A, f32 B)
+{
+	rect3 Result;
+	Result.Min = A.Min - B;
+	Result.Max = A.Max + B;
+
 	return Result;
 }
 
