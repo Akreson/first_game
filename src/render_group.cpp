@@ -141,6 +141,7 @@ GetEdgeFaceParams(face_render_params FaceParam)
 	return Result;
 }
 
+// TODO: Fix select edge stretching on small engel to adjacent face
 // TODO: Compress face vertex data?
 void
 PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_params FaceParam = {})
