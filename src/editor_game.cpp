@@ -303,7 +303,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 										u32 FaceVertexID = CompFace.VertexID[FaceVIndex];
 										if (EdgeVertexID == FaceVertexID)
 										{
-											Result.ActiveVert[FaceVIndex] = FaceVertexParams_Active;
+											Result.ActiveVert[FaceVIndex] = FaceVertexParams_Mark;
 										}
 									}
 								}
@@ -339,7 +339,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 								u32 FaceVertexID = CompFace.VertexID[FaceVIndex];
 								if (EdgeVertexID == FaceVertexID)
 								{
-									Result.ActiveVert[FaceVIndex] = FaceVertexParams_Active;
+									Result.ActiveVert[FaceVIndex] = FaceVertexParams_Mark;
 								}
 							}
 						}
@@ -394,13 +394,11 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		InitArena(&GameState->GameArena, Memory->GameStorageSize - sizeof(game_state),
 			((u8 *)Memory->GameStorage + sizeof(game_state)));
 
-		// TODO: Fix font rendering
 		LoadAsset(GameState);
 
 		InitArena(&Editor->MainArena, Memory->EditorStorageSize, (u8 *)Memory->EditorStorage);
 		
 		// TODO: Create TranArena and PageArena as separate arena?
-		
 		Editor->TranArena = SubArena(&Editor->MainArena, MiB(5));
 		
 		u32 SelectedBufferSize = MiB(1);

@@ -149,6 +149,7 @@ typedef void type_glBlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint
 typedef void type_glEnableVertexAttribArray(GLuint index);
 typedef void type_glDisableVertexAttribArray(GLuint index);
 typedef void type_glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
+typedef void type_glVertexAttribIPointer(GLuint index, GLint size, GLenum type, GLsizei stride, const GLvoid * pointer);
 
 typedef void type_glGetShaderiv(GLuint shader, GLenum pname, GLint *params);
 typedef void type_glGetProgramiv(GLuint program, GLenum pname, GLint *params);
@@ -203,6 +204,7 @@ OpenGLGlobalVariable(glDeleteBuffers);
 OpenGLGlobalVariable(glEnableVertexAttribArray);
 OpenGLGlobalVariable(glDisableVertexAttribArray);
 OpenGLGlobalVariable(glVertexAttribPointer);
+OpenGLGlobalVariable(glVertexAttribIPointer);
 
 OpenGLGlobalVariable(glBindFramebuffer);
 OpenGLGlobalVariable(glGenFramebuffers);

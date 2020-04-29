@@ -43,8 +43,7 @@ enum face_selection_type
 
 enum face_vertex_renderer_params
 {
-	FaceVertexParams_Active = 0x1,
-	FaceVertexParams_Hot = 0x1,
+	FaceVertexParams_Mark = 0x1,
 	FaceVertexParams_SetAll = 0x01010101,
 };
 
@@ -111,7 +110,8 @@ struct render_model_face_vertex
 {
 	v3 Vertex;
 	v3 BarCoords;
-	v3 MetaInfo;
+	v4 MetaInfo;
+	u32 EdgeBarIndex;
 };
 
 struct render_group

@@ -337,18 +337,45 @@ CompileModelProgram(model_program *Prog)
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
 	layout (location = 1) in vec3 aBarCoord;
-	layout (location = 2) in vec3 aMetaInfo;
+	layout (location = 2) in vec4 aMetaInfo;
+	layout (location = 3) in uint aEdgeBarIndex;
+
+	// NOTE: aMetaInfo
+	// y - Active
+	// z - Hot 
+	// w - use for adjust vertex value when no one active or hot (TODO: separate for active and hot)
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
 	out vec3 BarCoord;
-	out vec3 MetaInfo;
-	
+	out vec3 BarSelectCoord;
+	out vec3 BarHotCoord;
+	out float FaceSelectionParam;
+
+	vec3 ModifyBarCoord(vec3 BarCoord, float Value, float ClearMul, uint Index)
+	{
+		vec3 Result = BarCoord;
+
+		float ClearValue = Result[Index] * ClearMul;
+		Result[Index] = Value;
+		
+		Result.x += ClearValue;
+		Result.y += ClearValue;
+		Result.z += ClearValue;
+
+		Result[Index] -= ClearValue;
+
+		return Result;
+	}	
+
 	void main()
 	{
 		BarCoord = aBarCoord;
-		MetaInfo = aMetaInfo;
+		FaceSelectionParam = aMetaInfo.x;
+		BarSelectCoord = ModifyBarCoord(aBarCoord, aMetaInfo.y, aMetaInfo.w, aEdgeBarIndex);
+		BarHotCoord = ModifyBarCoord(aBarCoord, aMetaInfo.z, aMetaInfo.w, aEdgeBarIndex);
+
 		gl_Position = Proj * ModelTransform * vec4(aPos.xyz, 1.0f);
 	}
 
@@ -367,7 +394,19 @@ CompileModelProgram(model_program *Prog)
 	uniform vec3 EdgeColor;
 
 	in vec3 BarCoord;
-	in vec3 MetaInfo;
+	in vec3 BarSelectCoord;
+	in vec3 BarHotCoord;
+	in float FaceSelectionParam;
+
+	float GetStepFactor(vec3 A, float Thickness)
+	{
+		float MinD = min(min(A.x, A.y), A.z);
+		float dMinD = fwidth(MinD);
+		float Factor = smoothstep(0, Thickness*dMinD, MinD);
+		//float Factor = step(Thickness*dMinD, MinD);
+
+		return Factor;
+	}	
 
 	void main()
 	{
@@ -378,33 +417,42 @@ CompileModelProgram(model_program *Prog)
 		float Thickness = 2.5f;
 	
 		// NOTE: Edge color calc.
-		float MinD = min(min(BarCoord.x, BarCoord.y), BarCoord.z);
-		float dMinD = fwidth(MinD);
-		float Factor = smoothstep(0, Thickness*dMinD, MinD);
-		float InvFactor = 1.0f - Factor;
+		float EdgeFactor = GetStepFactor(BarCoord, Thickness);
+		float InvEdgeFactor = 1.0f - EdgeFactor;
 
-		float SelectEdgeFactor = 1.0f - (fwidth(MetaInfo.y)*Thickness);
+		float MinSelectD = min(min(BarSelectCoord.x, BarSelectCoord.y), BarSelectCoord.z);
+		float dMinSelectD = fwidth(MinSelectD);
+		float SelectEdgeFactor = 1.0f - step(dMinSelectD * Thickness, MinSelectD);
+
+		float MinHotD = min(min(BarHotCoord.x, BarHotCoord.y), BarHotCoord.z);
+		float dMinHotD = fwidth(MinHotD);
+		float HotEdgeFactor = 1.0f - step(dMinHotD * Thickness, MinHotD);
+
+		//-------------
+		/*float SelectEdgeFactor = 1.0f - (fwidth(MetaInfo.y)*Thickness);
 		SelectEdgeFactor = step(SelectEdgeFactor, MetaInfo.y);
 		
 		float HotEdgeFactor = 1.0f - (fwidth(MetaInfo.z)*Thickness);
-		HotEdgeFactor = step(HotEdgeFactor, MetaInfo.z);
-		
+		HotEdgeFactor = step(HotEdgeFactor, MetaInfo.z);*/
+		//------------
+
 		vec3 FinalEdgeColor = mix(EdgeColor, SelectColor, SelectEdgeFactor);
-		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
+		// TODO: Enable Hot Factor
+		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, 0);
 		
 		// NOTE: Face color calc
-		float FaceSelectionParam = MetaInfo.x;
+		float ModFaceSelParam = FaceSelectionParam;
 
-		float SelectFaceColorFactor = step(FaceSelectionType_Select, FaceSelectionParam);
-		FaceSelectionParam -= SelectFaceColorFactor * FaceSelectionType_Select;
+		float SelectFaceColorFactor = step(FaceSelectionType_Select, ModFaceSelParam);
+		ModFaceSelParam -= SelectFaceColorFactor * FaceSelectionType_Select;
 
-		float HotFaceColorFactor = step(FaceSelectionType_Hot, FaceSelectionParam);
-		FaceSelectionParam -= HotFaceColorFactor * FaceSelectionType_Hot;
+		float HotFaceColorFactor = step(FaceSelectionType_Hot, ModFaceSelParam);
+		ModFaceSelParam -= HotFaceColorFactor * FaceSelectionType_Hot;
 
 		vec3 FinalFaceColor = mix(Color.rgb, (SelectColor*Color.rgb), SelectFaceColorFactor);
 		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), HotFaceColorFactor);
 
-		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvFactor), Color.a);
+		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvEdgeFactor), Color.a);
 	}
 	)FOO";
 
@@ -698,9 +746,7 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	OpenGL.MainFB = CreateFramebuffer(ScreenWidth, ScreenHeight,
 		OpenGLFramebufferSetParam_Color|OpenGLFramebufferSetParam_Depth);
 
-	//
 	// NOTE: Set FBO and texture for ouline effect
-	//
 	// TODO: Use lower resolution texture for ouline effect
 	OpenGL.Prepass = CreateFramebuffer(ScreenWidth, ScreenHeight,
 		OpenGLFramebufferSetParam_Color, GL_R8);
@@ -711,9 +757,7 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	//OpenGL.OutlineSolve = CreateFramebuffer(ScreenWidth, ScreenHeight,
 	//	OpenGLFramebufferSetParam_Color);
 	
-	//
 	// NOTE Set Editor model vertex VAO
-	//
 	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
 
@@ -725,14 +769,14 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 3));
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 6));
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 6));
+	glEnableVertexAttribArray(3);
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 10));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	
-	//
 	// NOTE: Set full screen VAO
-	//
 	const float Vertices[] = {
 		// first triangle
 		 1.0f,  1.0f, 1.0f, 1.0f,// top right
@@ -853,7 +897,9 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				UseProgramBegin(&OpenGL.ModelProg, ModelEntry->Color, ModelEntry->EdgeColor,
 					&Commands->PersProj.Forward, &ModelTransform);
 
-				glDrawArrays(GL_TRIANGLES, ModelEntry->StartOffset / sizeof(render_model_face_vertex), ModelEntry->ElementCount);
+				glDrawArrays(GL_TRIANGLES,
+					ModelEntry->StartOffset / sizeof(render_model_face_vertex),
+					ModelEntry->ElementCount);
 
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);

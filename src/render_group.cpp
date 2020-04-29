@@ -98,17 +98,50 @@ PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 }
 
 inline render_model_face_vertex
-ConstructFaceVertex(v3 Vertex, v3 BarCoords, v3 MetaInfo)
+ConstructFaceVertex(v3 Vertex, v3 BarCoords, v4 MetaInfo, u32 EdgeBarIndex)
 {
 	render_model_face_vertex Result;
 
 	Result.Vertex = Vertex;
 	Result.BarCoords = BarCoords;
 	Result.MetaInfo = MetaInfo;
+	Result.EdgeBarIndex = EdgeBarIndex;
 
 	return Result;
 }
 
+struct face_edge_params
+{
+	b8 Active01;
+	b8 Active12;
+	b8 Active03;
+	b8 Active23;
+
+	b8 Hot01;
+	b8 Hot12;
+	b8 Hot03;
+	b8 Hot23;
+};
+
+internal inline face_edge_params
+GetEdgeFaceParams(face_render_params FaceParam)
+{
+	face_edge_params Result;
+
+	Result.Active01 = FaceParam.ActiveVert[0] & FaceParam.ActiveVert[1];
+	Result.Active12 = FaceParam.ActiveVert[1] & FaceParam.ActiveVert[2];
+	Result.Active03 = FaceParam.ActiveVert[0] & FaceParam.ActiveVert[3];
+	Result.Active23 = FaceParam.ActiveVert[2] & FaceParam.ActiveVert[3];
+
+	Result.Hot01 = FaceParam.HotVert[0] & FaceParam.HotVert[1];
+	Result.Hot12 = FaceParam.HotVert[1] & FaceParam.HotVert[2];
+	Result.Hot03 = FaceParam.HotVert[0] & FaceParam.HotVert[3];
+	Result.Hot23 = FaceParam.HotVert[2] & FaceParam.HotVert[3];
+
+	return Result;
+}
+
+// TODO: Compress face vertex data?
 void
 PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_params FaceParam = {})
 {
@@ -119,29 +152,63 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
-	f32 ActiveArray[2] = {0, 1.0f};
-
-	f32 ActiveVert0 = ActiveArray[FaceParam.ActiveVert[0]];
-	f32 ActiveVert1 = ActiveArray[FaceParam.ActiveVert[1]];
-	f32 ActiveVert2 = ActiveArray[FaceParam.ActiveVert[2]];
-	f32 ActiveVert3 = ActiveArray[FaceParam.ActiveVert[3]];
-
-	f32 HotVert0 = ActiveArray[FaceParam.HotVert[0]];
-	f32 HotVert1 = ActiveArray[FaceParam.HotVert[1]];
-	f32 HotVert2 = ActiveArray[FaceParam.HotVert[2]];
-	f32 HotVert3 = ActiveArray[FaceParam.HotVert[3]];
+	f32 StateEdgeArray[2] = {1.0f, 0};
+	face_edge_params Edges = GetEdgeFaceParams(FaceParam);
 
 	f32 SelectionType = 0;
 	if (FaceParam.SelectionFlags & FaceSelectionType_Hot) SelectionType += 1.0f;
 	if (FaceParam.SelectionFlags & FaceSelectionType_Select) SelectionType += 2.0f;
 
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0], V3(1, 1, 0), V3(SelectionType, ActiveVert0, HotVert0));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0), V3(SelectionType, ActiveVert1, HotVert1));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2], V3(0, 0, 1), V3(SelectionType, ActiveVert2, HotVert2));
+#if 1
+	f32 Active01 = StateEdgeArray[Edges.Active01];
+	f32 Active12 = StateEdgeArray[Edges.Active12];
+	f32 Active03 = StateEdgeArray[Edges.Active03];
+	f32 Active23 = StateEdgeArray[Edges.Active23];
 
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1), V3(SelectionType, ActiveVert0, HotVert0));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2], V3(0, 1, 0), V3(SelectionType, ActiveVert2, HotVert2));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3], V3(0, 0, 1), V3(SelectionType, ActiveVert3, HotVert3));
+	f32 Hot01 = StateEdgeArray[Edges.Hot01];
+	f32 Hot12 = StateEdgeArray[Edges.Hot12];
+	f32 Hot03 = StateEdgeArray[Edges.Hot03];
+	f32 Hot23 = StateEdgeArray[Edges.Hot23];
+
+	f32 ClearFactor0 = StateEdgeArray[Edges.Active01 | Edges.Active12];
+	f32 ClearFactor1 = StateEdgeArray[Edges.Active03 | Edges.Active23];
+
+	/*u32 ClearIndex0 = 1;
+	ClearIndex0 = (Edges.Active01 & !Edges.Active12) ? 0 : ClearIndex0;
+	ClearIndex0 = (!Edges.Active01 & Edges.Active12) ? 2 : ClearIndex0;
+
+	u32 ClearIndex1 = 2;
+	ClearIndex1 = (Edges.Active03 & !Edges.Active23) ? 0 : ClearIndex1;
+	ClearIndex1 = (!Edges.Active03 & Edges.Active23) ? 1 : ClearIndex1;*/
+#else
+#define EDGE_STATE 0
+	f32 Active01 = StateEdgeArray[EDGE_STATE];
+	f32 Active12 = StateEdgeArray[EDGE_STATE];
+	f32 Active03 = StateEdgeArray[EDGE_STATE];
+	f32 Active23 = StateEdgeArray[EDGE_STATE];
+
+	f32 Tris0HaveActive = StateEdgeArray[EDGE_STATE];
+	f32 Tris1HaveActive = StateEdgeArray[EDGE_STATE];
+
+	f32 Hot01 = StateEdgeArray[EDGE_STATE];
+	f32 Hot12 = StateEdgeArray[EDGE_STATE];
+	f32 Hot03 = StateEdgeArray[EDGE_STATE];
+	f32 Hot23 = StateEdgeArray[EDGE_STATE];
+#endif
+
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
+		V3(1, 1, 0), V4(SelectionType, Active01, Hot01, 0), 2);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1],
+		V3(0, 1, 0), V4(SelectionType, 1.0f, 1.0f, ClearFactor0), 1);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
+		V3(0, 1, 1), V4(SelectionType, Active12, Hot12, 0), 0);
+
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
+		V3(1, 0, 1), V4(SelectionType, Active03, Hot03, 0), 1);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
+		V3(0, 1, 1), V4(SelectionType, Active23, Hot23, 0), 0);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3],
+		V3(0, 0, 1), V4(SelectionType, 1.0f, 1.0f, ClearFactor1), 2);
 
 	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }

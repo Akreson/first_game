@@ -198,6 +198,7 @@ Win32InitOpenGL(HDC WindowDC, f32 ScreenWidth, f32 ScreenHeight)
 		Win32LoadOpenGLFunction(glEnableVertexAttribArray);
 		Win32LoadOpenGLFunction(glDisableVertexAttribArray);
 		Win32LoadOpenGLFunction(glVertexAttribPointer);
+		Win32LoadOpenGLFunction(glVertexAttribIPointer);
 
 		Win32LoadOpenGLFunction(glGetShaderiv);
 		Win32LoadOpenGLFunction(glGetProgramiv);
