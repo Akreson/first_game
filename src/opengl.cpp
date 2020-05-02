@@ -403,7 +403,6 @@ CompileModelProgram(model_program *Prog)
 		float MinD = min(min(A.x, A.y), A.z);
 		float dMinD = fwidth(MinD);
 		float Factor = smoothstep(0, Thickness*dMinD, MinD);
-		//float Factor = step(Thickness*dMinD, MinD);
 
 		return Factor;
 	}	
@@ -414,7 +413,7 @@ CompileModelProgram(model_program *Prog)
 
 		vec3 SelectColor = vec3(0.86f, 0.65f, 0.2f);
 		vec3 HotFaceColor = vec3(1.3f);
-		float Thickness = 2.5f;
+		float Thickness = 2.0f;
 	
 		// NOTE: Edge color calc.
 		float EdgeFactor = GetStepFactor(BarCoord, Thickness);
@@ -423,10 +422,12 @@ CompileModelProgram(model_program *Prog)
 		float MinSelectD = min(min(BarSelectCoord.x, BarSelectCoord.y), BarSelectCoord.z);
 		float dMinSelectD = fwidth(MinSelectD);
 		float SelectEdgeFactor = 1.0f - step(dMinSelectD * Thickness, MinSelectD);
+		//float SelectEdgeFactor = 1.0f - GetStepFactor(BarSelectCoord, Thickness);
 
 		float MinHotD = min(min(BarHotCoord.x, BarHotCoord.y), BarHotCoord.z);
 		float dMinHotD = fwidth(MinHotD);
 		float HotEdgeFactor = 1.0f - step(dMinHotD * Thickness, MinHotD);
+		//float HotEdgeFactor = 1.0f - GetStepFactor(BarHotCoord, Thickness);
 
 		//-------------
 		/*float SelectEdgeFactor = 1.0f - (fwidth(MetaInfo.y)*Thickness);

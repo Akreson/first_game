@@ -1,24 +1,24 @@
 
-inline u32
+struct bit_scan_result
+{
+	u16 Index;
+	u16 Succes;
+};
+
+inline bit_scan_result
 FindLeastSignificantSetBit(u32 Source)
 {
-	u32 Result = 0;
-	b32 Succes = _BitScanForward((unsigned long *)&Result, Source);
-
-	// TODO: Handle not found case?
-	Assert(Succes);
+	bit_scan_result Result;
+	Result.Succes = _BitScanForward((unsigned long *)&Result.Index, Source);
 
 	return Result;
 }
 
-inline u32
+inline bit_scan_result
 FindMostSignificantSetBit(u32 Source)
 {
-	u32 Result = 0;
-	b32 Succes = _BitScanReverse((unsigned long *)&Result, Source);
-
-	// TODO: Handle not found case?
-	Assert(Succes);
+	bit_scan_result Result;
+	Result.Succes = _BitScanForward((unsigned long *)&Result.Index, Source);
 
 	return Result;
 }

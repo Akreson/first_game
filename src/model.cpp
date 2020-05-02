@@ -81,14 +81,14 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 
 			if (MatchedCount == ArrayCount(Edge->VertexID))
 			{
-				Face->EdgeID[EdgeMatchedIndex] = EdgeIndex;
+				Face->EdgesID[EdgeMatchedIndex] = EdgeIndex;
 				EdgeMatchedIndex++;
 
-				if (EdgeMatchedIndex == ArrayCount(Face->EdgeID)) break;
+				if (EdgeMatchedIndex == ArrayCount(Face->EdgesID)) break;
 			}
 		}
 
-		Assert(EdgeMatchedIndex == ArrayCount(Face->EdgeID));
+		Assert(EdgeMatchedIndex == ArrayCount(Face->EdgesID));
 	}
 }
 

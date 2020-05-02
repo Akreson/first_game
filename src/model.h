@@ -4,20 +4,20 @@ struct model_edge
 {
 	union
 	{
-		u16 VertexID[2];
+		u32 VertexID[2];
 		struct
 		{
-			u16 V0, V1;
+			u32 V0, V1;
 		};
 	};
 
 	union
 	{
-		u16 FaceID[2];
+		u32 FaceID[2];
 
 		struct
 		{
-			u16 Face0, Face1;
+			u32 Face0, Face1;
 		};
 	};
 
@@ -29,21 +29,21 @@ struct model_face
 {
 	union
 	{
-		u16 VertexID[4];
+		u32 VertexID[4];
 		struct
 		{
-			u16 V0, V1, V2, V3;
+			u32 V0, V1, V2, V3;
 		};
 	};
 
 	// NOTE: All models build from quads
 	union
 	{
-		u16 EdgeID[4];
+		u32 EdgesID[4];
 
 		struct
 		{
-			u16 Edge0, Edge1, Edge2, Edge3;
+			u32 Edge0, Edge1, Edge2, Edge3;
 		};
 	};
 };
@@ -57,9 +57,9 @@ struct model
 	v4 Color;
 	rect3 AABB;
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
-	u16 FaceCount;
-	u16 VertexCount;
-	u16 EdgeCount;
+	u32 FaceCount;
+	u32 VertexCount;
+	u32 EdgeCount;
 };
 
 struct element_ray_result

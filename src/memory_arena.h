@@ -114,7 +114,7 @@ GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 	u32 AlignOffset = GetAlignmentOffsetBack((memory_index)Ptr, PageSize);
 	u8 *AlignPtr = (u8 *)Ptr - AlignOffset;
 
-	u32 ShiftValue = FindLeastSignificantSetBit(PageSize);
+	u32 ShiftValue = FindLeastSignificantSetBit(PageSize).Index;
 
 	u32 Result = AlignPtr - (u8 *)PageBase;
 	Result >>= ShiftValue;
@@ -149,7 +149,7 @@ FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 
 		{
 			PageOffsetFactor = BlockIndex * PAGES_PER_ALLOC_STATUS_BLOCK;
 
-			u32 PrevFreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
+			u32 PrevFreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock).Index;
 			PrevFreePageIndex = PageOffsetFactor + PrevFreePageIndexInBlock;
 
 			PageBlock = ResetBit(PageBlock, PrevFreePageIndexInBlock);
@@ -165,7 +165,7 @@ FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 
 					break;
 				}
 
-				u32 FreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock);
+				u32 FreePageIndexInBlock = FindLeastSignificantSetBit(PageBlock).Index;
 				u32 FreePageIndex = PageOffsetFactor + FreePageIndexInBlock;
 
 				PageBlock = ResetBit(PageBlock, FreePageIndexInBlock);
