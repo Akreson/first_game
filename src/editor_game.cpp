@@ -39,95 +39,6 @@ RenderText(render_group *Group, font_asset_info *FontAsset, char *Text, v3 TextC
 	}
 }
 
-struct faces_edge_match
-{
-	u16 Index;
-	b16 Succes;
-};
-
-inline faces_edge_match
-MatchFaceEdge(model_face *A, model_face *B)
-{
-	faces_edge_match Result;
-
-	__m128i EdgesA = _mm_load_si128((__m128i *)A->EdgesID);
-	__m128i EdgesB = _mm_load_si128((__m128i *)B->EdgesID);
-
-	__m128i EdgeB0 = ShuffleU324x(EdgesB, 0);
-	__m128i EdgeB1 = ShuffleU324x(EdgesB, 1);
-	__m128i EdgeB2 = ShuffleU324x(EdgesB, 2);
-	__m128i EdgeB3 = ShuffleU324x(EdgesB, 3);
-
-	__m128i CmpMask0 = _mm_cmpeq_epi32(EdgesA, EdgeB0);
-	__m128i CmpMask1 = _mm_cmpeq_epi32(EdgesA, EdgeB1);
-	__m128i CmpMask2 = _mm_cmpeq_epi32(EdgesA, EdgeB2);
-	__m128i CmpMask3 = _mm_cmpeq_epi32(EdgesA, EdgeB3);
-
-	__m128i OrMask01 = _mm_or_si128(CmpMask0, CmpMask1);
-	__m128i OrMask23 = _mm_or_si128(CmpMask2, CmpMask3);
-	__m128i OrMask = _mm_or_si128(OrMask01, OrMask23);
-
-	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
-	Assert(CountOfSetBits(Mask32) <= 1);
-
-	bit_scan_result MaskResult = FindLeastSignificantSetBit(Mask32);
-
-	Result.Succes = MaskResult.Succes;
-	Result.Index = A->EdgesID[MaskResult.Index];
-
-	return Result;
-}
-
-inline b32
-MatchFaceEdge(model_face *A, u32 B)
-{
-	__m128i EdgeA = _mm_load_si128((__m128i *)A->EdgesID);
-	__m128i EdgeB0 = _mm_set1_epi32(B);
-
-	__m128i CmpMask0 = _mm_cmpeq_epi32(EdgeA, EdgeB0);
-
-	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask0));
-	Assert(CountOfSetBits(Mask32) <= 1);
-
-	b32 Result = FindLeastSignificantSetBit(Mask32).Succes;
-	return Result;
-}
-
-// TODO: Can be more then 2 vertex?
-struct face_vertex_match
-{
-	u16 Index[2];
-	b16 Succes;
-};
-
-inline face_vertex_match
-MatchFaceVertex(model_face *A, model_edge *B)
-{
-	face_vertex_match Result = {};
-
-	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
-
-	__m128i EdgeB = _mm_load_si128((__m128i *)B);
-	__m128i VertexB0 = ShuffleU324x(EdgeB, 0);
-	__m128i VertexB1 = ShuffleU324x(EdgeB, 1);
-
-	__m128i CmpMask0 = _mm_cmpeq_epi32(VertexA, VertexB0);
-	__m128i CmpMask1 = _mm_cmpeq_epi32(VertexA, VertexB1);
-
-	__m128i OrMask = _mm_or_si128(CmpMask0, CmpMask1);
-
-	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
-	
-	u32 SetBits = CountOfSetBits(Mask32);
-	Assert(SetBits <= 2);
-
-	Result.Succes = SetBits == 2 ? true : false;
-	Result.Index[0] = FindLeastSignificantSetBit(Mask32).Index;
-	Result.Index[1] = FindMostSignificantSetBit(Mask32).Index;
-
-	return Result;
-}
-
 // TODO: Test code, replace in future
 internal face_render_params
 SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
@@ -152,7 +63,6 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					model_face *CompFace = Model->Faces + FaceIndex;
 
 					faces_edge_match EdgeMatch = MatchFaceEdge(IFace, CompFace);
-#if 1
 					if (EdgeMatch.Succes)
 					{
 						model_edge *Edge = Model->Edges + EdgeMatch.Index;
@@ -163,86 +73,24 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 							Result.ActiveVert[VertexMatch.Index[1]] = FaceVertexParams_Mark;
 						}
 					}
-#else
-					for (u32 SearchIndex = 0;
-						SearchIndex < ArrayCount(IFace.EdgesID);
-						++SearchIndex)
-					{
-						for (u32 CompIndex = 0;
-							CompIndex < ArrayCount(CompFace.EdgesID);
-							++CompIndex)
-						{
-							u32 CompEdgeIndex = CompFace.EdgesID[CompIndex];
-							if (IFace.EdgesID[SearchIndex] == CompEdgeIndex)
-							{
-								model_edge Edge = Model->Edges[CompEdgeIndex];
-								
-								for (u32 EdgeVIndex = 0;
-									EdgeVIndex < ArrayCount(Edge.VertexID);
-									++EdgeVIndex)
-								{		
-									u32 EdgeVertexID = Edge.VertexID[EdgeVIndex];
-									for (u32 FaceVIndex = 0;
-										FaceVIndex < ArrayCount(CompFace.VertexID);
-										++FaceVIndex)
-									{
-										u32 FaceVertexID = CompFace.VertexID[FaceVIndex];
-										if (EdgeVertexID == FaceVertexID)
-										{
-											Result.ActiveVert[FaceVIndex] = FaceVertexParams_Mark;
-										}
-									}
-								}
-
-								break;
-							}
-						}
-					}
-#endif
 				}
 			} break;
 
 			case UI_InteractionTarget_ModelEdge:
 			{
 				u32 IEdgeIndex = WorldUI->IModel.Edge.ID;
-				model_edge IEdge = Model->Edges[WorldUI->IModel.Edge.ID];
-				model_face CompFace = Model->Faces[FaceIndex];
-#if 1
-				if (MatchFaceEdge(&CompFace, IEdgeIndex))
+				model_edge *IEdge = Model->Edges + IEdgeIndex;
+				model_face *CompFace = Model->Faces + FaceIndex;
+
+				if (MatchFaceEdge(CompFace, IEdgeIndex))
 				{
-					face_vertex_match VertexMatch = MatchFaceVertex(&CompFace, &IEdge);
+					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IEdge);
 					if (VertexMatch.Succes)
 					{
 						Result.ActiveVert[VertexMatch.Index[0]] = FaceVertexParams_Mark;
 						Result.ActiveVert[VertexMatch.Index[1]] = FaceVertexParams_Mark;
 					}
 				}
-#else
-				for (u32 SearchIndex = 0;
-					SearchIndex < ArrayCount(CompFace.EdgesID);
-					++SearchIndex)
-				{
-					if (CompFace.EdgesID[SearchIndex] == IEdgeIndex)
-					{
-						for (u32 EdgeVIndex = 0;
-							EdgeVIndex < ArrayCount(IEdge.VertexID);
-							++EdgeVIndex)
-						{
-							u32 EdgeVertexID = IEdge.VertexID[EdgeVIndex];
-							for (u32 FaceVIndex = 0;
-								FaceVIndex < ArrayCount(CompFace.VertexID);
-								++FaceVIndex)
-							{
-								u32 FaceVertexID = CompFace.VertexID[FaceVIndex];
-								if (EdgeVertexID == FaceVertexID)
-								{
-									Result.ActiveVert[FaceVIndex] = FaceVertexParams_Mark;
-								}
-							}
-						}
-					}
-				}
-#endif
 			} break;
 		}
 	}

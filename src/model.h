@@ -67,3 +67,16 @@ struct element_ray_result
 	u32 ID;
 	v3 P;
 };
+
+struct faces_edge_match
+{
+	u16 Index;
+	b16 Succes;
+};
+
+// TODO: Can be more then 2 vertex?
+struct face_vertex_match
+{
+	u16 Index[2];
+	b16 Succes;
+};
