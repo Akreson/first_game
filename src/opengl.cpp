@@ -337,9 +337,8 @@ CompileModelProgram(model_program *Prog)
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
 	layout (location = 1) in vec3 aBarCoord;
-	layout (location = 2) in vec3 aActiveBarMask;
-	layout (location = 3) in vec3 aHotBarMask;
-	layout (location = 4) in float aFaceSelectionParam;
+	layout (location = 2) in vec4 aMetaInfo;
+	layout (location = 3) in uint aEdgeBarIndex;
 
 	// NOTE: aMetaInfo
 	// y - Active
@@ -350,9 +349,9 @@ CompileModelProgram(model_program *Prog)
 	uniform mat4 ModelTransform;
 
 	out vec3 BarCoord;
-	flat out vec3 BarHotCoord;
-	flat out vec3 BarSelectCoord;
-	flat out float FaceSelectionParam;
+	out vec3 BarSelectCoord;
+	out vec3 BarHotCoord;
+	out float FaceSelectionParam;
 
 	vec3 ModifyBarCoord(vec3 BarCoord, float Value, float ClearMul, uint Index)
 	{
@@ -373,9 +372,9 @@ CompileModelProgram(model_program *Prog)
 	void main()
 	{
 		BarCoord = aBarCoord;
-		FaceSelectionParam = aFaceSelectionParam;
-		BarSelectCoord = aActiveBarMask;
-		BarHotCoord = aHotBarMask;
+		FaceSelectionParam = aMetaInfo.x;
+		BarSelectCoord = ModifyBarCoord(aBarCoord, aMetaInfo.y, aMetaInfo.w, aEdgeBarIndex);
+		BarHotCoord = ModifyBarCoord(aBarCoord, aMetaInfo.z, aMetaInfo.w, aEdgeBarIndex);
 
 		gl_Position = Proj * ModelTransform * vec4(aPos.xyz, 1.0f);
 	}
@@ -395,9 +394,9 @@ CompileModelProgram(model_program *Prog)
 	uniform vec3 EdgeColor;
 
 	in vec3 BarCoord;
-	flat in vec3 BarHotCoord;
-	flat in vec3 BarSelectCoord;
-	flat in float FaceSelectionParam;
+	in vec3 BarSelectCoord;
+	in vec3 BarHotCoord;
+	in float FaceSelectionParam;
 
 	float GetStepFactor(vec3 A, float Thickness)
 	{
@@ -419,18 +418,24 @@ CompileModelProgram(model_program *Prog)
 		// NOTE: Edge color calc.
 		float EdgeFactor = GetStepFactor(BarCoord, Thickness);
 		float InvEdgeFactor = 1.0f - EdgeFactor;
-		
-		vec3 ActiveBarCoord = max(BarCoord, BarSelectCoord);
-		float MinSelectD = min(min(ActiveBarCoord.x, ActiveBarCoord.y), ActiveBarCoord.z);
+
+		float MinSelectD = min(min(BarSelectCoord.x, BarSelectCoord.y), BarSelectCoord.z);
 		float dMinSelectD = fwidth(MinSelectD);
 		float SelectEdgeFactor = 1.0f - step(dMinSelectD * Thickness, MinSelectD);
-		////float SelectEdgeFactor = 1.0f - GetStepFactor(BarSelectCoord, Thickness);
-		
-		vec3 HotBarCoord = max(BarCoord, BarHotCoord);
+		//float SelectEdgeFactor = 1.0f - GetStepFactor(BarSelectCoord, Thickness);
+
 		float MinHotD = min(min(BarHotCoord.x, BarHotCoord.y), BarHotCoord.z);
 		float dMinHotD = fwidth(MinHotD);
 		float HotEdgeFactor = 1.0f - step(dMinHotD * Thickness, MinHotD);
-		////float HotEdgeFactor = 1.0f - GetStepFactor(BarHotCoord, Thickness);
+		//float HotEdgeFactor = 1.0f - GetStepFactor(BarHotCoord, Thickness);
+
+		//-------------
+		/*float SelectEdgeFactor = 1.0f - (fwidth(MetaInfo.y)*Thickness);
+		SelectEdgeFactor = step(SelectEdgeFactor, MetaInfo.y);
+		
+		float HotEdgeFactor = 1.0f - (fwidth(MetaInfo.z)*Thickness);
+		HotEdgeFactor = step(HotEdgeFactor, MetaInfo.z);*/
+		//------------
 
 		vec3 FinalEdgeColor = mix(EdgeColor, SelectColor, SelectEdgeFactor);
 		// TODO: Enable Hot Factor
@@ -765,11 +770,9 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 3));
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 6));
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 6));
 	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 9));
-	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 12));
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 10));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
