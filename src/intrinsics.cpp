@@ -1,4 +1,10 @@
 
+#define ShuffleU324x(A, S0, S1, S3, S4) \
+	_mm_shuffle_epi32(A, (S0 << 0) | (S1 << 2) | (S3 << 4) | (S4 << 6))
+
+#define ShuffleU324x(A, S) \
+	_mm_shuffle_epi32(A, (S << 0) | (S << 2) | (S << 4) | (S << 6))
+
 struct bit_scan_result
 {
 	u16 Index;
@@ -18,7 +24,7 @@ inline bit_scan_result
 FindMostSignificantSetBit(u32 Source)
 {
 	bit_scan_result Result;
-	Result.Succes = _BitScanForward((unsigned long *)&Result.Index, Source);
+	Result.Succes = _BitScanReverse((unsigned long *)&Result.Index, Source);
 
 	return Result;
 }
