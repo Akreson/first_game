@@ -110,8 +110,9 @@ struct render_model_face_vertex
 {
 	v3 Vertex;
 	v3 BarCoords;
-	v4 MetaInfo;
-	u32 EdgeBarIndex;
+	v3 ActiveBarMask;
+	v3 HotBarMask;
+	f32 FaceSelParam;
 };
 
 struct render_group

@@ -98,14 +98,15 @@ PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 }
 
 inline render_model_face_vertex
-ConstructFaceVertex(v3 Vertex, v3 BarCoords, v4 MetaInfo, u32 EdgeBarIndex)
+ConstructFaceVertex(v3 Vertex, v3 BarCoords, v3 ActiveBarMask, v3 HotBarMask, f32 FaceSelParam)
 {
 	render_model_face_vertex Result;
 
 	Result.Vertex = Vertex;
 	Result.BarCoords = BarCoords;
-	Result.MetaInfo = MetaInfo;
-	Result.EdgeBarIndex = EdgeBarIndex;
+	Result.ActiveBarMask = ActiveBarMask;
+	Result.HotBarMask = HotBarMask;
+	Result.FaceSelParam = FaceSelParam;
 
 	return Result;
 }
@@ -197,6 +198,21 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 	f32 Hot23 = StateEdgeArray[EDGE_STATE];
 #endif
 
+#if 1
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
+		V3(1, 1, 0), V3(0), V3(0), SelectionType);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1],
+		V3(0, 1, 0), V3(0), V3(0), SelectionType);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
+		V3(0, 1, 1), V3(Active12, 1, Active01), V3(Hot12, 1, Hot01), SelectionType);
+
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
+		V3(1, 0, 1), V3(0), V3(0), SelectionType);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
+		V3(0, 1, 1), V3(0), V3(0), SelectionType);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3],
+		V3(0, 0, 1), V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
+#else
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
 		V3(1, 1, 0), V4(SelectionType, Active01, Hot01, 0), 2);
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1],
@@ -210,7 +226,7 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 		V3(0, 1, 1), V4(SelectionType, Active23, Hot23, 0), 0);
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3],
 		V3(0, 0, 1), V4(SelectionType, 1.0f, 1.0f, ClearFactor1), 2);
-
+#endif
 	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }
 

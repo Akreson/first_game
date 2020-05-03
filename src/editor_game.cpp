@@ -39,7 +39,6 @@ RenderText(render_group *Group, font_asset_info *FontAsset, char *Text, v3 TextC
 	}
 }
 
-// TODO: Test code, replace in future
 internal face_render_params
 SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 {
