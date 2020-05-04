@@ -97,20 +97,6 @@ PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 	BitmapEntry->Color = Color;
 }
 
-inline render_model_face_vertex
-ConstructFaceVertex(v3 Vertex, v3 BarCoords, v3 ActiveMask, v3 HotMask, f32 FaceSelParam)
-{
-	render_model_face_vertex Result;
-
-	Result.Vertex = Vertex;
-	Result.BarCoords = BarCoords;
-	Result.ActiveMask = ActiveMask;
-	Result.HotMask = HotMask;
-	Result.FaceSelParam = FaceSelParam;
-
-	return Result;
-}
-
 struct face_edge_params
 {
 	b8 Active01;
@@ -142,6 +128,20 @@ GetEdgeFaceParams(face_render_params FaceParam)
 	return Result;
 }
 
+internal inline render_model_face_vertex
+ConstructFaceVertex(v3 Vertex, v3 BarCoords, v3 ActiveMask = V3(0), v3 HotMask = V3(0), v2 FaceSelParam = V2(0))
+{
+	render_model_face_vertex Result;
+
+	Result.Vertex = Vertex;
+	Result.BarCoords = BarCoords;
+	Result.ActiveMask = ActiveMask;
+	Result.HotMask = HotMask;
+	Result.FaceSelParam = FaceSelParam;
+
+	return Result;
+}
+
 // TODO: Fix select edge stretching on small engel to adjacent face
 // TODO: Compress face vertex data?
 void
@@ -157,10 +157,9 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 	f32 StateEdgeArray[2] = {0, 1.0f};
 	face_edge_params Edges = GetEdgeFaceParams(FaceParam);
 
-	// TODO: Replace this method?
-	f32 SelectionType = 0;
-	if (FaceParam.SelectionFlags & FaceSelectionType_Hot) SelectionType += 1.0f;
-	if (FaceParam.SelectionFlags & FaceSelectionType_Select) SelectionType += 2.0f;
+	v2 SelectionType = V2(
+		StateEdgeArray[FaceParam.SelectionFlags[FaceSelectionType_Select]],
+		StateEdgeArray[FaceParam.SelectionFlags[FaceSelectionType_Hot]]);
 
 	f32 Active01 = StateEdgeArray[Edges.Active01];
 	f32 Active12 = StateEdgeArray[Edges.Active12];
@@ -172,17 +171,13 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 	f32 Hot03 = StateEdgeArray[Edges.Hot03];
 	f32 Hot23 = StateEdgeArray[Edges.Hot23];
 
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
-		V3(1, 1, 0), V3(0), V3(0), SelectionType);
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1],
-		V3(0, 1, 0), V3(0), V3(0), SelectionType);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],	V3(1, 1, 0));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0));
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
 		V3(0, 1, 1), V3(Active12, 1, Active01), V3(Hot12, 1, Hot01), SelectionType);
 
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],
-		V3(1, 0, 1), V3(0), V3(0), SelectionType);
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
-		V3(0, 1, 1), V3(0), V3(0), SelectionType);
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1));
+	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1));
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3],
 		V3(0, 0, 1), V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
 

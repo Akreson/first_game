@@ -37,14 +37,14 @@ enum render_entry_type
 
 enum face_selection_type
 {
-	FaceSelectionType_Hot = (1 << 0),
-	FaceSelectionType_Select = (1 << 1)
+	FaceSelectionType_Select,
+	FaceSelectionType_Hot,
 };
 
-enum face_vertex_renderer_params
+enum face_element_renderer_params
 {
-	FaceVertexParams_Mark = 0x1,
-	FaceVertexParams_SetAll = 0x01010101,
+	FaceElementParams_Mark = 0x1,
+	FaceElementParams_SetAll = 0x01010101,
 };
 
 struct face_render_params
@@ -63,7 +63,8 @@ struct face_render_params
 			u32 Hot;
 		};
 	};
-	u16 SelectionFlags;
+
+	u8 SelectionFlags[2];
 };
 
 struct render_entry_header
@@ -112,7 +113,7 @@ struct render_model_face_vertex
 	v3 BarCoords;
 	v3 ActiveMask;
 	v3 HotMask;
-	f32 FaceSelParam;
+	v2 FaceSelParam;
 };
 
 struct render_group

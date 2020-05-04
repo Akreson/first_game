@@ -75,7 +75,6 @@ MatchFaceVertex(model_face *A, model_edge *B)
 	return Result;
 }
 
-// TODO: Find way combine MatchEdgeToFace and MatchFaceToEdge?
 inline void
 MatchEdgeToFace(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCount)
 {
@@ -87,39 +86,18 @@ MatchEdgeToFace(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 
 		u32 FaceMatchedIndex = 0;
 		for (u32 FaceIndex = 0;
-			FaceIndex < FaceCount;
+			FaceIndex < FaceCount || (FaceMatchedIndex < ArrayCount(Edge->FaceID));
 			++FaceIndex)
 		{
 			model_face *Face = Faces + FaceIndex;
+			face_vertex_match MatchResult = MatchFaceVertex(Face, Edge);
 
-			u32 MatchedCount = 0;
-			for (u32 EdgeVertexID = 0;
-				EdgeVertexID < ArrayCount(Edge->VertexID);
-				++EdgeVertexID)
-			{
-				for (u32 FaceVertexID = 0;
-					FaceVertexID < ArrayCount(Face->VertexID);
-					++FaceVertexID)
-				{
-					if (Edge->VertexID[EdgeVertexID] == Face->VertexID[FaceVertexID])
-					{
-						MatchedCount++;
-						break;
-					}
-				}
-			}
-
-			if (MatchedCount == ArrayCount(Edge->VertexID))
+			if (MatchResult.Succes)
 			{
 				Edge->FaceID[FaceMatchedIndex] = FaceIndex;
 				FaceMatchedIndex++;
-
-				if (FaceMatchedIndex == ArrayCount(Edge->FaceID)) break;
 			}
-
 		}
-
-		Assert(FaceMatchedIndex == ArrayCount(Edge->FaceID));
 	}
 }
 
@@ -134,41 +112,22 @@ MatchFaceToEdge(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCou
 
 		u32 EdgeMatchedIndex = 0;
 		for (u32 EdgeIndex = 0;
-			EdgeIndex < EdgeCount;
+			(EdgeIndex < EdgeCount) || (EdgeMatchedIndex < ArrayCount(Face->EdgesID));
 			++EdgeIndex)
 		{
 			model_edge *Edge = Edges + EdgeIndex;
+			face_vertex_match MatchResult = MatchFaceVertex(Face, Edge);
 
-			u32 MatchedCount = 0;
-			for (u32 EdgeVertexID = 0;
-				EdgeVertexID < ArrayCount(Edge->VertexID);
-				++EdgeVertexID)
-			{
-				for (u32 FaceVertexID = 0;
-					FaceVertexID < ArrayCount(Face->VertexID);
-					++FaceVertexID)
-				{
-					if (Edge->VertexID[EdgeVertexID] == Face->VertexID[FaceVertexID])
-					{
-						MatchedCount++;
-						break;
-					}
-				}
-			}
-
-			if (MatchedCount == ArrayCount(Edge->VertexID))
+			if (MatchResult.Succes)
 			{
 				Face->EdgesID[EdgeMatchedIndex] = EdgeIndex;
 				EdgeMatchedIndex++;
-
-				if (EdgeMatchedIndex == ArrayCount(Face->EdgesID)) break;
 			}
 		}
-
-		Assert(EdgeMatchedIndex == ArrayCount(Face->EdgesID));
 	}
 }
 
+// TODO: Optimize
 rect3
 ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 {
@@ -191,10 +150,6 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 		if (Vertex.z < Rect.Min.z) Rect.Min.z = Vertex.z;
 		if (Vertex.z > Rect.Max.z) Rect.Max.z = Vertex.z;
 	}
-
-	Assert(Rect.Max.x < 5.0f);
-	Assert(Rect.Max.y < 5.0f);
-	Assert(Rect.Max.z < 5.0f);
 
 	return Rect;
 }

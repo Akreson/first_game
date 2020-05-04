@@ -339,7 +339,7 @@ CompileModelProgram(model_program *Prog)
 	layout (location = 1) in vec3 aBarCoord;
 	layout (location = 2) in vec3 aActiveMask;
 	layout (location = 3) in vec3 aHotMask;
-	layout (location = 4) in float aFaceSelectionParam;
+	layout (location = 4) in vec2 aFaceSelectionParam;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
@@ -347,7 +347,7 @@ CompileModelProgram(model_program *Prog)
 	out vec3 BarCoord;
 	flat out vec3 HotMask;
 	flat out vec3 ActiveMask;
-	flat out float FaceSelectionParam;	
+	flat out vec2 FaceSelectionParam;	
 
 	void main()
 	{
@@ -376,7 +376,7 @@ CompileModelProgram(model_program *Prog)
 	in vec3 BarCoord;
 	flat in vec3 HotMask;
 	flat in vec3 ActiveMask;
-	flat in float FaceSelectionParam;
+	flat in vec2 FaceSelectionParam;
 	
 	struct EdgeParams
 	{
@@ -405,6 +405,7 @@ CompileModelProgram(model_program *Prog)
 		return Result;
 	}
 
+	// TODO: Enable Hot Factor
 	void main()
 	{
 		//vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
@@ -421,20 +422,11 @@ CompileModelProgram(model_program *Prog)
 		//float HotEdgeFactor = HotMask[Edge.MinIndex];
 
 		vec3 FinalEdgeColor = mix(EdgeColor, ActiveColor, ActiveEdgeFactor);
-		// TODO: Enable Hot Factor
-		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, 0);
+		//FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, 0);
 		
 		// NOTE: Face color calc
-		float ModFaceSelParam = FaceSelectionParam;
-
-		float SelectFaceColorFactor = step(FaceSelectionType_Select, ModFaceSelParam);
-		ModFaceSelParam -= SelectFaceColorFactor * FaceSelectionType_Select;
-
-		float HotFaceColorFactor = step(FaceSelectionType_Hot, ModFaceSelParam);
-		ModFaceSelParam -= HotFaceColorFactor * FaceSelectionType_Hot;
-
-		vec3 FinalFaceColor = mix(Color.rgb, (ActiveColor*Color.rgb), SelectFaceColorFactor);
-		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), HotFaceColorFactor);
+		vec3 FinalFaceColor = mix(Color.rgb, (ActiveColor*Color.rgb), FaceSelectionParam.x);
+		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), FaceSelectionParam.y);
 
 		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvEdgeFactor), Color.a);
 	}
@@ -757,7 +749,7 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 9));
 	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 12));
+	glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 12));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

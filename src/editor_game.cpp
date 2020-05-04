@@ -53,8 +53,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 			{
 				if (WorldUI->IModel.Face.ID == FaceIndex)
 				{
-					Result.SelectionFlags |= FaceSelectionType_Hot;
-					Result.Active = FaceVertexParams_SetAll;
+					Result.SelectionFlags[FaceSelectionType_Hot] = FaceElementParams_Mark;
+					Result.Active = FaceElementParams_SetAll;
 				}
 				else
 				{
@@ -68,8 +68,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 						face_vertex_match VertexMatch = MatchFaceVertex(CompFace, Edge);
 						if (VertexMatch.Succes)
 						{
-							Result.ActiveVert[VertexMatch.Index[0]] = FaceVertexParams_Mark;
-							Result.ActiveVert[VertexMatch.Index[1]] = FaceVertexParams_Mark;
+							Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+							Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 						}
 					}
 				}
@@ -86,8 +86,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IEdge);
 					if (VertexMatch.Succes)
 					{
-						Result.ActiveVert[VertexMatch.Index[0]] = FaceVertexParams_Mark;
-						Result.ActiveVert[VertexMatch.Index[1]] = FaceVertexParams_Mark;
+						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 					}
 				}
 			} break;
