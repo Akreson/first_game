@@ -79,13 +79,15 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 	if (IsKepDown(Input->Alt) && IsGoDown(Input->Shift))
 	{
 		WorldUI->ITarget = UI_InteractionTarget_None;
-		WorldUI->Interaction = {};
+		ZeroStruct(WorldUI->Interaction);
 	}
 }
 
 internal void inline
 UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
+	ui_interaction Interaction = {};
+
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	interact_model *IModel = &WorldUI->IModel;
 
@@ -97,7 +99,20 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
 				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
 			{
-				WorldUI->NextHotInteraction = SetSelectInteraction(IModel->ID, 0, 0, WorldUI->ITarget);
+				Interaction = SetSelectInteraction(IModel->ID, 0, 0, WorldUI->ITarget);
+
+				if (AreEqual(Interaction, WorldUI->ToExecute))
+				{
+					if (IsDown(Input->Ctrl))
+					{
+						model *Model = Editor->Models + WorldUI->IModel.ID;
+						Editor->Camera.Pos = Model->Offset;
+					}
+					else
+					{
+						WorldUI->ITarget = UI_InteractionTarget_Model;
+					}
+				}
 			}
 		} break;
 
@@ -115,7 +130,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			{
 				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
-					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
+					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
 				}
 			}
 		} break;
@@ -131,62 +146,18 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			{
 				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
 				{
-					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
+					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
 				}
 			}
 		} break;
 	}
+
+	WorldUI->NextHotInteraction = Interaction;
 }
 
 inline b32
 IsValid(interact_model IModel)
 {
-}
-
-internal void
-BeginInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
-{
-	editor_world_ui *WorldUI = &Editor->WorldUI;
-
-	if (WorldUI->HotInteraction.Type)
-	{
-		WorldUI->Interaction = WorldUI->HotInteraction;
-	}
-	else
-	{
-		WorldUI->Interaction = {};
-	}
-}
-
-internal void
-EndInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
-{
-	editor_world_ui *WorldUI = &Editor->WorldUI;
-
-	switch (WorldUI->Interaction.Type)
-	{
-		case UI_InteractionType_Select:
-		{
-			switch (WorldUI->ITarget)
-			{
-				case UI_InteractionTarget_None:
-				{
-					if ((IsDown(Input->Ctrl) &&
-						WasDown(Input->MouseButtons[PlatformMouseButton_Right])))
-					{
-						model *Model = Editor->Models + WorldUI->IModel.ID;
-						Editor->Camera.Pos = Model->Offset;
-					}
-					else if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
-					{
-						WorldUI->ITarget = UI_InteractionTarget_Model;
-					}
-				} break;
-			}
-		} break;
-	}
-
-	WorldUI->Interaction = {};
 }
 
 void
@@ -203,24 +174,34 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 
 	// TODO: Split to anouther function
 	// TODO: Set ui interaction in proper way
-	if (!WorldUI->Interaction.Type)
+	switch (WorldUI->Interaction.Type)
 	{
-		WorldUI->HotInteraction = WorldUI->NextHotInteraction;
-
-		if (IsDown(Input->MouseButtons[PlatformMouseButton_Left]) ||
-			IsDown(Input->MouseButtons[PlatformMouseButton_Right]))
+		case UI_InteractionType_None:
 		{
-			BeginInteraction(Editor, Input, RenderGroup);
-		}
-	}
-	else
-	{
-		if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]) ||
-			WasDown(Input->MouseButtons[PlatformMouseButton_Right]))
+			WorldUI->HotInteraction = WorldUI->NextHotInteraction;
+			if (IsDown(Input->MouseButtons[PlatformMouseButton_Left]))
+			{
+				WorldUI->UpdateITarget = false;
+				WorldUI->Interaction = WorldUI->HotInteraction;
+			}
+			else if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
+			{
+				WorldUI->UpdateITarget = true;
+			}
+		} break;
+
+		case UI_InteractionType_Select:
 		{
-			EndInteraction(Editor, Input, RenderGroup);
-		}
+			if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
+			{
+				WorldUI->UpdateITarget = true;
+				WorldUI->NextToExecute = WorldUI->Interaction;
+				ZeroStruct(WorldUI->Interaction);
+			}
+		} break;
 	}
 
-	WorldUI->NextHotInteraction = {};
+	WorldUI->ToExecute = WorldUI->NextToExecute;
+	ZeroStruct(WorldUI->NextToExecute);
+	ZeroStruct(WorldUI->NextHotInteraction);
 }

@@ -251,7 +251,7 @@ ZeroSize(void *Ptr, u32 Size)
 	MemSet((u8 *)Ptr, Size, 0);
 }
 
-#define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))
+#define ZeroStruct(Instance) ZeroSize((void *)&(Instance), sizeof(Instance))
 
 struct game_button_state
 {

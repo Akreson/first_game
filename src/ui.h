@@ -67,6 +67,7 @@ struct editor_world_ui
 	ui_interaction NextHotInteraction;
 
 	ui_interaction ToExecute;
+	ui_interaction NextToExecute;
 
 	interact_model IModel;
 
