@@ -411,7 +411,7 @@ CompileModelProgram(model_program *Prog)
 		//vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
 
 		vec3 ActiveColor = vec3(0.86f, 0.65f, 0.2f);
-		vec3 HotFaceColor = vec3(1.3f);
+		vec3 HotFaceColor = vec3(1.6f);
 		float Thickness = 2.0f;
 	
 		// NOTE: Edge color calc.
@@ -419,10 +419,10 @@ CompileModelProgram(model_program *Prog)
 		float InvEdgeFactor = 1.0f - Edge.Factor;
 		
 		float ActiveEdgeFactor = ActiveMask[Edge.MinIndex];
-		//float HotEdgeFactor = HotMask[Edge.MinIndex];
+		float HotEdgeFactor = HotMask[Edge.MinIndex];
 
 		vec3 FinalEdgeColor = mix(EdgeColor, ActiveColor, ActiveEdgeFactor);
-		//FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, 0);
+		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
 		
 		// NOTE: Face color calc
 		vec3 FinalFaceColor = mix(Color.rgb, (ActiveColor*Color.rgb), FaceSelectionParam.x);

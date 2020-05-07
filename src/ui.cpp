@@ -61,104 +61,6 @@ AreEqual(ui_interaction A, ui_interaction B)
 	return Result;
 }
 
-internal void inline
-UpdateUIInteractionTarget(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
-{
-	editor_world_ui *WorldUI = &Editor->WorldUI;
-	interact_model *IModel = &WorldUI->IModel;
-
-	switch (WorldUI->ITarget)
-	{
-		case UI_InteractionTarget_None:
-		{
-			*IModel = {};
-			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
-				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
-			{
-				WorldUI->NextHotInteraction = SetSelectInteraction(IModel->ID, 0, 0, WorldUI->ITarget);
-			}
-		} break;
-
-		case UI_InteractionTarget_ModelFace:
-		{
-			model *Model = Editor->Models + WorldUI->IModel.ID;
-			IModel->Face = {};
-
-			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
-			{
-				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
-				{
-					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
-				}
-			}
-		} break;
-
-		case UI_InteractionTarget_ModelEdge:
-		{
-			model *Model = Editor->Models + WorldUI->IModel.ID;
-			IModel->Edge = {};
-
-			f32 EdgeIntersetRadius = 0.015f;
-			if (RayAABBIntersect(WorldUI->MouseRay, AddRadiusTo(Model->AABB, EdgeIntersetRadius), Model->Offset))
-			{
-				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
-				{
-					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
-				}
-			}
-		} break;
-	}
-}
-
-internal void
-BeginInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
-{
-	editor_world_ui *WorldUI = &Editor->WorldUI;
-
-	if (WorldUI->HotInteraction.Type)
-	{
-		WorldUI->Interaction = WorldUI->HotInteraction;
-	}
-	else
-	{
-		WorldUI->Interaction = {};
-	}
-}
-
-internal void
-EndInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
-{
-	editor_world_ui *WorldUI = &Editor->WorldUI;
-
-	if (WorldUI->Interaction.Type)
-	{
-		switch (WorldUI->Interaction.Type)
-		{
-			case UI_InteractionType_Select:
-			{
-				switch (WorldUI->ITarget)
-				{
-					case UI_InteractionTarget_None:
-					{
-						if ((IsDown(Input->Ctrl) &&
-							WasDown(Input->MouseButtons[PlatformMouseButton_Right])))
-						{
-							model *Model = Editor->Models + WorldUI->IModel.ID;
-							Editor->Camera.Pos = Model->Offset;
-						}
-						else if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
-						{
-							WorldUI->ITarget = UI_InteractionTarget_Model;
-						}
-					} break;
-				}
-			} break;
-		}
-	}
-
-	WorldUI->Interaction = {};
-}
-
 inline void
 ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 {
@@ -181,6 +83,112 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 	}
 }
 
+internal void inline
+UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
+{
+	editor_world_ui *WorldUI = &Editor->WorldUI;
+	interact_model *IModel = &WorldUI->IModel;
+
+	switch (WorldUI->ITarget)
+	{
+		case UI_InteractionTarget_None:
+		{
+			*IModel = {};
+			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
+				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
+			{
+				WorldUI->NextHotInteraction = SetSelectInteraction(IModel->ID, 0, 0, WorldUI->ITarget);
+			}
+		} break;
+
+		case UI_InteractionTarget_Model:
+		{
+
+		} break;
+
+		case UI_InteractionTarget_ModelFace:
+		{
+			model *Model = Editor->Models + WorldUI->IModel.ID;
+			IModel->Face = {};
+
+			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
+			{
+				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
+				{
+					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
+				}
+			}
+		} break;
+
+		case UI_InteractionTarget_ModelEdge:
+		{
+			model *Model = Editor->Models + WorldUI->IModel.ID;
+			IModel->Edge = {};
+
+			// TODO: Adjust dynamically?
+			f32 EdgeIntersetRadius = 0.015f;
+			if (RayAABBIntersect(WorldUI->MouseRay, AddRadiusTo(Model->AABB, EdgeIntersetRadius), Model->Offset))
+			{
+				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
+				{
+					WorldUI->NextHotInteraction = SetSelectInteraction(IModel, WorldUI->ITarget);
+				}
+			}
+		} break;
+	}
+}
+
+inline b32
+IsValid(interact_model IModel)
+{
+}
+
+internal void
+BeginInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
+{
+	editor_world_ui *WorldUI = &Editor->WorldUI;
+
+	if (WorldUI->HotInteraction.Type)
+	{
+		WorldUI->Interaction = WorldUI->HotInteraction;
+	}
+	else
+	{
+		WorldUI->Interaction = {};
+	}
+}
+
+internal void
+EndInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
+{
+	editor_world_ui *WorldUI = &Editor->WorldUI;
+
+	switch (WorldUI->Interaction.Type)
+	{
+		case UI_InteractionType_Select:
+		{
+			switch (WorldUI->ITarget)
+			{
+				case UI_InteractionTarget_None:
+				{
+					if ((IsDown(Input->Ctrl) &&
+						WasDown(Input->MouseButtons[PlatformMouseButton_Right])))
+					{
+						model *Model = Editor->Models + WorldUI->IModel.ID;
+						Editor->Camera.Pos = Model->Offset;
+					}
+					else if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
+					{
+						WorldUI->ITarget = UI_InteractionTarget_Model;
+					}
+				} break;
+			}
+		} break;
+	}
+
+	WorldUI->Interaction = {};
+}
+
 void
 EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
@@ -190,9 +198,10 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 
 	if (WorldUI->UpdateITarget)
 	{
-		UpdateUIInteractionTarget(Editor, Input, RenderGroup);
+		UpdateModelInteractionElement(Editor, Input, RenderGroup);
 	}
 
+	// TODO: Split to anouther function
 	// TODO: Set ui interaction in proper way
 	if (!WorldUI->Interaction.Type)
 	{

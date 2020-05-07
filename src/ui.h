@@ -50,7 +50,7 @@ struct ui_interaction
 struct interact_model
 {
 	u32 ID;
-
+	b32 ElementPick;
 	element_ray_result Face;
 	element_ray_result Edge;
 };
@@ -59,12 +59,14 @@ struct interact_model
 
 struct editor_world_ui
 {
-	u32 UpdateITarget;
+	b32 UpdateITarget;
 	u32 ITarget;
 
 	ui_interaction Interaction;
 	ui_interaction HotInteraction;
 	ui_interaction NextHotInteraction;
+
+	ui_interaction ToExecute;
 
 	interact_model IModel;
 

@@ -86,8 +86,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IEdge);
 					if (VertexMatch.Succes)
 					{
-						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
+						Result.HotVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+						Result.HotVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 					}
 				}
 			} break;
