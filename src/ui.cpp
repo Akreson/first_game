@@ -23,6 +23,13 @@ SetIntrTypeID(u16 Target, u16 Type)
 }
 
 inline b32
+IsHotIntrType(editor_world_ui *WorldUI, u32 Type)
+{
+	b32 Result = (WorldUI->HotInteraction.Type == Type);
+	return Result;
+}
+
+inline b32
 IsActiveModel(editor_world_ui *UI, u32 ModelID)
 {
 	b32 Result = (UI->IModel.ID == ModelID) &&
@@ -64,14 +71,20 @@ AreEqual(ui_interaction A, ui_interaction B)
 inline void
 ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 {
-	if (WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
+	if (WorldUI->UpdateITarget)
 	{
-		if (WorldUI->ITarget)
+		if (WorldUI->ITarget && WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
 		{
-			++WorldUI->ITarget;
-			if (WorldUI->ITarget == UI_InteractionTarget_ModelCount)
+			if (WorldUI->ITarget)
 			{
-				WorldUI->ITarget = UI_InteractionTarget_Model;
+				++WorldUI->ITarget;
+				ZeroStruct(WorldUI->IModel.Face);
+				ZeroStruct(WorldUI->IModel.Edge);
+
+				if (WorldUI->ITarget == UI_InteractionTarget_ModelCount)
+				{
+					WorldUI->ITarget = UI_InteractionTarget_Model;
+				}
 			}
 		}
 	}
@@ -80,6 +93,96 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 	{
 		WorldUI->ITarget = UI_InteractionTarget_None;
 		ZeroStruct(WorldUI->Interaction);
+	}
+}
+
+// TODO: Make possible buffer clearing
+//void
+//AddToSelectedBuffer(selected_elements_buffer *Buffer, 
+//	model *Model, u32 ElementID, u32 ITarget, b32 ShiftDown)
+//{
+//}
+
+// TODO: Collate Add..ToSelectedBuffer?
+void
+AddFaceToSelectedBuffer(selected_elements_buffer *Buffer,
+	model *Model, u32 ElementID, b32 ShiftDown)
+{
+	if (ShiftDown)
+	{
+		model_face *AddFace = Model->Faces + ElementID;
+		for (u32 Index = 0;
+			Index < Buffer->Count;
+			++Index)
+		{
+			u32 BufferElementID = Buffer->Elements[Index];
+			if (BufferElementID != ElementID)
+			{
+				model_face *CompFace = Model->Faces + BufferElementID;
+				faces_edge_match MatchResult = MatchFaceEdge(AddFace, CompFace);
+			
+				if (MatchResult.Succes)
+				{
+					// TODO: Change to memory arena for resize opportunity
+					if (Buffer->Count < Buffer->MaxCount)
+					{
+						Buffer->Elements[Buffer->Count++] = ElementID;
+					}
+					else
+					{
+						Assert(0);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		Buffer->Count = 1;
+		Assert(Buffer->Count < Buffer->MaxCount);
+		
+		*Buffer->Elements = ElementID;
+	}
+}
+
+void
+AddEdgeToSelectedBuffer(selected_elements_buffer *Buffer,
+	model *Model, u32 ElementID, b32 ShiftDown)
+{
+	if (ShiftDown)
+	{
+		model_edge *AddEdge = Model->Edges + ElementID;
+		for (u32 Index = 0;
+			Index < Buffer->Count;
+			++Index)
+		{
+			u32 BufferElementID = Buffer->Elements[Index];
+			if (BufferElementID != ElementID)
+			{
+				model_edge *CompEdge = Model->Edges + BufferElementID;
+				edge_vertex_match MatchResult = MatchEdgeVertex(AddEdge, CompEdge);
+
+				if (MatchResult.Succes)
+				{
+					// TODO: Change to memory arena for resize opportunity
+					if (Buffer->Count < Buffer->MaxCount)
+					{
+						Buffer->Elements[Buffer->Count++] = ElementID;
+					}
+					else
+					{
+						Assert(0);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		Buffer->Count = 1;
+		Assert(Buffer->Count < Buffer->MaxCount);
+
+		*Buffer->Elements = ElementID;
 	}
 }
 
@@ -131,6 +234,12 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
 					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
+
+					if (AreEqual(Interaction, WorldUI->ToExecute))
+					{
+						AddFaceToSelectedBuffer(&WorldUI->Selected,	Model,
+							IModel->Face.ID, IsDown(Input->Shift));
+					}
 				}
 			}
 		} break;
@@ -147,6 +256,12 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
 				{
 					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
+
+					if (AreEqual(Interaction, WorldUI->ToExecute))
+					{
+						AddEdgeToSelectedBuffer(&WorldUI->Selected, Model,
+							IModel->Face.ID, IsDown(Input->Shift));
+					}
 				}
 			}
 		} break;
@@ -167,6 +282,7 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 
 	ProcessWorldUIInput(WorldUI, Input);
 
+	// TODO: Remove UpdateITarget conception?
 	if (WorldUI->UpdateITarget)
 	{
 		UpdateModelInteractionElement(Editor, Input, RenderGroup);

@@ -34,14 +34,6 @@ struct game_world_state
 
 };
 
-struct selected_elements_buffer
-{
-	u32 *Elements;
-	u32 Count;
-	u32 MaxCount;
-	select_element_type Type;
-};
-
 struct model_highlight_params
 {
 	v3 EdgeColor;
@@ -77,7 +69,6 @@ struct game_editor_state
 	camera Camera;
 
 	editor_world_ui WorldUI;
-	selected_elements_buffer Selected;
 
 	v3 EdgeColor;
 	v3 SelectColor;

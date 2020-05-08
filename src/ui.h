@@ -18,6 +18,7 @@ enum ui_interaction_type
 	UI_InteractionType_Select,
 };
 
+// TODO: Remove?
 enum select_element_type
 {
 	SelectElementType_None,
@@ -26,12 +27,20 @@ enum select_element_type
 	SelectElementType_Face
 };
 
+struct selected_elements_buffer
+{
+	u32 *Elements;
+	u32 Count;
+	u32 MaxCount;
+	// slect_element_type Type;
+};
+
 struct ui_id
 {
 	u64 ID[2];
 };
 
-// TODO: Improve
+// TODO: Improve?
 struct ui_interaction
 {
 	union
@@ -70,6 +79,7 @@ struct editor_world_ui
 	ui_interaction NextToExecute;
 
 	interact_model IModel;
+	selected_elements_buffer Selected;
 
 	v2 MouseP;
 	v2 dMouseP;

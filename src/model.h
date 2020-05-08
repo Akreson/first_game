@@ -80,3 +80,9 @@ struct face_vertex_match
 	u16 Index[2];
 	b16 Succes;
 };
+
+struct edge_vertex_match
+{
+	u16 Index;
+	u16 Succes;
+};

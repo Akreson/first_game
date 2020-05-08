@@ -38,9 +38,9 @@ MatchFaceEdge(model_face *A, u32 B)
 	__m128i EdgeA = _mm_load_si128((__m128i *)A->EdgesID);
 	__m128i EdgeB0 = _mm_set1_epi32(B);
 
-	__m128i CmpMask0 = _mm_cmpeq_epi32(EdgeA, EdgeB0);
+	__m128i CmpMask = _mm_cmpeq_epi32(EdgeA, EdgeB0);
 
-	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask0));
+	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
 	Assert(CountOfSetBits(Mask32) <= 1);
 
 	b32 Result = FindLeastSignificantSetBit(Mask32).Succes;
@@ -52,6 +52,8 @@ MatchFaceVertex(model_face *A, model_edge *B)
 {
 	face_vertex_match Result = {};
 
+	// TODO: See if in optimize build with same _A_ value
+	// compiler propagate _VertexA_ to multimple sequential call
 	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
 
 	__m128i EdgeB = _mm_load_si128((__m128i *)B);
@@ -71,6 +73,28 @@ MatchFaceVertex(model_face *A, model_edge *B)
 	Result.Succes = SetBits == 2 ? true : false;
 	Result.Index[0] = FindLeastSignificantSetBit(Mask32).Index;
 	Result.Index[1] = FindMostSignificantSetBit(Mask32).Index;
+
+	return Result;
+}
+
+inline edge_vertex_match
+MatchEdgeVertex(model_edge *A, model_edge *B)
+{
+	edge_vertex_match Result;
+
+	__m128i EdgeA = _mm_load_si128((__m128i *)A);
+	__m128i EdgeB = _mm_load_si128((__m128i *)B);
+
+	EdgeA = ShuffleU324x(EdgeB, 0, 1, 0, 1);
+	EdgeB = ShuffleU324x(EdgeB, 0, 1, 1, 0);
+
+	__m128i CmpMask = _mm_cmpeq_epi32(EdgeA, EdgeB);
+	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
+
+	bit_scan_result MaskResult = FindLeastSignificantSetBit(Mask32);
+
+	Result.Succes = MaskResult.Succes;
+	Result.Index = MaskResult.Index > 1 ? MaskResult.Index - 2 : MaskResult.Index;
 
 	return Result;
 }
@@ -445,7 +469,6 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 		{
 			capsule_params Capsule;
 
-			// TODO: Adjust radius based on distance
 			Capsule.R = IntrRadius;
 			Capsule.V0 = Model->Vertex[Edge.V0] + Model->Offset;
 			Capsule.V1 = Model->Vertex[Edge.V1] + Model->Offset;
@@ -471,11 +494,11 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			v3 PointOnRay = Ray.Pos + (Ray.Dir * t1);
 
 			f32 CapRSquare = Capsule.R * Capsule.R;
-			f32 Dist = Length(PointOnEdge - PointOnRay);
+			f32 Dist = LengthSq(PointOnEdge - PointOnRay);
 
 			if ((t0 >= 0) && (t0 <= 1.0f))
 			{
-				if ((Dist <= Capsule.R) && (Dist < ClosestRayP))
+				if ((Dist <= CapsuleRSquare) && (Dist < ClosestRayP))
 				{
 					ClosestRayP = Dist;
 					ClosestIndex = EdgeIndex;

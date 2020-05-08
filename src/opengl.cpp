@@ -412,7 +412,7 @@ CompileModelProgram(model_program *Prog)
 
 		vec3 ActiveColor = vec3(0.86f, 0.65f, 0.2f);
 		vec3 HotFaceColor = vec3(1.6f);
-		float Thickness = 2.0f;
+		float Thickness = 1.5f;
 	
 		// NOTE: Edge color calc.
 		EdgeParams Edge = GetEdgeParams(BarCoord, Thickness);

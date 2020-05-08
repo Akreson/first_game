@@ -39,22 +39,85 @@ RenderText(render_group *Group, font_asset_info *FontAsset, char *Text, v3 TextC
 	}
 }
 
+inline b32
+IsInSelectedBuffer(selected_elements_buffer *Buffer, u32 ElementID)
+{
+	b32 Result = false;
+
+	for (u32 Index = 0;
+		Index < Buffer->Count;
+		++Index)
+	{
+		u32 BufferElementID = Buffer->Elements[Index];
+		if (BufferElementID == ElementID)
+		{
+			Result = true;
+			break;
+		}
+	}
+
+	return Result;
+}
+
+struct select_buffer_face_edges_match
+{
+	u8 Index[4];
+	b32 Succes;
+};
+
+// TODO: Complete select buffer searching
+// TODO: Improve SIMD implementation?
+inline select_buffer_face_edges_match
+IsInSelectedBuffer(selected_elements_buffer *Buffer,
+	u32 ID0, u32 ID1, u32 ID2, u32 ID3)
+{
+	select_buffer_face_edges_match Result;
+
+	u32 ResultMask = 0;
+	__m128i EdgesID = _mm_set_epi32(ID3, ID2, ID1, ID0);
+	for (u32 Index = 0;
+		Index < Buffer->Count;
+		++Index)
+	{
+		__m128i BufferElementID_4x = _mm_set1_epi32(Buffer->Elements[Index]);
+		__m128i CmpMask = _mm_cmpeq_epi32(EdgesID, BufferElementID_4x);
+
+		u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
+		ResultMask |= Mask32;
+	}
+
+	Result.Index[0] = IsBitSet(ResultMask, 0);
+	Result.Index[1] = IsBitSet(ResultMask, 1);
+	Result.Index[2] = IsBitSet(ResultMask, 2);
+	Result.Index[3] = IsBitSet(ResultMask, 3);
+	Result.Succes = ResultMask;
+
+	return Result;
+}
+
+// TODO: Debug _IsInSelectedBuffer_ part
 internal face_render_params
 SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 {
 	face_render_params Result = {};
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 
-	if (WorldUI->HotInteraction.Type == UI_InteractionType_Select)
+	switch (WorldUI->ITarget)
 	{
-		switch (WorldUI->ITarget)
+		case UI_InteractionTarget_ModelFace:
 		{
-			case UI_InteractionTarget_ModelFace:
+			if (IsInSelectedBuffer(&WorldUI->Selected, FaceIndex))
+			{
+				Result.SelectionFlags[FaceSelectionType_Select] = FaceElementParams_Mark;
+				Result.Active = FaceElementParams_SetAll;
+			}
+
+			if (IsHotIntrType(WorldUI, UI_InteractionType_Select))
 			{
 				if (WorldUI->IModel.Face.ID == FaceIndex)
 				{
 					Result.SelectionFlags[FaceSelectionType_Hot] = FaceElementParams_Mark;
-					Result.Active = FaceElementParams_SetAll;
+					Result.Hot = FaceElementParams_SetAll;
 				}
 				else
 				{
@@ -73,13 +136,41 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 						}
 					}
 				}
-			} break;
+			}
+		} break;
 
-			case UI_InteractionTarget_ModelEdge:
+		case UI_InteractionTarget_ModelEdge:
+		{
+			model_face *CompFace = Model->Faces + FaceIndex;
+
+			// TODO: Cleaning up
+			select_buffer_face_edges_match BufferMatchResult =
+				IsInSelectedBuffer(&WorldUI->Selected, CompFace->EdgesID[0],
+					CompFace->EdgesID[1], CompFace->EdgesID[2],	CompFace->EdgesID[3]);
+
+			if (BufferMatchResult.Succes)
+			{
+				for (u32 CheckIndex = 0;
+					CheckIndex < ArrayCount(BufferMatchResult.Index);
+					++CheckIndex)
+				{
+					if (BufferMatchResult.Index[CheckIndex])
+					{
+						model_edge *Edge = Model->Edges + CompFace->EdgesID[CheckIndex];
+						face_vertex_match VertexMatch = MatchFaceVertex(CompFace, Edge);
+						if (VertexMatch.Succes)
+						{
+							Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+							Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
+						}
+					}
+				}
+			}
+
+			if (IsHotIntrType(WorldUI, UI_InteractionType_Select))
 			{
 				u32 IEdgeIndex = WorldUI->IModel.Edge.ID;
 				model_edge *IEdge = Model->Edges + IEdgeIndex;
-				model_face *CompFace = Model->Faces + FaceIndex;
 
 				if (MatchFaceEdge(CompFace, IEdgeIndex))
 				{
@@ -90,8 +181,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 						Result.HotVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 					}
 				}
-			} break;
-		}
+			}
+		} break;
 	}
 
 	return Result;
@@ -147,8 +238,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Editor->TranArena = SubArena(&Editor->MainArena, MiB(5));
 		
 		u32 SelectedBufferSize = MiB(1);
-		Editor->Selected.Elements = (u32 *)PushSize(&Editor->MainArena, SelectedBufferSize);
-		Editor->Selected.MaxCount = SelectedBufferSize / sizeof(u32);
+		Editor->WorldUI.Selected.Elements = (u32 *)PushSize(&Editor->MainArena, SelectedBufferSize);
+		Editor->WorldUI.Selected.MaxCount = SelectedBufferSize / sizeof(u32);
 
 		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 
