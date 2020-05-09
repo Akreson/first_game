@@ -1,4 +1,5 @@
 
+// TODO: Return in face edge array index or absolute index?
 inline faces_edge_match
 MatchFaceEdge(model_face *A, model_face *B)
 {
@@ -7,10 +8,10 @@ MatchFaceEdge(model_face *A, model_face *B)
 	__m128i EdgesA = _mm_load_si128((__m128i *)A->EdgesID);
 	__m128i EdgesB = _mm_load_si128((__m128i *)B->EdgesID);
 
-	__m128i EdgeB0 = ShuffleU324x(EdgesB, 0);
-	__m128i EdgeB1 = ShuffleU324x(EdgesB, 1);
-	__m128i EdgeB2 = ShuffleU324x(EdgesB, 2);
-	__m128i EdgeB3 = ShuffleU324x(EdgesB, 3);
+	__m128i EdgeB0 = ShuffleU32_4x(EdgesB, 0);
+	__m128i EdgeB1 = ShuffleU32_4x(EdgesB, 1);
+	__m128i EdgeB2 = ShuffleU32_4x(EdgesB, 2);
+	__m128i EdgeB3 = ShuffleU32_4x(EdgesB, 3);
 
 	__m128i CmpMask0 = _mm_cmpeq_epi32(EdgesA, EdgeB0);
 	__m128i CmpMask1 = _mm_cmpeq_epi32(EdgesA, EdgeB1);
@@ -48,24 +49,9 @@ MatchFaceEdge(model_face *A, u32 B)
 }
 
 inline face_vertex_match
-MatchFaceVertex(model_face *A, model_edge *B)
+GetFaceVertexMatchResult(u32 Mask32)
 {
-	face_vertex_match Result = {};
-
-	// TODO: See if in optimize build with same _A_ value
-	// compiler propagate _VertexA_ to multimple sequential call
-	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
-
-	__m128i EdgeB = _mm_load_si128((__m128i *)B);
-	__m128i VertexB0 = ShuffleU324x(EdgeB, 0);
-	__m128i VertexB1 = ShuffleU324x(EdgeB, 1);
-
-	__m128i CmpMask0 = _mm_cmpeq_epi32(VertexA, VertexB0);
-	__m128i CmpMask1 = _mm_cmpeq_epi32(VertexA, VertexB1);
-
-	__m128i OrMask = _mm_or_si128(CmpMask0, CmpMask1);
-
-	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
+	face_vertex_match Result;
 
 	u32 SetBits = CountOfSetBits(Mask32);
 	Assert(SetBits <= 2);
@@ -73,6 +59,58 @@ MatchFaceVertex(model_face *A, model_edge *B)
 	Result.Succes = SetBits == 2 ? true : false;
 	Result.Index[0] = FindLeastSignificantSetBit(Mask32).Index;
 	Result.Index[1] = FindMostSignificantSetBit(Mask32).Index;
+
+	return Result;
+}
+
+inline face_vertex_match
+MatchFaceVertex(model_face *A, model_face *B)
+{
+	face_vertex_match Result;
+
+	__m128i VerticesA = _mm_load_si128((__m128i *)A->VertexID);
+	__m128i VerticesB = _mm_load_si128((__m128i *)B->VertexID);
+
+	__m128i VertexB0 = ShuffleU32_4x(VerticesB, 0);
+	__m128i VertexB1 = ShuffleU32_4x(VerticesB, 1);
+	__m128i VertexB2 = ShuffleU32_4x(VerticesB, 2);
+	__m128i VertexB3 = ShuffleU32_4x(VerticesB, 3);
+
+	__m128i CmpMask0 = _mm_cmpeq_epi32(VerticesA, VertexB0);
+	__m128i CmpMask1 = _mm_cmpeq_epi32(VerticesA, VertexB1);
+	__m128i CmpMask2 = _mm_cmpeq_epi32(VerticesA, VertexB2);
+	__m128i CmpMask3 = _mm_cmpeq_epi32(VerticesA, VertexB3);
+
+	__m128i OrMask0 = _mm_or_si128(CmpMask0, CmpMask1);
+	__m128i OrMask1 = _mm_or_si128(CmpMask2, CmpMask3);
+	__m128i OrMask = _mm_or_si128(OrMask0, OrMask1);
+
+	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
+	Result = GetFaceVertexMatchResult(Mask32);
+
+	return Result;
+}
+
+inline face_vertex_match
+MatchFaceVertex(model_face *A, model_edge *B)
+{
+	face_vertex_match Result;
+
+	// TODO: See if in optimize build with same _A_ value
+	// compiler propagate _VertexA_ to multimple sequential call
+	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
+
+	__m128i EdgeB = _mm_load_si128((__m128i *)B);
+	__m128i VertexB0 = ShuffleU32_4x(EdgeB, 0);
+	__m128i VertexB1 = ShuffleU32_4x(EdgeB, 1);
+
+	__m128i CmpMask0 = _mm_cmpeq_epi32(VertexA, VertexB0);
+	__m128i CmpMask1 = _mm_cmpeq_epi32(VertexA, VertexB1);
+
+	__m128i OrMask = _mm_or_si128(CmpMask0, CmpMask1);
+
+	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
+	Result = GetFaceVertexMatchResult(Mask32);
 
 	return Result;
 }
@@ -85,8 +123,8 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	__m128i EdgeA = _mm_load_si128((__m128i *)A);
 	__m128i EdgeB = _mm_load_si128((__m128i *)B);
 
-	EdgeA = ShuffleU324x(EdgeB, 0, 1, 0, 1);
-	EdgeB = ShuffleU324x(EdgeB, 0, 1, 1, 0);
+	EdgeA = ShuffleU32(EdgeB, 0, 1, 0, 1);
+	EdgeB = ShuffleU32(EdgeB, 0, 1, 1, 0);
 
 	__m128i CmpMask = _mm_cmpeq_epi32(EdgeA, EdgeB);
 	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));

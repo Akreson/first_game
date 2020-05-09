@@ -260,7 +260,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
 						AddEdgeToSelectedBuffer(&WorldUI->Selected, Model,
-							IModel->Face.ID, IsDown(Input->Shift));
+							IModel->Edge.ID, IsDown(Input->Shift));
 					}
 				}
 			}

@@ -1,8 +1,8 @@
 
-#define ShuffleU324x(A, S0, S1, S3, S4) \
+#define ShuffleU32(A, S0, S1, S3, S4) \
 	_mm_shuffle_epi32(A, (S0 << 0) | (S1 << 2) | (S3 << 4) | (S4 << 6))
 
-#define ShuffleU324x(A, S) \
+#define ShuffleU32_4x(A, S) \
 	_mm_shuffle_epi32(A, (S << 0) | (S << 2) | (S << 4) | (S << 6))
 
 struct bit_scan_result

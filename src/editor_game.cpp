@@ -61,36 +61,48 @@ IsInSelectedBuffer(selected_elements_buffer *Buffer, u32 ElementID)
 
 struct select_buffer_face_edges_match
 {
-	u8 Index[4];
-	b32 Succes;
+	u32 Index[4];
+	u32 Count;
 };
 
-// TODO: Complete select buffer searching
+#define Mi(a, i) (((u32 *)&(a))[i])
+
 // TODO: Improve SIMD implementation?
 inline select_buffer_face_edges_match
-IsInSelectedBuffer(selected_elements_buffer *Buffer,
-	u32 ID0, u32 ID1, u32 ID2, u32 ID3)
+IsInSelectedBuffer(selected_elements_buffer *Buffer, model_face *Face)
 {
 	select_buffer_face_edges_match Result;
 
-	u32 ResultMask = 0;
-	__m128i EdgesID = _mm_set_epi32(ID3, ID2, ID1, ID0);
+	__m128i OrMask = _mm_setzero_si128();
+	__m128i EdgesID = _mm_load_si128((__m128i *)Face->EdgesID);
+
 	for (u32 Index = 0;
 		Index < Buffer->Count;
 		++Index)
 	{
 		__m128i BufferElementID_4x = _mm_set1_epi32(Buffer->Elements[Index]);
 		__m128i CmpMask = _mm_cmpeq_epi32(EdgesID, BufferElementID_4x);
+		OrMask = _mm_or_si128(OrMask, CmpMask);
 
-		u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
-		ResultMask |= Mask32;
 	}
 
-	Result.Index[0] = IsBitSet(ResultMask, 0);
-	Result.Index[1] = IsBitSet(ResultMask, 1);
-	Result.Index[2] = IsBitSet(ResultMask, 2);
-	Result.Index[3] = IsBitSet(ResultMask, 3);
-	Result.Succes = ResultMask;
+	u32 ResultMask = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
+	u32 SetBitCount = CountOfSetBits(ResultMask);
+	if (SetBitCount)
+	{
+		u32 CurrentResultIndex = 0;
+		for (u32 Index = 0;
+			Index < 4;
+			++Index)
+		{
+			if (IsBitSet(ResultMask, Index))
+			{
+				Result.Index[CurrentResultIndex++] = Mi(EdgesID, Index);
+			}
+		}
+	}
+
+	Result.Count = SetBitCount;
 
 	return Result;
 }
@@ -117,23 +129,18 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 				if (WorldUI->IModel.Face.ID == FaceIndex)
 				{
 					Result.SelectionFlags[FaceSelectionType_Hot] = FaceElementParams_Mark;
-					Result.Hot = FaceElementParams_SetAll;
+					Result.Active = FaceElementParams_SetAll;// TODO: Change to hot
 				}
 				else
 				{
 					model_face *IFace = Model->Faces + WorldUI->IModel.Face.ID;
 					model_face *CompFace = Model->Faces + FaceIndex;
 
-					faces_edge_match EdgeMatch = MatchFaceEdge(IFace, CompFace);
-					if (EdgeMatch.Succes)
+					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IFace);
+					if (VertexMatch.Succes)
 					{
-						model_edge *Edge = Model->Edges + EdgeMatch.Index;
-						face_vertex_match VertexMatch = MatchFaceVertex(CompFace, Edge);
-						if (VertexMatch.Succes)
-						{
-							Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-							Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
-						}
+						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 					}
 				}
 			}
@@ -143,26 +150,20 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 		{
 			model_face *CompFace = Model->Faces + FaceIndex;
 
-			// TODO: Cleaning up
-			select_buffer_face_edges_match BufferMatchResult =
-				IsInSelectedBuffer(&WorldUI->Selected, CompFace->EdgesID[0],
-					CompFace->EdgesID[1], CompFace->EdgesID[2],	CompFace->EdgesID[3]);
-
-			if (BufferMatchResult.Succes)
+			select_buffer_face_edges_match MatchResult =
+				IsInSelectedBuffer(&WorldUI->Selected, CompFace);
+			if (MatchResult.Count)
 			{
 				for (u32 CheckIndex = 0;
-					CheckIndex < ArrayCount(BufferMatchResult.Index);
+					CheckIndex < MatchResult.Count;
 					++CheckIndex)
 				{
-					if (BufferMatchResult.Index[CheckIndex])
+					model_edge *Edge = Model->Edges + MatchResult.Index[CheckIndex];
+					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, Edge);
+					if (VertexMatch.Succes)
 					{
-						model_edge *Edge = Model->Edges + CompFace->EdgesID[CheckIndex];
-						face_vertex_match VertexMatch = MatchFaceVertex(CompFace, Edge);
-						if (VertexMatch.Succes)
-						{
-							Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-							Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
-						}
+						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 					}
 				}
 			}
@@ -177,8 +178,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IEdge);
 					if (VertexMatch.Succes)
 					{
-						Result.HotVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-						Result.HotVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
+						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
+						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
 					}
 				}
 			}
