@@ -44,7 +44,7 @@ enum face_selection_type
 enum face_element_renderer_params
 {
 	FaceElementParams_Mark = 0x1,
-	FaceElementParams_SetAll = 0x01010101,
+	FaceElementParams_SetAll = 0xFFFFFFFF,
 };
 
 struct face_render_params
@@ -53,8 +53,8 @@ struct face_render_params
 	{
 		struct
 		{
-			b8 ActiveVert[4];
-			b8 HotVert[4];
+			b8 ActiveEdge[4];
+			b8 HotEdge[4];
 		};
 
 		struct

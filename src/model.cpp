@@ -1,9 +1,9 @@
 
 // TODO: Return in face edge array index or absolute index?
-inline faces_edge_match
+inline face_edge_match
 MatchFaceEdge(model_face *A, model_face *B)
 {
-	faces_edge_match Result;
+	face_edge_match Result;
 
 	__m128i EdgesA = _mm_load_si128((__m128i *)A->EdgesID);
 	__m128i EdgesB = _mm_load_si128((__m128i *)B->EdgesID);
@@ -28,14 +28,16 @@ MatchFaceEdge(model_face *A, model_face *B)
 	bit_scan_result MaskResult = FindLeastSignificantSetBit(Mask32);
 
 	Result.Succes = MaskResult.Succes;
-	Result.Index = A->EdgesID[MaskResult.Index];
+	Result.Index = MaskResult.Index;
 
 	return Result;
 }
 
-inline b32
+inline face_edge_match
 MatchFaceEdge(model_face *A, u32 B)
 {
+	face_edge_match Result;
+
 	__m128i EdgeA = _mm_load_si128((__m128i *)A->EdgesID);
 	__m128i EdgeB0 = _mm_set1_epi32(B);
 
@@ -44,7 +46,11 @@ MatchFaceEdge(model_face *A, u32 B)
 	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
 	Assert(CountOfSetBits(Mask32) <= 1);
 
-	b32 Result = FindLeastSignificantSetBit(Mask32).Succes;
+	bit_scan_result MaskResult = FindLeastSignificantSetBit(Mask32);
+
+	Result.Succes = MaskResult.Succes;
+	Result.Index = MaskResult.Index;
+
 	return Result;
 }
 
@@ -91,11 +97,9 @@ MatchFaceVertex(model_face *A, model_face *B)
 	return Result;
 }
 
-inline face_vertex_match
-MatchFaceVertex(model_face *A, model_edge *B)
+inline u32
+MaskMatchFaceVertex(model_face *A, model_edge *B)
 {
-	face_vertex_match Result;
-
 	// TODO: See if in optimize build with same _A_ value
 	// compiler propagate _VertexA_ to multimple sequential call
 	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
@@ -109,8 +113,15 @@ MatchFaceVertex(model_face *A, model_edge *B)
 
 	__m128i OrMask = _mm_or_si128(CmpMask0, CmpMask1);
 
-	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
-	Result = GetFaceVertexMatchResult(Mask32);
+	u32 ResultMask = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
+	return ResultMask;
+}
+
+inline face_vertex_match
+MatchFaceVertex(model_face *A, model_edge *B)
+{
+	u32 Mask32 = MaskMatchFaceVertex(A, B);
+	face_vertex_match Result = GetFaceVertexMatchResult(Mask32);
 
 	return Result;
 }

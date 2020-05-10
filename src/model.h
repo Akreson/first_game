@@ -14,7 +14,6 @@ struct model_edge
 	union
 	{
 		u32 FaceID[2];
-
 		struct
 		{
 			u32 Face0, Face1;
@@ -40,7 +39,6 @@ struct model_face
 	union
 	{
 		u32 EdgesID[4];
-
 		struct
 		{
 			u32 Edge0, Edge1, Edge2, Edge3;
@@ -68,7 +66,7 @@ struct element_ray_result
 	v3 P;
 };
 
-struct faces_edge_match
+struct face_edge_match
 {
 	u16 Index;
 	b16 Succes;
@@ -85,4 +83,12 @@ struct edge_vertex_match
 {
 	u16 Index;
 	u16 Succes;
+};
+
+enum MaskMatchVertex
+{
+	MaskMatchVertex_01 = (1 << 1) | (1 << 0),
+	MaskMatchVertex_12 = (1 << 2) | (1 << 1),
+	MaskMatchVertex_03 = (1 << 3) | (1 << 0),
+	MaskMatchVertex_23 = (1 << 3) | (1 << 2),
 };

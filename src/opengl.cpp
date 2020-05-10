@@ -385,7 +385,7 @@ CompileModelProgram(model_program *Prog)
 	};
 
 	float WhenEq(float x, float y) {
-	  return 1.0 - abs(sign(x - y));
+		return 1.0 - abs(sign(x - y));
 	}
 	
 	EdgeParams GetEdgeParams(vec3 A, float Thickness)
