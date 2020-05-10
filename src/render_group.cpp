@@ -110,26 +110,47 @@ struct face_edge_params
 	b8 Hot23;
 };
 
+#define IsHaveMatch(A, B) \
+	_mm_movemask_ps(_mm_castsi128_ps( \
+		_mm_cmpeq_epi32(_mm_and_si128(A, B), B)))
+
 internal inline face_edge_params
 GetEdgeFaceParams(face_render_params FaceParam)
 {
 	face_edge_params Result;
 
-	Result.Active01 = FaceParam.ActiveVert[0] & FaceParam.ActiveVert[1];
-	Result.Active12 = FaceParam.ActiveVert[1] & FaceParam.ActiveVert[2];
-	Result.Active03 = FaceParam.ActiveVert[0] & FaceParam.ActiveVert[3];
-	Result.Active23 = FaceParam.ActiveVert[2] & FaceParam.ActiveVert[3];
+	__m128i Active = 
+		_mm_set_epi32(
+			FaceParam.ActiveEdge[3], FaceParam.ActiveEdge[2],
+			FaceParam.ActiveEdge[1], FaceParam.ActiveEdge[0]);
 
-	Result.Hot01 = FaceParam.HotVert[0] & FaceParam.HotVert[1];
-	Result.Hot12 = FaceParam.HotVert[1] & FaceParam.HotVert[2];
-	Result.Hot03 = FaceParam.HotVert[0] & FaceParam.HotVert[3];
-	Result.Hot23 = FaceParam.HotVert[2] & FaceParam.HotVert[3];
+	__m128i Hot = _mm_set_epi32(
+		FaceParam.HotEdge[3], FaceParam.HotEdge[2],
+		FaceParam.HotEdge[1], FaceParam.HotEdge[0]);
+
+	__m128i Mask01 = _mm_set1_epi32(MaskMatchVertex_01);
+	__m128i Mask12 = _mm_set1_epi32(MaskMatchVertex_12);
+	__m128i Mask03 = _mm_set1_epi32(MaskMatchVertex_03);
+	__m128i Mask23 = _mm_set1_epi32(MaskMatchVertex_23);
+
+	Result.Active01 = (IsHaveMatch(Active, Mask01)) ? true : false;
+	Result.Active12 = (IsHaveMatch(Active, Mask12)) ? true : false;
+	Result.Active03 = (IsHaveMatch(Active, Mask03)) ? true : false;
+	Result.Active23 = (IsHaveMatch(Active, Mask23)) ? true : false;
+
+	Result.Hot01 = (IsHaveMatch(Hot, Mask01)) ? true : false;
+	Result.Hot12 = (IsHaveMatch(Hot, Mask12)) ? true : false;
+	Result.Hot03 = (IsHaveMatch(Hot, Mask03)) ? true : false;
+	Result.Hot23 = (IsHaveMatch(Hot, Mask23)) ? true : false;
 
 	return Result;
 }
 
+#undef IsHaveMatch(A, B)
+
 internal inline render_model_face_vertex
-ConstructFaceVertex(v3 Vertex, v3 BarCoords, v3 ActiveMask = V3(0), v3 HotMask = V3(0), v2 FaceSelParam = V2(0))
+ConstructFaceVertex(v3 Vertex, v3 BarCoords,
+	v3 ActiveMask = V3(0), v3 HotMask = V3(0), v2 FaceSelParam = V2(0))
 {
 	render_model_face_vertex Result;
 
@@ -155,21 +176,21 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
 	f32 StateEdgeArray[2] = {0, 1.0f};
-	face_edge_params Edges = GetEdgeFaceParams(FaceParam);
+	face_edge_params EdgesParam = GetEdgeFaceParams(FaceParam);
 
 	v2 SelectionType = V2(
 		StateEdgeArray[FaceParam.SelectionFlags[FaceSelectionType_Select]],
 		StateEdgeArray[FaceParam.SelectionFlags[FaceSelectionType_Hot]]);
 
-	f32 Active01 = StateEdgeArray[Edges.Active01];
-	f32 Active12 = StateEdgeArray[Edges.Active12];
-	f32 Active03 = StateEdgeArray[Edges.Active03];
-	f32 Active23 = StateEdgeArray[Edges.Active23];
+	f32 Active01 = StateEdgeArray[EdgesParam.Active01];
+	f32 Active12 = StateEdgeArray[EdgesParam.Active12];
+	f32 Active03 = StateEdgeArray[EdgesParam.Active03];
+	f32 Active23 = StateEdgeArray[EdgesParam.Active23];
 
-	f32 Hot01 = StateEdgeArray[Edges.Hot01];
-	f32 Hot12 = StateEdgeArray[Edges.Hot12];
-	f32 Hot03 = StateEdgeArray[Edges.Hot03];
-	f32 Hot23 = StateEdgeArray[Edges.Hot23];
+	f32 Hot01 = StateEdgeArray[EdgesParam.Hot01];
+	f32 Hot12 = StateEdgeArray[EdgesParam.Hot12];
+	f32 Hot03 = StateEdgeArray[EdgesParam.Hot03];
+	f32 Hot23 = StateEdgeArray[EdgesParam.Hot23];
 
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],	V3(1, 1, 0));
 	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0));

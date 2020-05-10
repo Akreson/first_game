@@ -83,7 +83,6 @@ IsInSelectedBuffer(selected_elements_buffer *Buffer, model_face *Face)
 		__m128i BufferElementID_4x = _mm_set1_epi32(Buffer->Elements[Index]);
 		__m128i CmpMask = _mm_cmpeq_epi32(EdgesID, BufferElementID_4x);
 		OrMask = _mm_or_si128(OrMask, CmpMask);
-
 	}
 
 	u32 ResultMask = _mm_movemask_ps(_mm_castsi128_ps(OrMask));
@@ -136,11 +135,11 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					model_face *IFace = Model->Faces + WorldUI->IModel.Face.ID;
 					model_face *CompFace = Model->Faces + FaceIndex;
 
-					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IFace);
-					if (VertexMatch.Succes)
+					face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IFace);
+					if (EdgeMatch.Succes)
 					{
-						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
+						model_edge *Edge = Model->Edges + CompFace->EdgesID[EdgeMatch.Index];
+						Result.ActiveEdge[EdgeMatch.Index] = MaskMatchFaceVertex(CompFace, Edge);
 					}
 				}
 			}
@@ -158,12 +157,12 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					CheckIndex < MatchResult.Count;
 					++CheckIndex)
 				{
-					model_edge *Edge = Model->Edges + MatchResult.Index[CheckIndex];
-					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, Edge);
-					if (VertexMatch.Succes)
+					u32 EdgeID = MatchResult.Index[CheckIndex];
+					face_edge_match EdgeMatch = MatchFaceEdge(CompFace, EdgeID);
+					if (EdgeMatch.Succes)
 					{
-						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
+						model_edge *Edge = Model->Edges + EdgeID;
+						Result.ActiveEdge[EdgeMatch.Index] = MaskMatchFaceVertex(CompFace, Edge);
 					}
 				}
 			}
@@ -173,14 +172,10 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 				u32 IEdgeIndex = WorldUI->IModel.Edge.ID;
 				model_edge *IEdge = Model->Edges + IEdgeIndex;
 
-				if (MatchFaceEdge(CompFace, IEdgeIndex))
+				face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IEdgeIndex);
+				if (EdgeMatch.Succes)
 				{
-					face_vertex_match VertexMatch = MatchFaceVertex(CompFace, IEdge);
-					if (VertexMatch.Succes)
-					{
-						Result.ActiveVert[VertexMatch.Index[0]] = FaceElementParams_Mark;
-						Result.ActiveVert[VertexMatch.Index[1]] = FaceElementParams_Mark;
-					}
+					Result.ActiveEdge[EdgeMatch.Index] = MaskMatchFaceVertex(CompFace, IEdge);
 				}
 			}
 		} break;
