@@ -388,6 +388,11 @@ CompileModelProgram(model_program *Prog)
 		return 1.0 - abs(sign(x - y));
 	}
 	
+	float  WhenNeq(float x, float y) {
+		return abs(sign(x - y));
+	}
+
+#if 1
 	EdgeParams GetEdgeParams(vec3 A, float Thickness)
 	{
 		EdgeParams Result;
@@ -404,8 +409,47 @@ CompileModelProgram(model_program *Prog)
 
 		return Result;
 	}
+#else
+	// TODO: Complete
+	EdgeParams GetEdgeParams(vec3 A, float Thickness)
+	{
+		EdgeParams Result;
+		vec3 StoredA = A;
 
-	// TODO: Enable Hot Factor
+		float MinD0 = min(min(StoredA.x, StoredA.y), StoredA.z);
+		float dMinD0 = fwidth(MinD0);
+		float Factor0 = smoothstep(0, Thickness*dMinD0, MinD0);
+
+		float Index0 = 0;
+		Index0 += 1.0 * WhenEq(MinD0, StoredA.y);
+		Index0 += 2.0 * WhenEq(MinD0, StoredA.z);
+		uint IntMinIndex0 = int(Index0);
+
+		StoredA[Result.MinIndex] = 1.0f;
+
+		float MinD1 = min(min(StoredA.x, StoredA.y), StoredA.z);
+		float dMinD1 = fwidth(MinD1);
+		float Factor1 = smoothstep(0, Thickness*dMinD1, MinD1);
+
+		float Index1 = 0;
+		Index1 += 1.0 * WhenEq(MinD1, A.y);
+		Index1 += 2.0 * WhenEq(MinD1, A.z);
+		uint IntMinIndex1 = int(Index1);
+
+		float MaxFactor = max(Factor0, Factor1);
+		float FinalFactor = mix(min(Factor0, Factor1), MaxFactor, WhenNeq(MaxFactor, 1.0f));
+		
+		float FinalIndex = Index0 * WhenEq(Factor0, FinalFactor);
+		FinalIndex = Index1 * WhenEq(Factor1, FinalFactor);
+		uint IntFinalIndex = int(FinalIndex);
+		
+		Result.MinIndex = IntFinalIndex;
+		Result.Factor = FinalFactor;
+
+		return Result;
+	}
+#endif
+
 	void main()
 	{
 		//vec3 _EdgeColor = vec3(0.17f, 0.5f, 0.8f); // NOTE: For Debug
