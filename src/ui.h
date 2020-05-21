@@ -2,13 +2,9 @@
 
 enum ui_intercation_target
 {
-	UI_InteractionTarget_None,
+	//UI_InteractionTarget_None, // TODO: Return?
 
 	UI_InteractionTarget_Model,
-	UI_InteractionTarget_ModelFace,
-	UI_InteractionTarget_ModelEdge,
-
-	UI_InteractionTarget_ModelCount,
 
 	UI_InteractionTarget_Tools,
 	
@@ -19,13 +15,15 @@ enum ui_intercation_target
 	UI_InteractionTarget_ToolsCount,
 };
 
-enum model_element_target
+enum model_target_element
 {
-	ModelElement_Model,
-	ModelElement_Face,
-	ModelElement_Edge,
+	ModelTargetElement_None,
 
-	ModelElement_Count
+	ModelTargetElement_Model,
+	ModelTargetElement_Face,
+	ModelTargetElement_Edge,
+
+	ModelTargetElement_Count
 };
 
 enum ui_interaction_type
@@ -75,6 +73,7 @@ struct ui_interaction
 
 struct interact_model
 {
+	u32 Target;
 	u32 ID;
 	b32 ElementPick;
 	element_ray_result Face;
@@ -87,7 +86,6 @@ struct editor_world_ui
 {
 	b32 UpdateITarget;
 	u32 ITarget;
-	u32 ModelTarget;
 
 	ui_interaction Interaction;
 	ui_interaction HotInteraction;

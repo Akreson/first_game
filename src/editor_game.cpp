@@ -112,10 +112,11 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 {
 	face_render_params Result = {};
 	editor_world_ui *WorldUI = &Editor->WorldUI;
+	interact_model *IModel = &WorldUI->IModel;
 
-	switch (WorldUI->ITarget)
+	switch (IModel->Target)
 	{
-		case UI_InteractionTarget_ModelFace:
+		case ModelTargetElement_Face:
 		{
 			if (IsInSelectedBuffer(&WorldUI->Selected, FaceIndex))
 			{
@@ -125,14 +126,14 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 
 			if (IsHotIntrType(WorldUI, UI_InteractionType_Select))
 			{
-				if (WorldUI->IModel.Face.ID == FaceIndex)
+				if (IModel->Face.ID == FaceIndex)
 				{
 					Result.SelectionFlags[FaceSelectionType_Hot] = FaceElementParams_Mark;
 					Result.Active = FaceElementParams_SetAll;// TODO: Change to hot
 				}
 				else
 				{
-					model_face *IFace = Model->Faces + WorldUI->IModel.Face.ID;
+					model_face *IFace = Model->Faces + IModel->Face.ID;
 					model_face *CompFace = Model->Faces + FaceIndex;
 
 					face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IFace);
@@ -145,7 +146,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 			}
 		} break;
 
-		case UI_InteractionTarget_ModelEdge:
+		case ModelTargetElement_Edge:
 		{
 			model_face *CompFace = Model->Faces + FaceIndex;
 
@@ -169,7 +170,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 
 			if (IsHotIntrType(WorldUI, UI_InteractionType_Select))
 			{
-				u32 IEdgeIndex = WorldUI->IModel.Edge.ID;
+				u32 IEdgeIndex = IModel->Edge.ID;
 				model_edge *IEdge = Model->Edges + IEdgeIndex;
 
 				face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IEdgeIndex);
@@ -193,13 +194,13 @@ SetModelHighlight(game_editor_state *Editor, b32 IsActive, b32 IsHot, u32 ITarge
 	{
 		switch (ITarget)
 		{
-			case UI_InteractionTarget_Model:
+			case ModelTargetElement_Model:
 			{
 				Result.OutlineIsSet = true;
 				Result.OutlineColor = Editor->ActiveOutlineColor;
 			} break;
 
-			case UI_InteractionTarget_ModelEdge:
+			case ModelTargetElement_Edge:
 			{
 				Result.EdgeColor = Editor->EdgeColor;
 			} break;
@@ -320,7 +321,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		b32 IsHot = AreEqual(SelectInteraction, WorldUI->HotInteraction);
 		b32 IsActive = IsActiveModel(WorldUI, ModelIndex);
 
-		model_highlight_params ModelHiLi = SetModelHighlight(Editor, IsActive, IsHot, WorldUI->ITarget);
+		model_highlight_params ModelHiLi = SetModelHighlight(Editor, IsActive, IsHot, WorldUI->IModel.Target);
 
 		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, ModelHiLi);
 		

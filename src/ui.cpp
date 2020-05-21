@@ -30,27 +30,10 @@ IsHotIntrType(editor_world_ui *WorldUI, u32 Type)
 }
 
 inline b32
-IsITargetOnModel(u32 ITarget)
-{
-	b32 Result = (ITarget >= UI_InteractionTarget_Model) &&
-		(ITarget < UI_InteractionTarget_ModelCount);
-
-	return Result;
-}
-
-inline b32
-IsITargetOnTools(u32 ITarget)
-{
-	b32 Result = (ITarget >= UI_InteractionTarget_Tools) &&
-		(ITarget < UI_InteractionTarget_ToolsCount);
-
-	return Result;
-}
-
-inline b32
 IsActiveModel(editor_world_ui *UI, u32 ModelID)
 {
-	b32 Result = (UI->IModel.ID == ModelID) && IsITargetOnModel(UI->ITarget);
+	b32 Result = (UI->ITarget == UI_InteractionTarget_Model) &&
+		(UI->IModel.Target) && (UI->IModel.ID == ModelID);
 
 	return Result;
 }
@@ -98,15 +81,19 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 
 	if (WorldUI->UpdateITarget && !WorldUI->Selected.Count)
 	{
-		if (WorldUI->ITarget && WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
+		if (WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
 		{
-			++WorldUI->ITarget;
-			ZeroStruct(WorldUI->IModel.Face);
-			ZeroStruct(WorldUI->IModel.Edge);
-
-			if (WorldUI->ITarget == UI_InteractionTarget_ModelCount)
+			if ((WorldUI->ITarget == UI_InteractionTarget_Model) &&
+				WorldUI->IModel.Target)
 			{
-				WorldUI->ITarget = UI_InteractionTarget_Model;
+				++WorldUI->IModel.Target;
+				ZeroStruct(WorldUI->IModel.Face);
+				ZeroStruct(WorldUI->IModel.Edge);
+			
+				if (WorldUI->IModel.Target == ModelTargetElement_Count)
+				{
+					WorldUI->IModel.Target = ModelTargetElement_Model;
+				}
 			}
 		}
 	}
@@ -119,7 +106,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 		}
 		else
 		{
-			WorldUI->ITarget = UI_InteractionTarget_None;
+			WorldUI->IModel.Target = ModelTargetElement_None;
 			ZeroStruct(WorldUI->Interaction);
 		}
 	}
@@ -196,12 +183,12 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	{
 		switch (ITarget)
 		{
-			case UI_InteractionTarget_ModelFace:
+			case ModelTargetElement_Face:
 			{
 				AddFaceToSelectedBuffer(Buffer, Model, ElementID);
 			} break;
 
-			case UI_InteractionTarget_ModelEdge:
+			case ModelTargetElement_Edge:
 			{
 				AddEdgeToSelectedBuffer(Buffer, Model, ElementID);
 			} break;
@@ -225,9 +212,9 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	interact_model *IModel = &WorldUI->IModel;
 
-	switch (WorldUI->ITarget)
+	switch (IModel->Target)
 	{
-		case UI_InteractionTarget_None:
+		case ModelTargetElement_None:
 		{
 			*IModel = {};
 			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
@@ -244,18 +231,18 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 					}
 					else
 					{
-						WorldUI->ITarget = UI_InteractionTarget_Model;
+						IModel->Target = ModelTargetElement_Model;
 					}
 				}
 			}
 		} break;
 
-		case UI_InteractionTarget_Model:
+		case ModelTargetElement_Model:
 		{
 
 		} break;
 
-		case UI_InteractionTarget_ModelFace:
+		case ModelTargetElement_Face:
 		{
 			model *Model = Editor->Models + WorldUI->IModel.ID;
 			IModel->Face = {};
@@ -269,13 +256,13 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
 						AddToSelectedBuffer(&WorldUI->Selected,	Model,
-							IModel->Face.ID, WorldUI->ITarget, IsDown(Input->Shift));
+							IModel->Face.ID, IModel->Target, IsDown(Input->Shift));
 					}
 				}
 			}
 		} break;
 
-		case UI_InteractionTarget_ModelEdge:
+		case ModelTargetElement_Edge:
 		{
 			model *Model = Editor->Models + WorldUI->IModel.ID;
 			IModel->Edge = {};
@@ -291,7 +278,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
 						AddToSelectedBuffer(&WorldUI->Selected, Model,
-							IModel->Edge.ID, WorldUI->ITarget, IsDown(Input->Shift));
+							IModel->Edge.ID, IModel->Target, IsDown(Input->Shift));
 					}
 				}
 			}
@@ -320,14 +307,15 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 
 	// TODO: Remove UpdateITarget conception?
 	
-	if (WorldUI->UpdateITarget)
+	if (WorldUI->ITarget == UI_InteractionTarget_Model &&
+		WorldUI->UpdateITarget)
 	{
 		UpdateModelInteractionElement(Editor, Input, RenderGroup);
 	}
-	/*else if (IsITargetOnTools(WorldUI->ITarget))
+	else if (WorldUI->ITarget == UI_InteractionTarget_Tools)
 	{
 		UpdateModelInteractionTools(Editor, Input, RenderGroup);
-	}*/
+	}
 
 	// TODO: Split to anouther function?
 	// TODO: Set ui interaction in proper way
