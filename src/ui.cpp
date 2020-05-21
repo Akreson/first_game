@@ -30,11 +30,27 @@ IsHotIntrType(editor_world_ui *WorldUI, u32 Type)
 }
 
 inline b32
+IsITargetOnModel(u32 ITarget)
+{
+	b32 Result = (ITarget >= UI_InteractionTarget_Model) &&
+		(ITarget < UI_InteractionTarget_ModelCount);
+
+	return Result;
+}
+
+inline b32
+IsITargetOnTools(u32 ITarget)
+{
+	b32 Result = (ITarget >= UI_InteractionTarget_Tools) &&
+		(ITarget < UI_InteractionTarget_ToolsCount);
+
+	return Result;
+}
+
+inline b32
 IsActiveModel(editor_world_ui *UI, u32 ModelID)
 {
-	b32 Result = (UI->IModel.ID == ModelID) &&
-		((UI->ITarget >= UI_InteractionTarget_Model) &&
-		(UI->ITarget < UI_InteractionTarget_ModelCount));
+	b32 Result = (UI->IModel.ID == ModelID) && IsITargetOnModel(UI->ITarget);
 
 	return Result;
 }
@@ -71,6 +87,15 @@ AreEqual(ui_interaction A, ui_interaction B)
 inline void
 ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 {
+	if (IsDown(Input->Alt))
+	{
+		WorldUI->UpdateITarget = false;
+	}
+	else if (WasDown(Input->Alt))
+	{
+		WorldUI->UpdateITarget = true;
+	}
+
 	if (WorldUI->UpdateITarget && !WorldUI->Selected.Count)
 	{
 		if (WorldUI->ITarget && WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
@@ -83,7 +108,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 			{
 				WorldUI->ITarget = UI_InteractionTarget_Model;
 			}
-	}
+		}
 	}
 
 	if (IsKepDown(Input->Alt) && IsGoDown(Input->Shift))
@@ -191,6 +216,7 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	}
 }
 
+// TODO: Make selection as tool?
 internal void inline
 UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
@@ -275,6 +301,11 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 	WorldUI->NextHotInteraction = Interaction;
 }
 
+internal void inline
+UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
+{
+}
+
 inline b32
 IsValid(interact_model IModel)
 {
@@ -288,12 +319,17 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 	ProcessWorldUIInput(WorldUI, Input);
 
 	// TODO: Remove UpdateITarget conception?
+	
 	if (WorldUI->UpdateITarget)
 	{
 		UpdateModelInteractionElement(Editor, Input, RenderGroup);
 	}
+	/*else if (IsITargetOnTools(WorldUI->ITarget))
+	{
+		UpdateModelInteractionTools(Editor, Input, RenderGroup);
+	}*/
 
-	// TODO: Split to anouther function
+	// TODO: Split to anouther function?
 	// TODO: Set ui interaction in proper way
 	switch (WorldUI->Interaction.Type)
 	{
@@ -309,6 +345,13 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 			{
 				WorldUI->UpdateITarget = true;
 			}
+			/*else if (WasDown(Input->MouseButtons[PlatformMouseButton_Right]))
+			{
+				if (IsITargetOnModel(WorldUI->ITarget))
+				{
+					WorldUI->ITarget = UI_InteractionTarget_Tools;
+				}
+			}*/
 		} break;
 
 		case UI_InteractionType_Select:

@@ -9,6 +9,23 @@ enum ui_intercation_target
 	UI_InteractionTarget_ModelEdge,
 
 	UI_InteractionTarget_ModelCount,
+
+	UI_InteractionTarget_Tools,
+	
+	UI_InteractionTarget_ToolsRotate,
+	UI_InteractionTarget_ToolsTranslate,
+	UI_InteractionTarget_ToolsScale,
+
+	UI_InteractionTarget_ToolsCount,
+};
+
+enum model_element_target
+{
+	ModelElement_Model,
+	ModelElement_Face,
+	ModelElement_Edge,
+
+	ModelElement_Count
 };
 
 enum ui_interaction_type
@@ -70,6 +87,7 @@ struct editor_world_ui
 {
 	b32 UpdateITarget;
 	u32 ITarget;
+	u32 ModelTarget;
 
 	ui_interaction Interaction;
 	ui_interaction HotInteraction;

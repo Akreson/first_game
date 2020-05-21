@@ -97,19 +97,6 @@ PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 	BitmapEntry->Color = Color;
 }
 
-struct face_edge_params
-{
-	b8 Active01;
-	b8 Active12;
-	b8 Active03;
-	b8 Active23;
-
-	b8 Hot01;
-	b8 Hot12;
-	b8 Hot03;
-	b8 Hot23;
-};
-
 #define IsHaveMatch(A, B) \
 	_mm_movemask_ps(_mm_castsi128_ps( \
 		_mm_cmpeq_epi32(_mm_and_si128(A, B), B)))
@@ -119,8 +106,7 @@ GetEdgeFaceParams(face_render_params FaceParam)
 {
 	face_edge_params Result;
 
-	__m128i Active = 
-		_mm_set_epi32(
+	__m128i Active = _mm_set_epi32(
 			FaceParam.ActiveEdge[3], FaceParam.ActiveEdge[2],
 			FaceParam.ActiveEdge[1], FaceParam.ActiveEdge[0]);
 
