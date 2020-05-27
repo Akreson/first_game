@@ -62,7 +62,7 @@ Win32DeallocateMemory(void *Ptr)
 void
 ToggleFullscreen(HWND Window)
 {
-	// NOTE: This foloow Raymond Chan's prescription
+	// NOTE: This folow Raymond Chan's prescription
 	// for fullscreen toggling, see:
 	// https://blogs.msdn.microsoft.com/oldnewthing/20100412-00/?p=14353/
 

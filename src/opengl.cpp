@@ -713,7 +713,7 @@ CompileStaticMeshProgram(static_mesh_program *Prog)
 	
 	void main()
 	{
-		FragColor = vec4(1.0);
+		FragColor = vec4(MeshColor, 1.0);
 	}
 	)FOO";
 
@@ -1004,6 +1004,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 		}
 	}
 
+	// TODO: Add separate queue for post-process?
 	if (OpenGL.OutlineSet)
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);

@@ -186,13 +186,13 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 }
 
 inline model_highlight_params
-SetModelHighlight(game_editor_state *Editor, b32 IsActive, b32 IsHot, u32 ITarget)
+SetModelHighlight(game_editor_state *Editor, b32 IsActive, b32 IsHot, u32 Target)
 {
 	model_highlight_params Result = {};
 
 	if (IsActive)
 	{
-		switch (ITarget)
+		switch (Target)
 		{
 			case ModelTargetElement_Model:
 			{
@@ -253,9 +253,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Editor->ActiveOutlineColor = V3(0.86f, 0.70f, 0.2f);
 		Editor->HotOutlineColor = V3(0, 1, 0);
 
-		Editor->WorldUI.UpdateITarget = true;
+		Editor->WorldUI.UpdateModelInteraction = true;
 
-		CreateStaticSphere(Editor, 0.6f, 20, 20);
+		CreateStaticSphere(Editor, 1.6f, 20, 20);
 
 		GameState->IsInit = true;
 	}

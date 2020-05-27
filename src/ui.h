@@ -5,14 +5,7 @@ enum ui_intercation_target
 	//UI_InteractionTarget_None, // TODO: Return?
 
 	UI_InteractionTarget_Model,
-
 	UI_InteractionTarget_Tools,
-	
-	UI_InteractionTarget_ToolsRotate,
-	UI_InteractionTarget_ToolsTranslate,
-	UI_InteractionTarget_ToolsScale,
-
-	UI_InteractionTarget_ToolsCount,
 };
 
 enum model_target_element
@@ -24,6 +17,17 @@ enum model_target_element
 	ModelTargetElement_Edge,
 
 	ModelTargetElement_Count
+};
+
+enum tool_type
+{
+	//ToolType_None,
+
+	ToolType_Rotate,
+	ToolType_Translate,
+	ToolType_Scale,
+
+	ToolType_Count,
 };
 
 enum ui_interaction_type
@@ -75,17 +79,32 @@ struct interact_model
 {
 	u32 Target;
 	u32 ID;
-	b32 ElementPick;
 	element_ray_result Face;
 	element_ray_result Edge;
 };
 
-#define ITargetType(ITarget, Type) ((ITarget) == UI_InteractionTarget_##Type)
+struct rotate_tools
+{
+	v3 CenterPos;
+};
+
+struct tools
+{
+	u32 Type;
+	b32 IsInit;
+
+	union
+	{
+		rotate_tools Rotate;
+	};
+};
+
+#define IsITargetEq(ITarget, Type) ((ITarget) == UI_InteractionTarget_##Type)
 
 struct editor_world_ui
 {
-	b32 UpdateITarget;
 	u32 ITarget;
+	b32 UpdateModelInteraction;
 
 	ui_interaction Interaction;
 	ui_interaction HotInteraction;
@@ -96,6 +115,7 @@ struct editor_world_ui
 
 	interact_model IModel;
 	selected_elements_buffer Selected;
+	tools Tools;
 
 	v2 MouseP;
 	v2 dMouseP;

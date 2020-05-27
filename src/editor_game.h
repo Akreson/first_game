@@ -53,7 +53,6 @@ struct model_ray_sort
 	f32 Length;
 };
 
-
 struct game_editor_state
 {
 	model Models[32];

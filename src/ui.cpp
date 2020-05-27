@@ -32,8 +32,7 @@ IsHotIntrType(editor_world_ui *WorldUI, u32 Type)
 inline b32
 IsActiveModel(editor_world_ui *UI, u32 ModelID)
 {
-	b32 Result = (UI->ITarget == UI_InteractionTarget_Model) &&
-		(UI->IModel.Target) && (UI->IModel.ID == ModelID);
+	b32 Result = UI->IModel.Target && (UI->IModel.ID == ModelID);
 
 	return Result;
 }
@@ -54,7 +53,7 @@ SetSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0
 {
 	ui_interaction Result;
 
-	Result.TypeID = SetIntrTypeID(Target, UI_InteractionType_Select);;
+	Result.TypeID = SetIntrTypeID(Target, UI_InteractionType_Select);
 	Result.ID = IDFromModel(ModelID, FaceID, EdgeID);
 
 	return Result;
@@ -70,37 +69,49 @@ AreEqual(ui_interaction A, ui_interaction B)
 inline void
 ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 {
-	if (IsDown(Input->Alt))
+	// TODO: Return later
+	/*if (IsDown(Input->Alt))
 	{
-		WorldUI->UpdateITarget = false;
+		WorldUI->UpdateModelInteraction = false;
 	}
 	else if (WasDown(Input->Alt))
 	{
-		WorldUI->UpdateITarget = true;
-	}
+		WorldUI->UpdateModelInteraction = true;
+	}*/
 
-	if (WorldUI->UpdateITarget && !WorldUI->Selected.Count)
+	if (WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
 	{
-		if (WasDown(Input->MouseButtons[PlatformMouseButton_Extended0]))
+		if (IsITargetEq(WorldUI->ITarget, Model) && WorldUI->IModel.Target)
 		{
-			if ((WorldUI->ITarget == UI_InteractionTarget_Model) &&
-				WorldUI->IModel.Target)
+			if (WorldUI->UpdateModelInteraction && !WorldUI->Selected.Count)
 			{
 				++WorldUI->IModel.Target;
 				ZeroStruct(WorldUI->IModel.Face);
 				ZeroStruct(WorldUI->IModel.Edge);
-			
+
 				if (WorldUI->IModel.Target == ModelTargetElement_Count)
 				{
 					WorldUI->IModel.Target = ModelTargetElement_Model;
 				}
 			}
 		}
+		else if (IsITargetEq(WorldUI->ITarget, Tools))
+		{
+			++WorldUI->Tools.Type;
+			if (WorldUI->Tools.Type == ToolType_Count)
+			{
+				WorldUI->Tools.Type = 0;
+			}
+		}
 	}
 
 	if (IsKepDown(Input->Alt) && IsGoDown(Input->Shift))
 	{
-		if (WorldUI->Selected.Count)
+		if (IsITargetEq(WorldUI->ITarget, Tools))
+		{
+			WorldUI->ITarget = UI_InteractionTarget_Model;
+		}
+		else if (WorldUI->Selected.Count)
 		{
 			WorldUI->Selected.Count = 0;
 		}
@@ -179,7 +190,7 @@ void
 AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	model *Model, u32 ElementID, u32 ITarget, b32 ShiftDown)
 {
-	if (ShiftDown && Buffer->Count)
+	if (Model && ShiftDown && Buffer->Count)
 	{
 		switch (ITarget)
 		{
@@ -198,7 +209,6 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	{
 		Buffer->Count = 1;
 		Assert(Buffer->Count < Buffer->MaxCount);
-
 		*Buffer->Elements = ElementID;
 	}
 }
@@ -232,6 +242,8 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 					else
 					{
 						IModel->Target = ModelTargetElement_Model;
+						/*AddToSelectedBuffer(&WorldUI->Selected, 0,
+							IModel->ID, IModel->Target, IsDown(Input->Shift));*/
 					}
 				}
 			}
@@ -288,9 +300,81 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 	WorldUI->NextHotInteraction = Interaction;
 }
 
+// TODO: Delete or change implementation
+v3
+ComputeAveragePos(model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget)
+{
+	v3 Result;
+
+	v3 ModelOffset = Model->Offset;
+	switch (ElementTarget)
+	{
+		case ModelTargetElement_Model:
+		{
+			Result = ((Model->AABB.Min + ModelOffset) + (Model->AABB.Max + ModelOffset)) / 2.0f;
+		} break;
+
+		case ModelTargetElement_Face:
+		{
+			
+		} break;
+
+		case ModelTargetElement_Edge:
+		{
+
+		} break;
+	}
+
+	return Result;
+}
+
+// TODO: Add more tools!!!
+void
+InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
+{
+	selected_elements_buffer *SelectBuffer = &WorldUI->Selected;
+	interact_model *IModel = &WorldUI->IModel;
+	model *Model = ModelsArr + IModel->ID;
+
+	// TODO: Define pos. as common
+	tool_type ToolType = (tool_type)Tools->Type;
+	if (ToolType == ToolType_Rotate ||
+		ToolType == ToolType_Translate ||
+		ToolType == ToolType_Scale)
+	{
+		Tools->Rotate.CenterPos = ComputeAveragePos(Model, SelectBuffer, IModel->Target);
+	}
+
+	Tools->IsInit = true;
+}
+
 internal void inline
 UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
+	editor_world_ui *WorldUI = &Editor->WorldUI;
+	tools *Tools = &WorldUI->Tools;
+
+	// TODO: Extend
+	if (Tools->IsInit)
+	{
+		InitTools(WorldUI, Tools, Editor->Models);
+	}
+
+	switch (Tools->Type)
+	{
+		case ToolType_Rotate:
+		{
+			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh);
+		} break;
+		case ToolType_Scale:
+		{
+			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 1, 0));
+		} break;
+		case ToolType_Translate:
+		{
+			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 0, 1));
+		} break;
+	}
 }
 
 inline b32
@@ -307,12 +391,11 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 
 	// TODO: Remove UpdateITarget conception?
 	
-	if (WorldUI->ITarget == UI_InteractionTarget_Model &&
-		WorldUI->UpdateITarget)
+	if (IsITargetEq(WorldUI->ITarget, Model) &&	WorldUI->UpdateModelInteraction)
 	{
 		UpdateModelInteractionElement(Editor, Input, RenderGroup);
 	}
-	else if (WorldUI->ITarget == UI_InteractionTarget_Tools)
+	else if (IsITargetEq(WorldUI->ITarget, Tools))
 	{
 		UpdateModelInteractionTools(Editor, Input, RenderGroup);
 	}
@@ -326,32 +409,36 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 			WorldUI->HotInteraction = WorldUI->NextHotInteraction;
 			if (IsDown(Input->MouseButtons[PlatformMouseButton_Left]))
 			{
-				WorldUI->UpdateITarget = false;
+				WorldUI->UpdateModelInteraction = false;
 				WorldUI->Interaction = WorldUI->HotInteraction;
 			}
 			else if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
 			{
-				WorldUI->UpdateITarget = true;
+				WorldUI->UpdateModelInteraction = true;
 			}
-			/*else if (WasDown(Input->MouseButtons[PlatformMouseButton_Right]))
+			else if (WasDown(Input->MouseButtons[PlatformMouseButton_Right]) &&
+				IsDown(Input->Shift))
 			{
-				if (IsITargetOnModel(WorldUI->ITarget))
+				if (IsITargetEq(WorldUI->ITarget, Model) &&
+					(WorldUI->Selected.Count ||
+					(WorldUI->IModel.Target == ModelTargetElement_Model)))
 				{
 					WorldUI->ITarget = UI_InteractionTarget_Tools;
 				}
-			}*/
+			}
 		} break;
 
 		case UI_InteractionType_Select:
 		{
 			if (WasDown(Input->MouseButtons[PlatformMouseButton_Left]))
 			{
-				WorldUI->UpdateITarget = true;
+				WorldUI->UpdateModelInteraction = true;
 				WorldUI->NextToExecute = WorldUI->Interaction;
 				ZeroStruct(WorldUI->Interaction);
 			}
 		} break;
 	}
+
 
 	WorldUI->ToExecute = WorldUI->NextToExecute;
 	ZeroStruct(WorldUI->NextToExecute);
