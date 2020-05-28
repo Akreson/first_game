@@ -364,7 +364,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	{
 		case ToolType_Rotate:
 		{
-			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh);
+			model *Model = Editor->Models + WorldUI->IModel.ID;
+			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, 
+				Tools->Rotate.CenterPos, Model->XAxis, Model->YAxis, Model->ZAxis);
 		} break;
 		case ToolType_Scale:
 		{

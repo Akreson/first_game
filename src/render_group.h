@@ -32,6 +32,8 @@ enum render_entry_type
 	RenderEntryType_render_entry_model,
 	RenderEntryType_render_entry_model_face,
 	RenderEntryType_render_entry_model_outline,
+	RenderEntryType_render_entry_tool_rotate,
+
 	RenderEntryType_render_entry_sphere,
 };
 
@@ -65,6 +67,19 @@ struct face_render_params
 	};
 
 	u8 SelectionFlags[2];
+};
+
+struct face_edge_params
+{
+	b8 Active01;
+	b8 Active12;
+	b8 Active03;
+	b8 Active23;
+
+	b8 Hot01;
+	b8 Hot12;
+	b8 Hot03;
+	b8 Hot23;
 };
 
 struct render_entry_header
@@ -116,17 +131,14 @@ struct render_model_face_vertex
 	v2 FaceSelParam;
 };
 
-struct face_edge_params
+struct render_entry_tool_rotate
 {
-	b8 Active01;
-	b8 Active12;
-	b8 Active03;
-	b8 Active23;
-
-	b8 Hot01;
-	b8 Hot12;
-	b8 Hot03;
-	b8 Hot23;
+	renderer_mesh Mesh;
+	v3 XAxis;
+	v3 YAxis;
+	v3 ZAxis;
+	v3 Pos;
+	// TODO: Add Selected param and rotate degre
 };
 
 struct render_group

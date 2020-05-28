@@ -307,6 +307,18 @@ struct static_mesh_program
 	GLuint ColorID;
 };
 
+struct rotate_tool_program
+{
+	GLuint ID;
+	GLuint ProjID;
+	GLuint TransformID;
+
+	GLuint XAxis;
+	GLuint YAxis;
+	GLuint ZAxis;
+	GLuint CenterPos;
+};
+
 struct opengl_renderer_info
 {
 	framebuffer_info MainFB;
@@ -322,6 +334,7 @@ struct opengl_renderer_info
 	model_color_pass_program ModelColorPassProg;
 	blur_program BlurProg;
 	outline_program OutlineProg;
+	rotate_tool_program RotateTools;
 
 	static_mesh_program StaticMeshProg;
 
@@ -335,3 +348,5 @@ struct opengl_renderer_info
 	//framebuffer_info Framebuffers[16];
 	//u32 FramebufferCount;
 };
+
+internal GLuint OpenGLCreateProgram(GLchar *HeaderCode, GLchar *VertexCode, GLchar *FragmentCode);

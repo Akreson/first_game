@@ -254,3 +254,16 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 	SphereEntry->Mesh = Mesh;
 	SphereEntry->Color = Color;
 }
+
+void
+PushRotateSphere(render_group *Group, renderer_mesh Mesh, v3 Pos, v3 XAxis, v3 YAxis, v3 ZAxis)
+{
+	game_render_commands *Commands = Group->Commands;
+	render_entry_tool_rotate *SphereEntry = (render_entry_tool_rotate *)PushRenderElement(Group, render_entry_tool_rotate);
+
+	SphereEntry->Mesh = Mesh;
+	SphereEntry->XAxis = XAxis;
+	SphereEntry->YAxis = YAxis;
+	SphereEntry->ZAxis = ZAxis;
+	SphereEntry->Pos = Pos;
+}

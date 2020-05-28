@@ -310,6 +310,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	WorldUI->MouseRay.Dir = Unproject(&RenderGroup, WorldUI->MouseP);
 	WorldUI->MouseRay.Pos = CameraOt;
 
+	// TODO: Before or after model submit??
 	EditorUIInteraction(Editor, Input, &RenderGroup);
 
 	for (u32 ModelIndex = 0;
