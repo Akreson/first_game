@@ -34,6 +34,8 @@ struct game_world_state
 
 };
 
+#define ROTATE_TOOLS_RADIUS 1.6f
+
 struct model_highlight_params
 {
 	v3 EdgeColor;

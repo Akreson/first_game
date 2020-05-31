@@ -255,7 +255,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 		Editor->WorldUI.UpdateModelInteraction = true;
 
-		CreateStaticSphere(Editor, 1.6f, 20, 20);
+		CreateStaticSphere(Editor, ROTATE_TOOLS_RADIUS, 35, 35);
 
 		GameState->IsInit = true;
 	}

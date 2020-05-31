@@ -241,6 +241,14 @@ operator*(v4 A, v4 B)
 	return Result;
 }
 
+// TODO: Improve for float
+inline f32
+Abs(f32 A)
+{
+	f32 Result = A < 0 ? -A : A;
+	return Result;
+}
+
 inline f32
 Square(f32 A)
 {
@@ -605,4 +613,31 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 	f32 tMax = MIN(MIN(MAX(tMinV.x, tMaxV.x), MAX(tMinV.y, tMaxV.y)), MAX(tMinV.z, tMaxV.z));
 
 	return !((tMax < 0) || (tMin > tMax));
+}
+
+b32
+RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
+{
+	b32 Result = false;
+
+	v3 CRP = Center - Ray.Pos;
+	f32 A = Dot(CRP, Ray.Dir);
+	
+	if (A > 0)
+	{
+		f32 DSq = Dot(CRP, CRP) - (A * A);
+		f32 RadiusSq = Square(Radius);
+		if (DSq <= RadiusSq)
+		{
+			Result = true;
+			if (ResultP)
+			{
+				f32 tToRay = SquareRoot(RadiusSq - DSq);
+				f32 tRay = A - tToRay;
+				*ResultP = Ray.Pos + (Ray.Dir * tRay);
+			}
+		}
+	}
+
+	return Result;
 }

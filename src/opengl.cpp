@@ -356,12 +356,15 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// NOTE: Seems i have bug with this option when they enable (image get staking)
+	// When enable only within model rendred staking disappear.
+	// Maybe broblem only occur with framebuffer rendering
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
-	//glFrontFace(GL_CCW);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
 
 	glBindVertexArray(OpenGL.VertexBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
@@ -421,6 +424,10 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 			case RenderEntryType_render_entry_model:
 			{
+				//glEnable(GL_CULL_FACE);
+				//glCullFace(GL_BACK);
+				//glFrontFace(GL_CCW);
+
 				render_entry_model *ModelEntry = (render_entry_model *)Data;
 				BufferOffset += sizeof(render_entry_model);
 
@@ -441,6 +448,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(0);
 
 				UseProgramEnd(&OpenGL.ModelProg);
+				//glDisable(GL_CULL_FACE);
 			} break;
 
 			case RenderEntryType_render_entry_tool_rotate:

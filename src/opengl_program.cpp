@@ -386,14 +386,6 @@ CompileOutlinePassProgram(outline_program *Prog)
 	uniform sampler2D BlurTex;
 	uniform sampler2D MainTex;
 	uniform vec3 OutlineColor;
-
-	float when_neq(vec3 x, vec3 y) {
-	  return abs(sign(x - y)).x;
-	}
-
-	float when_neq(float x, float y) {
-	  return abs(sign(x - y));
-	}
 	
 	void main()
 	{
@@ -487,8 +479,7 @@ UseProgramEnd(static_mesh_program *Prog)
 	glUseProgram(0);
 }
 
-// TODO: Make alpha work in proper way
-// TODO: Add another axis
+// TODO: Make alpha work in proper way?
 internal void
 CompileRotateToolProgram(rotate_tool_program *Prog)
 {
@@ -536,11 +527,27 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 
 	void main()
 	{
+		vec3 Red = vec3(1.0f, 0, 0);
+		vec3 Green = vec3(0, 1.0f, 0);
+		vec3 Blue = vec3(0, 0, 1.0f);
 		float Thickness = 0.01f;
+		
 		vec3 DirFromCenter = normalize(PointOnSphere);
+		float XDotP = abs(dot(XAxis, DirFromCenter));
 		float YDotP = abs(dot(YAxis, DirFromCenter));
+		float ZDotP = abs(dot(ZAxis, DirFromCenter));
 
-		FragColor = vec4(0, 1.0f, 0, WhenLt(YDotP, Thickness));
+		float XAlpha = WhenLt(XDotP, Thickness);
+		float YAlpha = WhenLt(YDotP, Thickness);
+		float ZAlpha = WhenLt(ZDotP, Thickness);
+		float FinalAlpha = max(XAlpha, max(YAlpha, ZAlpha));
+		
+		vec3 FinalColor = (Red * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha);
+		FinalColor += (Green * YAlpha) * (1.0f - ZAlpha);
+		FinalColor += Blue * ZAlpha;
+		FinalColor *= FinalAlpha;
+
+		FragColor = vec4(FinalColor, FinalAlpha);
 	}
 	)FOO";
 

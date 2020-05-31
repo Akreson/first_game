@@ -131,7 +131,6 @@ GetEdgeFaceParams(face_render_params FaceParam)
 
 	return Result;
 }
-
 #undef IsHaveMatch(A, B)
 
 internal inline render_model_face_vertex

@@ -343,6 +343,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 		ToolType == ToolType_Scale)
 	{
 		Tools->Rotate.CenterPos = ComputeAveragePos(Model, SelectBuffer, IModel->Target);
+		Tools->Rotate.Radius = ROTATE_TOOLS_RADIUS;
 	}
 
 	Tools->IsInit = true;
@@ -355,18 +356,31 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	tools *Tools = &WorldUI->Tools;
 
 	// TODO: Extend
-	if (Tools->IsInit)
+	if (!Tools->IsInit)
 	{
 		InitTools(WorldUI, Tools, Editor->Models);
 	}
 
+	ray_params MouseRay = WorldUI->MouseRay;
 	switch (Tools->Type)
 	{
 		case ToolType_Rotate:
 		{
+			rotate_tools *RotateTool = &Tools->Rotate;
 			model *Model = Editor->Models + WorldUI->IModel.ID;
+			
+			v3 PointOnSphere;
+			if (RaySphereIntersect(MouseRay, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
+			{
+				v3 DirFromCenter = Normalize(PointOnSphere - RotateTool->CenterPos);
+				f32 XDotP = Abs(Dot(Model->XAxis, DirFromCenter));
+				f32 YDotP = Abs(Dot(Model->YAxis, DirFromCenter));
+				f32 ZDotP = Abs(Dot(Model->ZAxis, DirFromCenter));
+				// TODO: Complete
+			}
+
 			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, 
-				Tools->Rotate.CenterPos, Model->XAxis, Model->YAxis, Model->ZAxis);
+				RotateTool->CenterPos, Model->XAxis, Model->YAxis, Model->ZAxis);
 		} break;
 		case ToolType_Scale:
 		{
