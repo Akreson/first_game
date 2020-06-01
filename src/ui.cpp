@@ -110,6 +110,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 		if (IsITargetEq(WorldUI->ITarget, Tools))
 		{
 			WorldUI->ITarget = UI_InteractionTarget_Model;
+			WorldUI->Tools.IsInit = false;
 		}
 		else if (WorldUI->Selected.Count)
 		{
@@ -343,7 +344,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 		ToolType == ToolType_Scale)
 	{
 		Tools->Rotate.CenterPos = ComputeAveragePos(Model, SelectBuffer, IModel->Target);
-		Tools->Rotate.Radius = ROTATE_TOOLS_RADIUS;
+		Tools->Rotate.Radius = ROTATE_TOOLS_DIAMETER / 2.0f;
 	}
 
 	Tools->IsInit = true;
@@ -368,6 +369,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
 			model *Model = Editor->Models + WorldUI->IModel.ID;
+			v3 AxisMask = V3(0);
 			
 			v3 PointOnSphere;
 			if (RaySphereIntersect(MouseRay, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
@@ -376,11 +378,23 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				f32 XDotP = Abs(Dot(Model->XAxis, DirFromCenter));
 				f32 YDotP = Abs(Dot(Model->YAxis, DirFromCenter));
 				f32 ZDotP = Abs(Dot(Model->ZAxis, DirFromCenter));
-				// TODO: Complete
+
+				if (ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+				{
+					AxisMask.z = 1.0f;
+				}
+				else if (YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+				{
+					AxisMask.y = 1.0f;
+				}
+				else if (XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+				{
+					AxisMask.x = 1.0f;
+				}
 			}
 
-			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, 
-				RotateTool->CenterPos, Model->XAxis, Model->YAxis, Model->ZAxis);
+			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
+				Model->XAxis, Model->YAxis, Model->ZAxis, AxisMask);
 		} break;
 		case ToolType_Scale:
 		{

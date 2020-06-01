@@ -134,9 +134,9 @@ struct render_model_face_vertex
 struct render_entry_tool_rotate
 {
 	renderer_mesh Mesh;
-	v3 XAxis;
-	v3 YAxis;
-	v3 ZAxis;
+	v4 XAxis;
+	v4 YAxis;
+	v4 ZAxis;
 	v3 Pos;
 	// TODO: Add Selected param and rotate degre
 };

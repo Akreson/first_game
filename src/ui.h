@@ -83,7 +83,7 @@ struct interact_model
 	element_ray_result Edge;
 };
 
-#define AXIS_INTERACT_THRESHOLD 0.01f
+#define RTOOLS_AXIS_INTERACT_THRESHOLD 0.02f
 struct rotate_tools
 {
 	v3 CenterPos;

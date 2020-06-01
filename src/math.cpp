@@ -96,6 +96,17 @@ V4(v3 A, f32 w)
 	return Result;
 }
 
+inline v4
+V4(v2 A, f32 z, f32 w)
+{
+	v4 Result;
+	Result.xy = A;
+	Result.z = z;
+	Result.w = w;
+
+	return Result;
+}
+
 inline v2
 operator-(v2 A, v2 B)
 {
@@ -615,6 +626,7 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 	return !((tMax < 0) || (tMin > tMax));
 }
 
+#if 1
 b32
 RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 {
@@ -625,7 +637,8 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 	
 	if (A > 0)
 	{
-		f32 DSq = Dot(CRP, CRP) - (A * A);
+		f32 DSq = Dot(CRP, CRP) - Square(A);
+		f32 D = SquareRoot(DSq);
 		f32 RadiusSq = Square(Radius);
 		if (DSq <= RadiusSq)
 		{
@@ -638,6 +651,22 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 			}
 		}
 	}
-
 	return Result;
 }
+// TODO: Use this version?
+#else
+b32
+RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
+{
+	v3 m = Ray.Pos - Center;
+	f32 b = Dot(m, Ray.Dir);
+	f32 c = Dot(m, m) - Square(Radius);
+	if (c > 0 && b > 0) return false;
+	f32 discr = Square(b) - c;
+	if (discr < 0) return false;
+	f32 t = -b - SquareRoot(discr);
+	if (t < 0) t = 0.0;
+	*ResultP = Ray.Pos + (Ray.Dir * t);
+	return true;
+}
+#endif

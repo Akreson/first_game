@@ -34,7 +34,7 @@ struct game_world_state
 
 };
 
-#define ROTATE_TOOLS_RADIUS 1.6f
+#define ROTATE_TOOLS_DIAMETER 1.5f
 
 struct model_highlight_params
 {

@@ -502,9 +502,9 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	uniform vec3 XAxis;
-	uniform vec3 YAxis;
-	uniform vec3 ZAxis;
+	uniform vec4 XAxis;
+	uniform vec4 YAxis;
+	uniform vec4 ZAxis;
 	uniform vec3 CenterPos;
 	
 	in vec3 PointOnSphere;
@@ -527,15 +527,15 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 
 	void main()
 	{
-		vec3 Red = vec3(1.0f, 0, 0);
-		vec3 Green = vec3(0, 1.0f, 0);
-		vec3 Blue = vec3(0, 0, 1.0f);
 		float Thickness = 0.01f;
+		vec3 Red = mix(vec3(0.65f, 0, 0), vec3(1.0f, 0, 0), XAxis.w);
+		vec3 Green = mix(vec3(0, 0.65f, 0), vec3(0, 1.0f, 0), YAxis.w);
+		vec3 Blue = mix(vec3(0, 0, 0.65f), vec3(0, 0, 1.0f), ZAxis.w);
 		
 		vec3 DirFromCenter = normalize(PointOnSphere);
-		float XDotP = abs(dot(XAxis, DirFromCenter));
-		float YDotP = abs(dot(YAxis, DirFromCenter));
-		float ZDotP = abs(dot(ZAxis, DirFromCenter));
+		float XDotP = abs(dot(XAxis.xyz, DirFromCenter));
+		float YDotP = abs(dot(YAxis.xyz, DirFromCenter));
+		float ZDotP = abs(dot(ZAxis.xyz, DirFromCenter));
 
 		float XAlpha = WhenLt(XDotP, Thickness);
 		float YAlpha = WhenLt(YDotP, Thickness);
@@ -545,7 +545,6 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		vec3 FinalColor = (Red * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha);
 		FinalColor += (Green * YAlpha) * (1.0f - ZAlpha);
 		FinalColor += Blue * ZAlpha;
-		FinalColor *= FinalAlpha;
 
 		FragColor = vec4(FinalColor, FinalAlpha);
 	}
@@ -572,9 +571,9 @@ UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat, render
 	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
 	glUniformMatrix4fv(Prog->TransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 
-	glUniform3fv(Prog->XAxis, 1, (const GLfloat *)&Tools->XAxis);
-	glUniform3fv(Prog->YAxis, 1, (const GLfloat *)&Tools->YAxis);
-	glUniform3fv(Prog->ZAxis, 1, (const GLfloat *)&Tools->ZAxis);
+	glUniform4fv(Prog->XAxis, 1, (const GLfloat *)&Tools->XAxis);
+	glUniform4fv(Prog->YAxis, 1, (const GLfloat *)&Tools->YAxis);
+	glUniform4fv(Prog->ZAxis, 1, (const GLfloat *)&Tools->ZAxis);
 	glUniform3fv(Prog->CenterPos, 1, (const GLfloat *)&Tools->Pos);
 }
 

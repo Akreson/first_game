@@ -54,9 +54,9 @@ Unproject(render_group *Group, v2 Mouse)
 	ClipPos.zw = V2(-1.0f, 1.0f);
 
 	v4 CameraP = ClipPos * Group->InvPerspective;
-	v4 WorldRayDir = V4(CameraP.xyz, 0) * Group->InvCamera;
+	v4 WorldRayDir = V4(CameraP.xy, -1.0f, 0) * Group->InvCamera;
 
-	return WorldRayDir.xyz;
+	return Normalize(WorldRayDir.xyz);
 }
 
 void *
@@ -255,14 +255,15 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 }
 
 void
-PushRotateSphere(render_group *Group, renderer_mesh Mesh, v3 Pos, v3 XAxis, v3 YAxis, v3 ZAxis)
+PushRotateSphere(render_group *Group, renderer_mesh Mesh, v3 Pos,
+	v3 XAxis, v3 YAxis, v3 ZAxis, v3 AxisHotMask)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_tool_rotate *SphereEntry = (render_entry_tool_rotate *)PushRenderElement(Group, render_entry_tool_rotate);
 
 	SphereEntry->Mesh = Mesh;
-	SphereEntry->XAxis = XAxis;
-	SphereEntry->YAxis = YAxis;
-	SphereEntry->ZAxis = ZAxis;
+	SphereEntry->XAxis = V4(XAxis, AxisHotMask.x);
+	SphereEntry->YAxis = V4(YAxis, AxisHotMask.y);
+	SphereEntry->ZAxis = V4(ZAxis, AxisHotMask.z);
 	SphereEntry->Pos = Pos;
 }

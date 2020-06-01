@@ -327,7 +327,7 @@ AddStaticMesh(game_editor_state *Editor)
 // NOTE: Using sphere method
 void
 CreateStaticSphere(memory_arena *MainArena, memory_arena *TranArena, static_mesh *Sphere,
-	f32 Radius, u32 StackCount, u32 SliceCount)
+	f32 Diameter, u32 StackCount, u32 SliceCount)
 {
 	Assert(StackCount >= 3);
 	Assert(SliceCount >= 3);
@@ -339,19 +339,19 @@ CreateStaticSphere(memory_arena *MainArena, memory_arena *TranArena, static_mesh
 
 	f32 Theta = Pi32 / (StackCount - 1);
 	f32 Phi = Tau32 / SliceCount;
-	f32 HalfRadius = Radius / 2.0f;
+	f32 Radius = Diameter / 2.0f;
 
 	// NOTE: Generate vertecis
 
 	v3 *VertArr = (v3 *)PushSize(TranArena, VertexArrSize);
 	v3 *Vert = VertArr;
-	*Vert++ = V3(0, -HalfRadius, 0);
+	*Vert++ = V3(0, -Radius, 0);
 	for (u32 StackIndex = 1;
 		StackIndex < (StackCount - 1);
 		++StackIndex)
 	{
-		f32 StackRadius = Sin(Theta * (f32)StackIndex) * HalfRadius;
-		f32 YStackPos = -(Cos(Theta * StackIndex) * HalfRadius);
+		f32 StackRadius = Sin(Theta * (f32)StackIndex) * Radius;
+		f32 YStackPos = -(Cos(Theta * StackIndex) * Radius);
 
 		for (u32 SliceIndex = 0;
 			SliceIndex < SliceCount;
@@ -364,7 +364,7 @@ CreateStaticSphere(memory_arena *MainArena, memory_arena *TranArena, static_mesh
 			*Vert++ = V;
 		}
 	}
-	*Vert++ = V3(0, HalfRadius, 0);
+	*Vert++ = V3(0, Radius, 0);
 
 	// NOTE: Generate indecis
 
