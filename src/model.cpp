@@ -597,11 +597,10 @@ RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResu
 		f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
 		if (DotRayPlane < 0)
 		{
-			f32 tPlaneIntersect = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayPlane);
-
-			if ((tPlaneIntersect != 0) && (tPlaneIntersect > 0))
+			f32 tRay = RayPlaneIntersect(Ray, Plane, DotRayPlane);
+			if (tRay >= 0)
 			{
-				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tPlaneIntersect);
+				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tRay);
 
 				b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
 				if (!HitTest)

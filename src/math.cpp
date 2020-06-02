@@ -626,6 +626,13 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 	return !((tMax < 0) || (tMin > tMax));
 }
 
+inline f32
+RayPlaneIntersect(ray_params Ray, plane_params Plane, f32 DotRayDPlaneN)
+{
+	f32 tResult = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayDPlaneN);
+	return tResult;
+}
+
 #if 1
 b32
 RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)

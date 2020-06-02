@@ -502,10 +502,11 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	uniform vec4 XAxis;
-	uniform vec4 YAxis;
-	uniform vec4 ZAxis;
+	uniform vec3 XAxis;
+	uniform vec3 YAxis;
+	uniform vec3 ZAxis;
 	uniform vec3 CenterPos;
+	uniform vec4 AxisState; // NOTE: _w_ - active or not
 	
 	in vec3 PointOnSphere;
 
@@ -528,9 +529,13 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	void main()
 	{
 		float Thickness = 0.01f;
-		vec3 Red = mix(vec3(0.65f, 0, 0), vec3(1.0f, 0, 0), XAxis.w);
-		vec3 Green = mix(vec3(0, 0.65f, 0), vec3(0, 1.0f, 0), YAxis.w);
-		vec3 Blue = mix(vec3(0, 0, 0.65f), vec3(0, 0, 1.0f), ZAxis.w);
+		vec3 Red = mix(vec3(0.65f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
+		vec3 Green = mix(vec3(0, 0.65f, 0), vec3(0, 1.0f, 0), AxisState.y);
+		vec3 Blue = mix(vec3(0, 0, 0.65f), vec3(0, 0, 1.0f), AxisState.z);
+
+		Red = mix(Red, vec3(0.86f, 0.65f, 0.2f), AxisState.x*AxisState.w);
+		Green = mix(Green, vec3(0.86f, 0.65f, 0.2f), AxisState.y*AxisState.w);
+		Blue = mix(Blue, vec3(0.86f, 0.65f, 0.2f), AxisState.z*AxisState.w);
 		
 		vec3 DirFromCenter = normalize(PointOnSphere);
 		float XDotP = abs(dot(XAxis.xyz, DirFromCenter));
@@ -545,6 +550,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		vec3 FinalColor = (Red * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha);
 		FinalColor += (Green * YAlpha) * (1.0f - ZAlpha);
 		FinalColor += Blue * ZAlpha;
+		//FinalColor = mix(FinalColor, vec3(0.86f, 0.65f, 0.2f), AxisActivityState.w);
 
 		FragColor = vec4(FinalColor, FinalAlpha);
 	}
@@ -559,6 +565,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	Prog->XAxis = glGetUniformLocation(ProgID, "XAxis");
 	Prog->YAxis = glGetUniformLocation(ProgID, "YAxis");
 	Prog->ZAxis = glGetUniformLocation(ProgID, "ZAxis");
+	Prog->AxisActivityState = glGetUniformLocation(ProgID, "AxisState");
 	Prog->CenterPos = glGetUniformLocation(ProgID, "CenterPos");
 	glUseProgram(0);
 }
@@ -571,9 +578,10 @@ UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat, render
 	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
 	glUniformMatrix4fv(Prog->TransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 
-	glUniform4fv(Prog->XAxis, 1, (const GLfloat *)&Tools->XAxis);
-	glUniform4fv(Prog->YAxis, 1, (const GLfloat *)&Tools->YAxis);
-	glUniform4fv(Prog->ZAxis, 1, (const GLfloat *)&Tools->ZAxis);
+	glUniform3fv(Prog->XAxis, 1, (const GLfloat *)&Tools->XAxis);
+	glUniform3fv(Prog->YAxis, 1, (const GLfloat *)&Tools->YAxis);
+	glUniform3fv(Prog->ZAxis, 1, (const GLfloat *)&Tools->ZAxis);
+	glUniform4fv(Prog->AxisActivityState, 1, (const GLfloat *)&Tools->AxisActivityState);
 	glUniform3fv(Prog->CenterPos, 1, (const GLfloat *)&Tools->Pos);
 }
 

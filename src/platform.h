@@ -308,12 +308,19 @@ PlatformProcessButtonState(game_button_state *Button, b32 IsDownState)
 inline b32
 IsDown(game_button_state Button)
 {
-	b32 Result = (Button.EndedDown);
+	b32 Result = Button.EndedDown;
 	return Result;
 }
 
 inline b32
-IsGoDown(game_button_state Button)
+IsUp(game_button_state Button)
+{
+	b32 Result = !Button.EndedDown;
+	return Result;
+}
+
+inline b32
+WasUp(game_button_state Button)
 {
 	b32 Result = (Button.EndedDown && (Button.TransionState >= 1));
 	return Result;

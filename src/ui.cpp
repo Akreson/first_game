@@ -48,6 +48,7 @@ SetSelectInteraction(interact_model *IModel, u16 Target)
 	return Result;
 }
 
+// TODO: Make general
 inline ui_interaction
 SetSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0)
 {
@@ -105,7 +106,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 		}
 	}
 
-	if (IsKepDown(Input->Alt) && IsGoDown(Input->Shift))
+	if (IsKepDown(Input->Alt) && WasUp(Input->Shift))
 	{
 		if (IsITargetEq(WorldUI->ITarget, Tools))
 		{
@@ -353,6 +354,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 internal void inline
 UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
+	ui_interaction Interaction = {};
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	tools *Tools = &WorldUI->Tools;
 
@@ -362,34 +364,72 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		InitTools(WorldUI, Tools, Editor->Models);
 	}
 
-	ray_params MouseRay = WorldUI->MouseRay;
+	ray_params Ray = WorldUI->MouseRay;
 	switch (Tools->Type)
 	{
+		// TODO: Consider to add InteractPlane and AxisMask to rotate_tools struct!!!
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
 			model *Model = Editor->Models + WorldUI->IModel.ID;
-			v3 AxisMask = V3(0);
+			v4 AxisMask = V4(0);
 			
 			v3 PointOnSphere;
-			if (RaySphereIntersect(MouseRay, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
+			if (RaySphereIntersect(Ray, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
 			{
+				Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
+				Interaction.ID.ID[0] = ToolType_Rotate;
+
+				plane_params InteractPlane = {};
 				v3 DirFromCenter = Normalize(PointOnSphere - RotateTool->CenterPos);
 				f32 XDotP = Abs(Dot(Model->XAxis, DirFromCenter));
 				f32 YDotP = Abs(Dot(Model->YAxis, DirFromCenter));
 				f32 ZDotP = Abs(Dot(Model->ZAxis, DirFromCenter));
 
+				// TODO: Reduce code?
 				if (ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
 				{
 					AxisMask.z = 1.0f;
+					Interaction.ID.ID[1] = ToolsAxisID_ZAxis;
+					InteractPlane.N = Model->ZAxis;
+					InteractPlane.D = Dot(InteractPlane.N, RotateTool->CenterPos);
 				}
 				else if (YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
 				{
 					AxisMask.y = 1.0f;
+					Interaction.ID.ID[1] = ToolsAxisID_YAxis;
+					InteractPlane.N = Model->YAxis;
+					InteractPlane.D = Dot(InteractPlane.N, RotateTool->CenterPos);
 				}
 				else if (XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
 				{
 					AxisMask.x = 1.0f;
+					Interaction.ID.ID[1] = ToolsAxisID_XAxis;
+					InteractPlane.N = Model->XAxis;
+					InteractPlane.D = Dot(InteractPlane.N, RotateTool->CenterPos);
+				}
+
+				if (AreEqual(WorldUI->Interaction, Interaction))
+				{
+					AxisMask.w = 1.0f;
+
+					f32 DotRayPlane = Dot(Ray.Dir, InteractPlane.N);
+					f32 tRay = RayPlaneIntersect(Ray, InteractPlane, DotRayPlane);
+					//if (DotRayPlane == 0) // TODO: Handle this case
+					if (tRay >= 0)
+					{
+						v3 CurrentVector = Ray.Pos + (Ray.Dir + tRay);
+						CurrentVector = Normalize(CurrentVector - RotateTool->CenterPos);
+
+						if (WasUp(Input->MouseButtons[PlatformMouseButton_Left]))
+						{
+							RotateTool->BeginVector = CurrentVector;
+						}
+
+						f32 AngleBetween = Cos(Dot(RotateTool->BeginVector, CurrentVector));
+
+						// TODO: Complete
+					}
 				}
 			}
 
@@ -405,6 +445,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 0, 1));
 		} break;
 	}
+
+	WorldUI->NextHotInteraction = Interaction;
 }
 
 inline b32
@@ -467,6 +509,14 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 				ZeroStruct(WorldUI->Interaction);
 			}
 		} break;
+
+		default:
+		{
+			if (IsUp(Input->MouseButtons[PlatformMouseButton_Left]))
+			{
+				ZeroStruct(WorldUI->Interaction);
+			}
+		}
 	}
 
 

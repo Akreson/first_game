@@ -6,6 +6,8 @@ enum ui_intercation_target
 
 	UI_InteractionTarget_Model,
 	UI_InteractionTarget_Tools,
+
+	UI_InteractionTarget_Count
 };
 
 enum model_target_element
@@ -21,7 +23,7 @@ enum model_target_element
 
 enum tool_type
 {
-	//ToolType_None,
+	//ToolType_None, // TODO: Use?
 
 	ToolType_Rotate,
 	ToolType_Translate,
@@ -35,6 +37,9 @@ enum ui_interaction_type
 	UI_InteractionType_None,
 
 	UI_InteractionType_Select,
+	UI_InteractionType_Move,
+
+	UI_InteractionType_Count,
 };
 
 // TODO: Remove?
@@ -84,9 +89,19 @@ struct interact_model
 };
 
 #define RTOOLS_AXIS_INTERACT_THRESHOLD 0.02f
+enum tools_axis_id
+{
+	ToolsAxisID_XAxis,
+	ToolsAxisID_YAxis,
+	ToolsAxisID_ZAxis,
+
+	ToolsAxisID_Count,
+};
+
 struct rotate_tools
 {
 	v3 CenterPos;
+	v3 BeginVector;
 	f32 Radius;
 };
 

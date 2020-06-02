@@ -316,6 +316,7 @@ struct rotate_tool_program
 	GLuint XAxis;
 	GLuint YAxis;
 	GLuint ZAxis;
+	GLuint AxisActivityState;
 	GLuint CenterPos;
 };
 
