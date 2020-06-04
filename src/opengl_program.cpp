@@ -109,9 +109,6 @@ CompileModelProgram(model_program *Prog)
 	// TODO: Compute color for selected edge in right way
 
 	const char *FragmentCode = R"FOO(
-	#define FaceSelectionType_Hot 1.0f
-	#define FaceSelectionType_Select 2.0f
-
 	out vec4 FragColor;
 
 	uniform vec4 Color;
@@ -529,9 +526,9 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	void main()
 	{
 		float Thickness = 0.01f;
-		vec3 Red = mix(vec3(0.65f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
-		vec3 Green = mix(vec3(0, 0.65f, 0), vec3(0, 1.0f, 0), AxisState.y);
-		vec3 Blue = mix(vec3(0, 0, 0.65f), vec3(0, 0, 1.0f), AxisState.z);
+		vec3 Red = mix(vec3(0.6f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
+		vec3 Green = mix(vec3(0, 0.6f, 0), vec3(0, 1.0f, 0), AxisState.y);
+		vec3 Blue = mix(vec3(0, 0, 0.6f), vec3(0, 0, 1.0f), AxisState.z);
 
 		Red = mix(Red, vec3(0.86f, 0.65f, 0.2f), AxisState.x*AxisState.w);
 		Green = mix(Green, vec3(0.86f, 0.65f, 0.2f), AxisState.y*AxisState.w);
@@ -550,7 +547,6 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		vec3 FinalColor = (Red * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha);
 		FinalColor += (Green * YAlpha) * (1.0f - ZAlpha);
 		FinalColor += Blue * ZAlpha;
-		//FinalColor = mix(FinalColor, vec3(0.86f, 0.65f, 0.2f), AxisActivityState.w);
 
 		FragColor = vec4(FinalColor, FinalAlpha);
 	}

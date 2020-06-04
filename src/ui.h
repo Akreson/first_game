@@ -91,6 +91,8 @@ struct interact_model
 #define RTOOLS_AXIS_INTERACT_THRESHOLD 0.02f
 enum tools_axis_id
 {
+	ToolsAxisID_None,
+
 	ToolsAxisID_XAxis,
 	ToolsAxisID_YAxis,
 	ToolsAxisID_ZAxis,
@@ -98,17 +100,24 @@ enum tools_axis_id
 	ToolsAxisID_Count,
 };
 
+// TODO: Pack smarter?
 struct rotate_tools
 {
+	plane_params InteractPlane;
+	
+	// NOTE: Persistent
 	v3 CenterPos;
-	v3 BeginVector;
 	f32 Radius;
+
+	v3 BeginVector;
+	v4 AxisMask;
+	tools_axis_id InteractAxis;
 };
 
 struct tools
 {
-	u32 Type;
-	b32 IsInit;
+	u16 Type;
+	b16 IsInit;
 
 	union
 	{
