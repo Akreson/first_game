@@ -24,9 +24,30 @@ struct plane_params
 };
 
 inline f32
+AngleToRadian(f32 Angle)
+{
+	f32 Result = Angle * (3.14f / 180.0f);
+	return Result;
+}
+
+inline f32
+RadianToAngle(f32 Radian)
+{
+	f32 Result = Radian * (180.0f / 3.14f);
+	return Result;
+}
+
+inline f32
 Cos(f32 Angle)
 {
 	f32 Result = cosf(Angle);
+	return Result;
+}
+
+inline f32
+ACos(f32 Angle)
+{
+	f32 Result = acosf(Angle);
 	return Result;
 }
 

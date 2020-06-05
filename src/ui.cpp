@@ -330,11 +330,16 @@ ComputeAveragePos(model *Model, selected_elements_buffer *SelectBuffer, u32 Elem
 	return Result;
 }
 
+internal void
+ApplyTransformForAllFaces(model *Model, selected_elements_buffer *SelectBuffer,
+	model_target_element ElementTarget, m4x4 Transform)
+{
+}
+
 void
 ApplyTransformForAllElement(model *Model, selected_elements_buffer *SelectBuffer,
 	model_target_element ElementTarget, m4x4 Transform)
-{
-	
+{	
 	switch (ElementTarget)
 	{
 		case ModelTargetElement_Model:
@@ -378,10 +383,32 @@ GetRotateMatrixFormAxisID(f32 Angle, tools_axis_id ID)
 	return Result;
 }
 
-// TODO: Get rid of _Input_?
+internal inline void
+UpdateModelAxis(model *Model, tools_axis_id ID, m4x4 Rotate)
+{
+	switch (ID)
+	{
+		case ToolsAxisID_XAxis:
+		{
+			Model->YAxis = Model->YAxis * Rotate;
+			Model->ZAxis = Model->ZAxis * Rotate;
+		} break;
+		case ToolsAxisID_YAxis:
+		{
+			Model->XAxis = Model->XAxis * Rotate;
+			Model->ZAxis = Model->ZAxis * Rotate;
+		} break;
+		case ToolsAxisID_ZAxis:
+		{
+			Model->XAxis = Model->XAxis * Rotate;
+			Model->YAxis = Model->YAxis * Rotate;
+		} break;
+	}
+}
+
 internal void
 ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *SelectBuffer,
-	ray_params Ray, model_target_element ElementTarget, game_input *Input)
+	ray_params Ray, model_target_element ElementTarget)
 {
 	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
 	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
@@ -391,17 +418,31 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 		v3 CurrentVector = Ray.Pos + (Ray.Dir + tRay);
 		CurrentVector = Normalize(CurrentVector - Tool->CenterPos);
 
-		if (WasUp(Input->MouseButtons[PlatformMouseButton_Left]))
+		// TODO: Move to set _move_ interaction?
+		if (!Tool->EnterActiveState)
 		{
+			Tool->EnterActiveState = true;
 			Tool->BeginVector = CurrentVector;
+			Tool->PrevAngle = 0;
 		}
 
-		f32 AngleBetween = Cos(Dot(Tool->BeginVector, CurrentVector));
+		f32 AngleBetween = Dot(Tool->BeginVector, CurrentVector);
+		AngleBetween = ACos(AngleBetween);
+		f32 AngleDiff = -(Tool->PrevAngle - AngleBetween);
 
-		m4x4 Rotate = GetRotateMatrixFormAxisID(AngleBetween, Tool->InteractAxis);
+		if (AngleDiff != 0)
+		{
+			m4x4 Rotate = GetRotateMatrixFormAxisID(AngleDiff, Tool->InteractAxis);
 		
-		// TODO: Complete
-		//ApplyTransformForAllElement()
+			if (ElementTarget == ModelTargetElement_Model)
+			{
+				UpdateModelAxis(Model, Tool->InteractAxis, Rotate);
+			}
+			// TODO: Complete
+			//ApplyTransformForAllElement()
+
+			Tool->PrevAngle = AngleBetween;
+		}
 	}
 }
 
@@ -419,6 +460,8 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 		ToolType == ToolType_Translate ||
 		ToolType == ToolType_Scale)
 	{
+		Tools->Rotate = {};
+
 		Tools->Rotate.CenterPos = ComputeAveragePos(Model, SelectBuffer, IModel->Target);
 		Tools->Rotate.Radius = ROTATE_TOOLS_DIAMETER / 2.0f;
 	}
@@ -504,7 +547,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				if (AreEqual(WorldUI->Interaction, Interaction))
 				{
 					ProcessRotateTool(RotateTool, Model, &WorldUI->Selected, Ray,
-						(model_target_element)WorldUI->IModel.Target, Input);
+						(model_target_element)WorldUI->IModel.Target);
 				}
 				else
 				{
@@ -512,6 +555,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					ZeroStruct(RotateTool->BeginVector);
 					ZeroStruct(RotateTool->AxisMask);
 					RotateTool->InteractAxis = ToolsAxisID_None;
+					RotateTool->EnterActiveState = false;
 				}
 			}
 

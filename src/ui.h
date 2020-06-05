@@ -110,8 +110,10 @@ struct rotate_tools
 	f32 Radius;
 
 	v3 BeginVector;
+	f32 PrevAngle;
 	v4 AxisMask;
 	tools_axis_id InteractAxis;
+	b8 EnterActiveState;
 };
 
 struct tools
