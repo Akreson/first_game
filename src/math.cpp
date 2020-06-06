@@ -37,6 +37,45 @@ RadianToAngle(f32 Radian)
 	return Result;
 }
 
+// TODO: Improve for float
+inline f32
+Abs(f32 A)
+{
+	f32 Result = A < 0 ? -A : A;
+	return Result;
+}
+
+inline f32
+Square(f32 A)
+{
+	f32 Result = A * A;
+	return Result;
+}
+
+inline f32
+Clamp(f32 Min, f32 Value, f32 Max)
+{
+	f32 Result = Value;
+
+	if (Result < Min)
+	{
+		Result = Min;
+	}
+	else if (Result > Max)
+	{
+		Result = Max;
+	}
+
+	return Result;
+}
+
+inline f32
+Clamp01(f32 Value)
+{
+	f32 Result = Clamp(0, Value, 1.0f);
+	return Result;
+}
+
 inline f32
 Cos(f32 Angle)
 {
@@ -260,6 +299,33 @@ operator+(v3 A, f32 B)
 	return Result;
 }
 
+internal inline u32
+GetCmpVectorMas(v3 A, v3 B)
+{
+	__m128 _A = _mm_set_ps(0, A.z, A.y, A.x);
+	__m128 _B = _mm_set_ps(0, B.z, B.y, B.x);
+	__m128 CmpResult = _mm_cmpeq_ps(_A, _B);
+	u32 Mask = _mm_movemask_ps(CmpResult);
+
+	return Mask;
+}
+
+inline b32
+operator==(v3 A, v3 B)
+{
+	u32 Mask = GetCmpVectorMas(A, B);
+	b32 Result = (Mask == 0xF) ? true : false;
+	return Result;
+}
+
+inline b32
+operator!=(v3 A, v3 B)
+{
+	u32 Mask = GetCmpVectorMas(A, B);
+	b32 Result = (Mask == 0xF) ? false : true;
+	return Result;
+}
+
 // TODO: use sse mul?
 inline v4
 operator*(v4 A, v4 B)
@@ -270,21 +336,6 @@ operator*(v4 A, v4 B)
 	Result.z = A.z * B.z;
 	Result.w = A.w * B.w;
 
-	return Result;
-}
-
-// TODO: Improve for float
-inline f32
-Abs(f32 A)
-{
-	f32 Result = A < 0 ? -A : A;
-	return Result;
-}
-
-inline f32
-Square(f32 A)
-{
-	f32 Result = A * A;
 	return Result;
 }
 

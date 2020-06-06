@@ -109,8 +109,11 @@ struct rotate_tools
 	v3 CenterPos;
 	f32 Radius;
 
+	v3 OnSphere;
+
+
 	v3 BeginVector;
-	f32 PrevAngle;
+	v3 PrevVector;
 	v4 AxisMask;
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;

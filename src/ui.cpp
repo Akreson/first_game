@@ -406,6 +406,7 @@ UpdateModelAxis(model *Model, tools_axis_id ID, m4x4 Rotate)
 	}
 }
 
+// TODO: Implement drawing progres angle
 internal void
 ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *SelectBuffer,
 	ray_params Ray, model_target_element ElementTarget)
@@ -423,26 +424,35 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 		{
 			Tool->EnterActiveState = true;
 			Tool->BeginVector = CurrentVector;
-			Tool->PrevAngle = 0;
+			Tool->PrevVector = CurrentVector;
 		}
 
-		f32 AngleBetween = Dot(Tool->BeginVector, CurrentVector);
-		AngleBetween = ACos(AngleBetween);
-		f32 AngleDiff = -(Tool->PrevAngle - AngleBetween);
 
-		if (AngleDiff != 0)
+		if (Tool->PrevVector != CurrentVector)
 		{
-			m4x4 Rotate = GetRotateMatrixFormAxisID(AngleDiff, Tool->InteractAxis);
-		
-			if (ElementTarget == ModelTargetElement_Model)
-			{
-				UpdateModelAxis(Model, Tool->InteractAxis, Rotate);
-			}
-			// TODO: Complete
-			//ApplyTransformForAllElement()
+			f32 RotateDir = Dot(Cross(Tool->PrevVector, CurrentVector), Tool->InteractPlane.N);
+			RotateDir = RotateDir / Abs(RotateDir);
 
-			Tool->PrevAngle = AngleBetween;
+			f32 RotateSpeed = 4.0f;
+			f32 DotAngle = Dot(CurrentVector, Tool->PrevVector);
+			DotAngle = Clamp(-1.0f, DotAngle, 1.0f);
+			f32 AngleBetween = (ACos(DotAngle) * RotateDir) * RotateSpeed;
+
+			if (AngleBetween != 0)
+			{
+				m4x4 Rotate = GetRotateMatrixFormAxisID(AngleBetween, Tool->InteractAxis);
+		
+				if (ElementTarget == ModelTargetElement_Model)
+				{
+					UpdateModelAxis(Model, Tool->InteractAxis, Rotate);
+				}
+				// TODO: Complete
+				//ApplyTransformForAllElement()
+
+			}
 		}
+
+		Tool->PrevVector = CurrentVector;
 	}
 }
 
