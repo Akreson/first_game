@@ -416,7 +416,7 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 	//if (DotRayPlane == 0) // TODO: Handle this case
 	if (tRay >= 0)
 	{
-		v3 CurrentVector = Ray.Pos + (Ray.Dir + tRay);
+		v3 CurrentVector = Ray.Pos + (Ray.Dir * tRay);
 		CurrentVector = Normalize(CurrentVector - Tool->CenterPos);
 
 		// TODO: Move to set _move_ interaction?
@@ -427,16 +427,15 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 			Tool->PrevVector = CurrentVector;
 		}
 
-
 		if (Tool->PrevVector != CurrentVector)
 		{
-			f32 RotateDir = Dot(Cross(Tool->PrevVector, CurrentVector), Tool->InteractPlane.N);
+			v3 PerpVector = Cross(Tool->PrevVector, CurrentVector);
+			f32 RotateDir = Dot(PerpVector, Tool->InteractPlane.N);
 			RotateDir = RotateDir / Abs(RotateDir);
 
-			f32 RotateSpeed = 4.0f;
 			f32 DotAngle = Dot(CurrentVector, Tool->PrevVector);
 			DotAngle = Clamp(-1.0f, DotAngle, 1.0f);
-			f32 AngleBetween = (ACos(DotAngle) * RotateDir) * RotateSpeed;
+			f32 AngleBetween = ACos(DotAngle) * RotateDir;
 
 			if (AngleBetween != 0)
 			{
@@ -450,9 +449,9 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 				//ApplyTransformForAllElement()
 
 			}
+			
+			Tool->PrevVector = CurrentVector;
 		}
-
-		Tool->PrevVector = CurrentVector;
 	}
 }
 
@@ -540,7 +539,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 					{
 						RotateTool->InteractAxis = InteractAxis;
-						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->CenterPos);
+						v3 PointOnPlane = RotateTool->CenterPos + (InteractAxis * RotateTool->Radius);
+						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, PointOnPlane);
 						RotateTool->AxisMask.w = 1.0f;
 
 						Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
