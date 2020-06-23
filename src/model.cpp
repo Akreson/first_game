@@ -485,10 +485,11 @@ GetPlaneNormal(model *Model, u32 FaceIndex)
 
 	model_face Face = Model->Faces[FaceIndex];
 
-	v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
-	v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
-	v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
-	v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+	v3 Offset = Model->Offset;
+	v3 V0 = Model->Vertex[Face.V0] + Offset;
+	v3 V1 = Model->Vertex[Face.V1] + Offset;
+	v3 V2 = Model->Vertex[Face.V2] + Offset;
+	v3 V3 = Model->Vertex[Face.V3] + Offset;
 
 	v3 Edge1 = V0 - V1;
 	v3 Edge2 = V0 - V3;
@@ -529,7 +530,7 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			f32 CapsuleRSquare = Square(Capsule.R);
 			v3 NormCapDir = Normalize(Capsule.Dir);
 
-			// NOTE: Ray-Ray intersection
+			// NOTE: Colosest points between rays
 			v3 R = Capsule.V0 - Ray.Pos;
 			f32 CDotC = Dot(NormCapDir, NormCapDir);
 			f32 CDotL = Dot(NormCapDir, Ray.Dir);

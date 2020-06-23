@@ -109,9 +109,6 @@ struct rotate_tools
 	v3 CenterPos;
 	f32 Radius;
 
-	v3 OnSphere;
-
-
 	v3 BeginVector;
 	v3 PrevVector;
 	v4 AxisMask;

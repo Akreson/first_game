@@ -233,6 +233,13 @@ operator+(v3 A, v3 B)
 }
 
 inline v3
+operator+=(v3 &A, v3 B)
+{
+	A = A + B;
+	return A;
+}
+
+inline v3
 operator*(v3 A, v3 B)
 {
 	v3 Result;
@@ -300,7 +307,7 @@ operator+(v3 A, f32 B)
 }
 
 internal inline u32
-GetCmpVectorMas(v3 A, v3 B)
+GetCmpVectorMask(v3 A, v3 B)
 {
 	__m128 _A = _mm_set_ps(0, A.z, A.y, A.x);
 	__m128 _B = _mm_set_ps(0, B.z, B.y, B.x);
@@ -313,7 +320,7 @@ GetCmpVectorMas(v3 A, v3 B)
 inline b32
 operator==(v3 A, v3 B)
 {
-	u32 Mask = GetCmpVectorMas(A, B);
+	u32 Mask = GetCmpVectorMask(A, B);
 	b32 Result = (Mask == 0xF) ? true : false;
 	return Result;
 }
@@ -321,7 +328,7 @@ operator==(v3 A, v3 B)
 inline b32
 operator!=(v3 A, v3 B)
 {
-	u32 Mask = GetCmpVectorMas(A, B);
+	u32 Mask = GetCmpVectorMask(A, B);
 	b32 Result = (Mask == 0xF) ? false : true;
 	return Result;
 }
@@ -336,6 +343,13 @@ operator*(v4 A, v4 B)
 	Result.z = A.z * B.z;
 	Result.w = A.w * B.w;
 
+	return Result;
+}
+
+inline v3
+MovePointAlongDir(v3 Pos, v3 Dir, f32 t)
+{
+	v3 Result = Pos + (Dir * t);
 	return Result;
 }
 

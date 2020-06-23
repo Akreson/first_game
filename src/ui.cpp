@@ -386,24 +386,16 @@ GetRotateMatrixFormAxisID(f32 Angle, tools_axis_id ID)
 internal inline void
 UpdateModelAxis(model *Model, tools_axis_id ID, m4x4 Rotate)
 {
-	switch (ID)
-	{
-		case ToolsAxisID_XAxis:
-		{
-			Model->YAxis = Model->YAxis * Rotate;
-			Model->ZAxis = Model->ZAxis * Rotate;
-		} break;
-		case ToolsAxisID_YAxis:
-		{
-			Model->XAxis = Model->XAxis * Rotate;
-			Model->ZAxis = Model->ZAxis * Rotate;
-		} break;
-		case ToolsAxisID_ZAxis:
-		{
-			Model->XAxis = Model->XAxis * Rotate;
-			Model->YAxis = Model->YAxis * Rotate;
-		} break;
-	}
+	m4x4 I = Identity();
+
+	m4x4 RotateAxis = I * Rotate;
+	m4x4 CurrentAxisState = Row3x3(Model->XAxis, Model->YAxis, Model->ZAxis);
+
+	m4x4 Result = RotateAxis * CurrentAxisState;
+
+	Model->XAxis = GetRow(Result, 0);
+	Model->YAxis = GetRow(Result, 1);
+	Model->ZAxis = GetRow(Result, 2);
 }
 
 // TODO: Implement drawing progres angle
@@ -422,9 +414,9 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 		// TODO: Move to set _move_ interaction?
 		if (!Tool->EnterActiveState)
 		{
-			Tool->EnterActiveState = true;
 			Tool->BeginVector = CurrentVector;
 			Tool->PrevVector = CurrentVector;
+			Tool->EnterActiveState = true;
 		}
 
 		if (Tool->PrevVector != CurrentVector)
@@ -443,6 +435,7 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 		
 				if (ElementTarget == ModelTargetElement_Model)
 				{
+					v3 DirDiff = Tool->PrevVector - CurrentVector;
 					UpdateModelAxis(Model, Tool->InteractAxis, Rotate);
 				}
 				// TODO: Complete
@@ -539,8 +532,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 					{
 						RotateTool->InteractAxis = InteractAxis;
-						v3 PointOnPlane = RotateTool->CenterPos + (InteractAxis * RotateTool->Radius);
-						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, PointOnPlane);
+						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->CenterPos);
 						RotateTool->AxisMask.w = 1.0f;
 
 						Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
@@ -563,6 +555,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				{
 					ZeroStruct(RotateTool->InteractPlane);
 					ZeroStruct(RotateTool->BeginVector);
+					//ZeroStruct(RotateTool->PrevVector);
 					ZeroStruct(RotateTool->AxisMask);
 					RotateTool->InteractAxis = ToolsAxisID_None;
 					RotateTool->EnterActiveState = false;
