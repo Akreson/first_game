@@ -97,11 +97,12 @@ MatchFaceVertex(model_face *A, model_face *B)
 	return Result;
 }
 
+// TODO: Set _Mask..._ function for other function?
 inline u32
 MaskMatchFaceVertex(model_face *A, model_edge *B)
 {
 	// TODO: See if in optimize build with same _A_ value
-	// compiler propagate _VertexA_ to multimple sequential call
+	// compiler will propagate _VertexA_ to multimple sequential call
 	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
 
 	__m128i EdgeB = _mm_load_si128((__m128i *)B);
