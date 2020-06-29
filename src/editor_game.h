@@ -7,8 +7,8 @@
 #include "math.cpp"
 #include "string.h"
 #include "memory_arena.h"
-#include "model.h"
 #include "render_group.h"
+#include "model.h"
 #include "asset.h"
 #include "ui.h"
 

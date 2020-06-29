@@ -62,6 +62,14 @@ union v2
 	};
 };
 
+union iv2
+{
+	s32 E[2];
+	struct
+	{
+		s32 x, y;
+	};
+};
 
 union v3
 {
@@ -353,6 +361,8 @@ struct game_render_commands
 {
 	m4x4_inv PersProj;
 	m4x4_inv OrthoProj;
+	m4x4_inv CameraTransform;
+	m4x4 ForwardPersCamera;
 
 	v2 ScreenDim;
 	u8 *PushBufferBase;

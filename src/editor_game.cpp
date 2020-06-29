@@ -1,43 +1,11 @@
 #include "editor_game.h"
-#include "render_group.cpp"
 #include "model.cpp"
 #include "asset.cpp"
+#include "render_group.cpp"
 #include "ui.cpp"
 
 // TODO: Delete
 #include <cstdio>
-
-void
-RenderText(render_group *Group, font_asset_info *FontAsset, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
-{
-	ScreenY -= FontAsset->AscenderHeight*Scale;
-
-	// TODO: Use codepoint?
-	u32 PrevGlyphIndex = 0;
-	for (;
-		*Text;
-		++Text)
-	{
-		u32 GlyphIndex = GetGlyphIndexFromCodePoint(FontAsset, *Text);
-
-		if (*Text != ' ')
-		{
-			bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
-
-			f32 Width = (f32)Glyph->Width * Scale;
-			f32 Height = (f32)Glyph->Height * Scale;
-
-			f32 XPos = ScreenX;
-			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height * Scale);
-
-			PushFont(Group, Glyph->Texture, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
-		}
-
-		ScreenX += GetHorizontalAdvance(FontAsset, PrevGlyphIndex, GlyphIndex, Scale);
-
-		PrevGlyphIndex = GlyphIndex;
-	}
-}
 
 inline b32
 IsInSelectedBuffer(selected_elements_buffer *Buffer, u32 ElementID)
@@ -245,7 +213,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		AddCubeModel(Editor, V3(-2.0f, 1.0f, 1.0f));
 		AddCubeModel(Editor, V3(-2.0f, 4.0f, -1.0f));
 
-		Editor->Camera.Offset = V3(0, 0, 3);
+		Editor->Camera.Offset = V3(0, 0, 9);
 		Editor->Camera.Pos = V3(0);
 
 		Editor->EdgeColor = V3(0.17f, 0.5f, 0.8f);
@@ -260,7 +228,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		GameState->IsInit = true;
 	}
 
-	render_group RenderGroup = InitRenderGroup(RenderCommands, Input);
+	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
 
 	v3 CameraOffset = Editor->Camera.Offset;
 	editor_world_ui *WorldUI = &Editor->WorldUI;
@@ -306,6 +274,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	v3 CameraOt = ((CameraOffset + V3(0, 0, Editor->Camera.Dolly)) * CameraR) + Editor->Camera.Pos;
 	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt);
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
+	RenderGroup.CameraZ = GetRow(CameraR, 2);
 
 	WorldUI->MouseRay.Dir = Unproject(&RenderGroup, WorldUI->MouseP);
 	WorldUI->MouseRay.Pos = CameraOt;
@@ -349,9 +318,9 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		(char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0,
 		RenderGroup.ScreenDim.y, 0.45f);
 #endif
-#if 1
+#if 0
 	char Buffer[1024];
 	sprintf(Buffer, "%f", Input->PrevFrameTime * 1000.0f);
-	RenderText(&RenderGroup, GameState->FontAsset, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
+	RenderText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);
 #endif
 }

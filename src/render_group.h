@@ -1,5 +1,7 @@
 #pragma once
 
+struct font_asset_info;
+
 struct renderer_texture
 {
 	u64 Handle;
@@ -138,7 +140,9 @@ struct render_entry_tool_rotate
 	v3 YAxis;
 	v3 ZAxis;
 	v3 Pos;
+	v3 ViewDir;
 	v4 AxisActivityState;
+	v2 PerpInfo;
 	// TODO: Add Selected param and rotate degre
 };
 
@@ -148,10 +152,16 @@ struct render_group
 
 	void *GroupRenderElement;
 
+	font_asset_info *FontAsset;
+
 	v2 ScreenDim;
 	
 	v3 CameraZ;
 
 	m4x4 InvCamera;
 	m4x4 InvPerspective;
+
 };
+
+inline render_alloc_mesh_params
+SetAllocMeshParams(void *VertexData, u32 *Tris, u32 VertexCount, u32 TrisCount, u32 Flags = 0);

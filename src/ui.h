@@ -89,6 +89,7 @@ struct interact_model
 };
 
 #define RTOOLS_AXIS_INTERACT_THRESHOLD 0.02f
+#define RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD 0.94f
 enum tools_axis_id
 {
 	ToolsAxisID_None,
@@ -112,6 +113,9 @@ struct rotate_tools
 	v3 BeginVector;
 	v3 PrevVector;
 	v4 AxisMask;
+	v2 PerpInfo;
+
+	f32 PerpThreshold;
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;
 };

@@ -424,7 +424,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 			case RenderEntryType_render_entry_model:
 			{
-				//glEnable(GL_CULL_FACE);
+				glEnable(GL_CULL_FACE);
 				//glCullFace(GL_BACK);
 				//glFrontFace(GL_CCW);
 
@@ -438,7 +438,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
 				UseProgramBegin(&OpenGL.ModelProg, ModelEntry->Color, ModelEntry->EdgeColor,
-					&Commands->PersProj.Forward, &ModelTransform);
+					&Commands->ForwardPersCamera, &ModelTransform);
 
 				glDrawArrays(GL_TRIANGLES,
 					ModelEntry->StartOffset / sizeof(render_model_face_vertex),
@@ -448,11 +448,12 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(0);
 
 				UseProgramEnd(&OpenGL.ModelProg);
-				//glDisable(GL_CULL_FACE);
+				glDisable(GL_CULL_FACE);
 			} break;
 
 			case RenderEntryType_render_entry_tool_rotate:
 			{
+				glEnable(GL_CULL_FACE);
 				//glDepthMask(false);
 
 				render_entry_tool_rotate *RotateTool = (render_entry_tool_rotate *)Data;
@@ -461,12 +462,14 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				m4x4 Traslate = Identity();
 				SetTranslation(&Traslate, RotateTool->Pos);
 
-				UseProgramBegin(&OpenGL.RotateTools, &Commands->PersProj.Forward, &Traslate, RotateTool);
+				UseProgramBegin(&OpenGL.RotateTools, &Commands->PersProj.Forward,
+					&Commands->CameraTransform.Forward, &Traslate, RotateTool);
 				glBindVertexArray((GLuint)RotateTool->Mesh.Handle);
 				glDrawElements(GL_TRIANGLES, RotateTool->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);
 
 				//glDepthMask(true);
+				glDisable(GL_CULL_FACE);
 			} break;
 
 			case RenderEntryType_render_entry_sphere:
@@ -477,7 +480,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				m4x4 I = Identity();
 
 				UseProgramBegin(&OpenGL.StaticMeshProg,
-					&Commands->PersProj.Forward, &I, SphereEntry->Color);
+					&Commands->ForwardPersCamera, &I, SphereEntry->Color);
 
 				glBindVertexArray((GLuint)SphereEntry->Mesh.Handle);
 				glDrawElements(GL_TRIANGLES, SphereEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
@@ -511,7 +514,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
-				UseProgramBegin(&OpenGL.ModelColorPassProg, &Commands->PersProj.Forward, &ModelTransform);
+				UseProgramBegin(&OpenGL.ModelColorPassProg, &Commands->ForwardPersCamera, &ModelTransform);
 				glDrawArrays(GL_TRIANGLES, OutlineModel->StartOffset / sizeof(render_model_face_vertex), OutlineModel->ElementCount);
 
 				glBindBuffer(GL_ARRAY_BUFFER, 0);

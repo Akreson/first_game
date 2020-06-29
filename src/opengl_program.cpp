@@ -483,35 +483,48 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
 
-	uniform mat4 Proj;
+	uniform mat4 PersProj;
+	uniform mat4 CameraTransform;
 	uniform mat4 ModelTransform;
 
 	out vec3 PointOnSphere;
+	out vec3 WorldPointOnSphere;
 
 	void main()
 	{
 		PointOnSphere = aPos;
-		gl_Position = Proj * ModelTransform * vec4(aPos, 1.0f);
+		vec4 WordPos = ModelTransform * vec4(aPos, 1.0f);
+		WorldPointOnSphere = WordPos.xyz;
+		gl_Position = PersProj * CameraTransform * WordPos;
 	}
 
 	)FOO";
-
+	
 	const char *FragmentCode = R"FOO(
+	#define RED 0 
+	#define GREEN 1
+	#define BLUE 2
+	#define MAX_FILL_THRESHOLD 0.2f
+
 	out vec4 FragColor;
 
 	uniform vec3 XAxis;
 	uniform vec3 YAxis;
 	uniform vec3 ZAxis;
 	uniform vec3 CenterPos;
+	uniform vec3 ViewDir;
 	uniform vec4 AxisState; // NOTE: _w_ - active or not
+	uniform vec2 PerpInfo; // NOTE: x - index, y - is active
+	
 	
 	in vec3 PointOnSphere;
+	in vec3 WorldPointOnSphere;
 
 	float WhenEq(float x, float y) {
 		return 1.0 - abs(sign(x - y));
 	}
 	
-	float  WhenNeq(float x, float y) {
+	float WhenNeq(float x, float y) {
 		return abs(sign(x - y));
 	}
 
@@ -523,30 +536,53 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		return max(sign(x - y), 0.0);
 	}
 
+	float AlphaModifier(float Index, float PerpAxisIndex, float PerpAxisSet)
+	{
+		float Result = (1.0f - WhenEq(PerpAxisIndex, Index)) + WhenEq(PerpAxisSet, 0.0f);
+		return Result;
+	}
+
 	void main()
 	{
 		float Thickness = 0.01f;
-		vec3 Red = mix(vec3(0.6f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
-		vec3 Green = mix(vec3(0, 0.6f, 0), vec3(0, 1.0f, 0), AxisState.y);
-		vec3 Blue = mix(vec3(0, 0, 0.6f), vec3(0, 0, 1.0f), AxisState.z);
+		vec3 AxisColor[3];
+		int PerpAxisIndex = int(PerpInfo.x);
 
-		Red = mix(Red, vec3(0.86f, 0.65f, 0.2f), AxisState.x*AxisState.w);
-		Green = mix(Green, vec3(0.86f, 0.65f, 0.2f), AxisState.y*AxisState.w);
-		Blue = mix(Blue, vec3(0.86f, 0.65f, 0.2f), AxisState.z*AxisState.w);
+		AxisColor[RED] = mix(vec3(0.6f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
+		AxisColor[GREEN] = mix(vec3(0, 0.6f, 0), vec3(0, 1.0f, 0), AxisState.y);
+		AxisColor[BLUE] = mix(vec3(0, 0, 0.6f), vec3(0, 0, 1.0f), AxisState.z);
+		
+		AxisColor[RED] = mix(AxisColor[RED], vec3(0.86f, 0.65f, 0.2f), AxisState.x*AxisState.w);
+		AxisColor[GREEN] = mix(AxisColor[GREEN], vec3(0.86f, 0.65f, 0.2f), AxisState.y*AxisState.w);
+		AxisColor[BLUE] = mix(AxisColor[BLUE], vec3(0.86f, 0.65f, 0.2f), AxisState.z*AxisState.w);
 		
 		vec3 DirFromCenter = normalize(PointOnSphere);
 		float XDotP = abs(dot(XAxis.xyz, DirFromCenter));
 		float YDotP = abs(dot(YAxis.xyz, DirFromCenter));
 		float ZDotP = abs(dot(ZAxis.xyz, DirFromCenter));
 
-		float XAlpha = WhenLt(XDotP, Thickness);
-		float YAlpha = WhenLt(YDotP, Thickness);
-		float ZAlpha = WhenLt(ZDotP, Thickness);
+		float XAlpha = WhenLt(XDotP, Thickness) ;//* AlphaModifier(0, PerpInfo.x, PerpInfo.y);
+		float YAlpha = WhenLt(YDotP, Thickness) ;//* AlphaModifier(1, PerpInfo.x, PerpInfo.y);
+		float ZAlpha = WhenLt(ZDotP, Thickness) ;//* AlphaModifier(2, PerpInfo.x, PerpInfo.y);
 		float FinalAlpha = max(XAlpha, max(YAlpha, ZAlpha));
 		
-		vec3 FinalColor = (Red * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha);
-		FinalColor += (Green * YAlpha) * (1.0f - ZAlpha);
-		FinalColor += Blue * ZAlpha;
+		// TODO: Fix bug here
+		vec3 FinalColor = ((AxisColor[RED] * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha)) * AlphaModifier(0, PerpInfo.x, PerpInfo.y);
+		FinalColor += ((AxisColor[GREEN] * YAlpha) * (1.0f - ZAlpha)) * AlphaModifier(1, PerpInfo.x, PerpInfo.y);
+		FinalColor += (AxisColor[BLUE] * ZAlpha) * AlphaModifier(2, PerpInfo.x, PerpInfo.y);
+		
+		// TODO: Check for non zero origin
+		// TODO: Get rid of branch
+		float DotResult = dot(ViewDir, DirFromCenter);
+		if (DotResult <= MAX_FILL_THRESHOLD)
+		{
+			FinalColor = vec3(0, 0, 0);
+			FinalAlpha = 1.0f;
+			if (PerpInfo.y == 1)
+			{
+				FinalColor = AxisColor[PerpAxisIndex];
+			}
+		}
 
 		FragColor = vec4(FinalColor, FinalAlpha);
 	}
@@ -556,29 +592,36 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	Prog->ID = ProgID;
 
 	glUseProgram(ProgID);
-	Prog->ProjID = glGetUniformLocation(ProgID, "Proj");
-	Prog->TransformID = glGetUniformLocation(ProgID, "ModelTransform");
+	Prog->PersProj = glGetUniformLocation(ProgID, "PersProj");
+	Prog->ModelTransform = glGetUniformLocation(ProgID, "ModelTransform");
+	Prog->CameraTransform = glGetUniformLocation(ProgID, "CameraTransform");
 	Prog->XAxis = glGetUniformLocation(ProgID, "XAxis");
 	Prog->YAxis = glGetUniformLocation(ProgID, "YAxis");
 	Prog->ZAxis = glGetUniformLocation(ProgID, "ZAxis");
 	Prog->AxisActivityState = glGetUniformLocation(ProgID, "AxisState");
 	Prog->CenterPos = glGetUniformLocation(ProgID, "CenterPos");
+	Prog->ViewDir = glGetUniformLocation(ProgID, "ViewDir");
+	Prog->PerpInfo = glGetUniformLocation(ProgID, "PerpInfo");
 	glUseProgram(0);
 }
 
 internal void
-UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat, render_entry_tool_rotate *Tools)
+UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProgMat, m4x4 *CameraMat,
+	m4x4 *ModelMat, render_entry_tool_rotate *Tools)
 {
 	glUseProgram(Prog->ID);
 
-	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
-	glUniformMatrix4fv(Prog->TransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
+	glUniformMatrix4fv(Prog->PersProj, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->CameraTransform, 1, GL_FALSE, &CameraMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ModelTransform, 1, GL_FALSE, &ModelMat->E[0][0]);
 
 	glUniform3fv(Prog->XAxis, 1, (const GLfloat *)&Tools->XAxis);
 	glUniform3fv(Prog->YAxis, 1, (const GLfloat *)&Tools->YAxis);
 	glUniform3fv(Prog->ZAxis, 1, (const GLfloat *)&Tools->ZAxis);
 	glUniform4fv(Prog->AxisActivityState, 1, (const GLfloat *)&Tools->AxisActivityState);
 	glUniform3fv(Prog->CenterPos, 1, (const GLfloat *)&Tools->Pos);
+	glUniform3fv(Prog->ViewDir, 1, (const GLfloat *)&Tools->ViewDir);
+	glUniform2f(Prog->PerpInfo, Tools->PerpInfo.x, Tools->PerpInfo.y);
 }
 
 internal void

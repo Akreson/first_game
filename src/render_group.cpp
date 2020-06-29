@@ -1,17 +1,18 @@
 
 inline render_group
-InitRenderGroup(game_render_commands *Commands, game_input *Input)
+InitRenderGroup(game_render_commands *Commands, game_input *Input, font_asset_info *Font)
 {
 	render_group Result = {};
 
 	Result.Commands = Commands;
 	Result.ScreenDim = Commands->ScreenDim;
+	Result.FontAsset = Font;
 
 	return Result;
 }
 
 inline render_alloc_mesh_params
-SetAllocMeshParams(void *VertexData, u32 *Tris, u32 VertexCount, u32 TrisCount, u32 Flags = 0)
+SetAllocMeshParams(void *VertexData, u32 *Tris, u32 VertexCount, u32 TrisCount, u32 Flags)
 {
 	render_alloc_mesh_params Result;
 	Result.VertexData = VertexData;
@@ -26,17 +27,17 @@ SetAllocMeshParams(void *VertexData, u32 *Tris, u32 VertexCount, u32 TrisCount, 
 void
 SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4_inv *CameraViewTransform)
 {
-	Group->Commands->OrthoProj = OrthographicProjection(Group->ScreenDim.x, Group->ScreenDim.y);
-
 	m4x4_inv PersProj = PerspectiveProjection(FocalLength, Group->ScreenDim.x / Group->ScreenDim.y);
 	m4x4 Pers = CameraViewTransform->Forward * PersProj.Forward;
 	m4x4 InvPers = PersProj.Inverse * CameraViewTransform->Inverse;
 	
-	Group->Commands->PersProj.Forward = Pers;
-	Group->Commands->PersProj.Inverse = InvPers;
+	Group->Commands->PersProj = PersProj;
+	Group->Commands->OrthoProj = OrthographicProjection(Group->ScreenDim.x, Group->ScreenDim.y);
+	Group->Commands->CameraTransform = *CameraViewTransform;
+	Group->Commands->ForwardPersCamera = Pers;
 	Group->InvPerspective = PersProj.Inverse;
 	Group->InvCamera = CameraViewTransform->Inverse;
-	Group->CameraZ = GetRow(CameraViewTransform->Forward, 2);
+	//Group->CameraZ = GetRow(CameraViewTransform->Forward, 2);
 }
 
 inline v2
@@ -256,7 +257,7 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 
 void
 PushRotateSphere(render_group *Group, renderer_mesh Mesh, v3 Pos,
-	v3 XAxis, v3 YAxis, v3 ZAxis, v4 AxisMask)
+	v3 XAxis, v3 YAxis, v3 ZAxis, v4 AxisMask, v2 PerpInfo, v3 ViewDir)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_tool_rotate *SphereEntry = (render_entry_tool_rotate *)PushRenderElement(Group, render_entry_tool_rotate);
@@ -267,4 +268,39 @@ PushRotateSphere(render_group *Group, renderer_mesh Mesh, v3 Pos,
 	SphereEntry->ZAxis = ZAxis;
 	SphereEntry->AxisActivityState = AxisMask;
 	SphereEntry->Pos = Pos;
+	SphereEntry->ViewDir = ViewDir;
+	SphereEntry->PerpInfo = PerpInfo;
+}
+
+void
+RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 ScreenY, f32 Scale)
+{
+	font_asset_info *FontAsset = Group->FontAsset;
+	ScreenY -= FontAsset->AscenderHeight*Scale;
+
+	// TODO: Use codepoint?
+	u32 PrevGlyphIndex = 0;
+	for (;
+		*Text;
+		++Text)
+	{
+		u32 GlyphIndex = GetGlyphIndexFromCodePoint(FontAsset, *Text);
+
+		if (*Text != ' ')
+		{
+			bitmap_info *Glyph = GetGlyphBitmap(FontAsset, GlyphIndex);
+
+			f32 Width = (f32)Glyph->Width * Scale;
+			f32 Height = (f32)Glyph->Height * Scale;
+
+			f32 XPos = ScreenX;
+			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height * Scale);
+
+			PushFont(Group, Glyph->Texture, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
+		}
+
+		ScreenX += GetHorizontalAdvance(FontAsset, PrevGlyphIndex, GlyphIndex, Scale);
+
+		PrevGlyphIndex = GlyphIndex;
+	}
 }

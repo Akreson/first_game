@@ -448,6 +448,46 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 	}
 }
 
+internal inline b32
+IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
+{
+	b32 Result = false;
+
+	plane_params Plane = {};
+	Plane.N = Axis;
+	Plane.D = Dot(Axis, Tool->CenterPos);
+
+	f32 ADotR = Dot(Axis, Ray.Dir);
+	f32 tRay = RayPlaneIntersect(Ray, Plane, ADotR);
+	v3 P = Ray.Pos + (Ray.Dir * tRay);
+
+	f32 RadiusSq = Square(Tool->Radius);
+	f32 FromCenterToP = LengthSq(P - Tool->CenterPos);
+	f32 NormLength = FromCenterToP / RadiusSq;
+
+	if (NormLength <= 1.0f &&
+		NormLength >= RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD)
+	{
+		Result = true;
+	}
+
+	return Result;
+}
+
+internal inline b32
+IsRotateToolAxisPerp(rotate_tools *Tool, v3 Axis, v3 CameraZ)
+{
+	b32 Result = false;
+
+	f32 ADotC = Abs(Dot(Axis, CameraZ));
+	if (Abs(ADotC) >= Tool->PerpThreshold)
+	{
+		Result = true;
+	}
+
+	return Result;
+}
+
 // TODO: Add more tools!!!
 void
 InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
@@ -466,6 +506,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 
 		Tools->Rotate.CenterPos = ComputeAveragePos(Model, SelectBuffer, IModel->Target);
 		Tools->Rotate.Radius = ROTATE_TOOLS_DIAMETER / 2.0f;
+		Tools->Rotate.PerpThreshold = 0.95f;
 	}
 
 	Tools->IsInit = true;
@@ -492,37 +533,70 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
 			model *Model = Editor->Models + WorldUI->IModel.ID;
+			
+			// TODO: Set axis for face and edge
+			v3 XAxis = Model->XAxis;
+			v3 YAxis = Model->YAxis;
+			v3 ZAxis = Model->ZAxis;
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
 				RotateTool->AxisMask = {};
+				RotateTool->PerpInfo = {};
+
+				b32 XPerpIntr = false;
+				b32 YPerpIntr = false;
+				b32 ZPerpIntr = false;
+
+				b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, XAxis, RenderGroup->CameraZ);
+				b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, YAxis, RenderGroup->CameraZ);
+				b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, ZAxis, RenderGroup->CameraZ);
+				RotateTool->PerpInfo.E[1] = (f32)(IsXPerp | IsYPerp | IsZPerp);
+
+				if (IsXPerp)
+				{
+					XPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, XAxis);
+					RotateTool->PerpInfo.E[0] = 0;
+				}
+				if (IsYPerp)
+				{
+					YPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, YAxis);
+					RotateTool->PerpInfo.E[0] = 1.0f;
+				}
+				if (IsZPerp)
+				{
+					ZPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, ZAxis);
+					RotateTool->PerpInfo.E[0] = 2.0f;
+				}
 
 				v3 PointOnSphere;
 				if (RaySphereIntersect(Ray, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
 				{
+					// TODO: Move this code to separate function?
+
 					v3 DirFromCenter = Normalize(PointOnSphere - RotateTool->CenterPos);
-					f32 XDotP = Abs(Dot(Model->XAxis, DirFromCenter));
-					f32 YDotP = Abs(Dot(Model->YAxis, DirFromCenter));
-					f32 ZDotP = Abs(Dot(Model->ZAxis, DirFromCenter));
+					f32 XDotP = Abs(Dot(XAxis, DirFromCenter));
+					f32 YDotP = Abs(Dot(YAxis, DirFromCenter));
+					f32 ZDotP = Abs(Dot(ZAxis, DirFromCenter));
 					
 					tools_axis_id InteractAxis = ToolsAxisID_None;
-					if (ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || ZPerpIntr)
 					{
 						InteractAxis = ToolsAxisID_ZAxis;
 						RotateTool->AxisMask.z = 1.0f;
-						RotateTool->InteractPlane.N = Model->ZAxis;
+						RotateTool->InteractPlane.N = ZAxis;
 					}
-					else if (YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || YPerpIntr)
 					{
 						InteractAxis = ToolsAxisID_YAxis;
 						RotateTool->AxisMask.y = 1.0f;
-						RotateTool->InteractPlane.N = Model->YAxis;
+						RotateTool->InteractPlane.N = YAxis;
 					}
-					else if (XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || XPerpIntr)
 					{
 						InteractAxis = ToolsAxisID_XAxis;
 						RotateTool->AxisMask.x = 1.0f;
-						RotateTool->InteractPlane.N = Model->XAxis;
+						RotateTool->InteractPlane.N = XAxis;
 					}
 
 					Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Select);
@@ -563,7 +637,15 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 
 			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
-				Model->XAxis, Model->YAxis, Model->ZAxis, RotateTool->AxisMask);
+				XAxis, YAxis, ZAxis, RotateTool->AxisMask,
+				RotateTool->PerpInfo, RenderGroup->CameraZ);
+
+#if 1
+			char Buffer[1024];
+			f32 DotResult = Dot(RenderGroup->CameraZ, Model->ZAxis);
+			sprintf(Buffer, "%f", DotResult);
+			RenderText(RenderGroup, Buffer, V3(0.7f), 0, RenderGroup->ScreenDim.y, 0.2f);
+#endif
 		} break;
 		case ToolType_Scale:
 		{

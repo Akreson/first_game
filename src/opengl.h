@@ -310,14 +310,17 @@ struct static_mesh_program
 struct rotate_tool_program
 {
 	GLuint ID;
-	GLuint ProjID;
-	GLuint TransformID;
+	GLuint PersProj;
+	GLuint ModelTransform;
+	GLuint CameraTransform;
 
 	GLuint XAxis;
 	GLuint YAxis;
 	GLuint ZAxis;
 	GLuint AxisActivityState;
 	GLuint CenterPos;
+	GLuint ViewDir;
+	GLuint PerpInfo;
 };
 
 struct opengl_renderer_info
