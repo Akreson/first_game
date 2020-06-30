@@ -88,7 +88,7 @@ struct interact_model
 	element_ray_result Edge;
 };
 
-#define RTOOLS_AXIS_INTERACT_THRESHOLD 0.02f
+#define RTOOLS_AXIS_INTERACT_THRESHOLD 0.03f
 #define RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD 0.94f
 enum tools_axis_id
 {

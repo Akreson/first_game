@@ -538,13 +538,15 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 
 	float AlphaModifier(float Index, float PerpAxisIndex, float PerpAxisSet)
 	{
-		float Result = (1.0f - WhenEq(PerpAxisIndex, Index)) + WhenEq(PerpAxisSet, 0.0f);
+		float SetMask = WhenEq(PerpAxisSet, 0.0f);
+		float InvSetMask = 1.0f - SetMask;
+		float Result = SetMask + (InvSetMask * (1.0f - WhenEq(PerpAxisIndex, Index)));
 		return Result;
 	}
 
 	void main()
 	{
-		float Thickness = 0.01f;
+		float Thickness = 0.02f;
 		vec3 AxisColor[3];
 		int PerpAxisIndex = int(PerpInfo.x);
 
