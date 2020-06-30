@@ -541,6 +541,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
+				// TODO: Move this code to separate function?
+
 				RotateTool->AxisMask = {};
 				RotateTool->PerpInfo = {};
 
@@ -551,22 +553,26 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, XAxis, RenderGroup->CameraZ);
 				b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, YAxis, RenderGroup->CameraZ);
 				b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, ZAxis, RenderGroup->CameraZ);
-				RotateTool->PerpInfo.E[1] = (f32)(IsXPerp | IsYPerp | IsZPerp);
 
-				if (IsXPerp)
+				if (IsXPerp | IsYPerp | IsZPerp)
 				{
-					XPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, XAxis);
-					RotateTool->PerpInfo.E[0] = 0;
-				}
-				if (IsYPerp)
-				{
-					YPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, YAxis);
-					RotateTool->PerpInfo.E[0] = 1.0f;
-				}
-				if (IsZPerp)
-				{
-					ZPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, ZAxis);
-					RotateTool->PerpInfo.E[0] = 2.0f;
+					RotateTool->PerpInfo.E[1] = 1.0f;
+
+					if (IsXPerp)
+					{
+						XPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, XAxis);
+						RotateTool->PerpInfo.E[0] = 0;
+					}
+					if (IsYPerp)
+					{
+						YPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, YAxis);
+						RotateTool->PerpInfo.E[0] = 1.0f;
+					}
+					if (IsZPerp)
+					{
+						ZPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, ZAxis);
+						RotateTool->PerpInfo.E[0] = 2.0f;
+					}
 				}
 
 				v3 PointOnSphere;

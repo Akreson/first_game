@@ -539,7 +539,6 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	float AlphaModifier(float Index, float PerpAxisIndex, float PerpAxisSet)
 	{
 		float Result = (1.0f - WhenEq(PerpAxisIndex, Index)) + WhenEq(PerpAxisSet, 0.0f);
-		//float Result = WhenEq(PerpAxisIndex, Index) * WhenNeq(PerpAxisSet, 0.0f);
 		return Result;
 	}
 
