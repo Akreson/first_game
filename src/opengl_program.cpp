@@ -521,7 +521,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	in vec3 WorldPointOnSphere;
 
 	float WhenEq(float x, float y) {
-		return 1.0 - abs(sign(x - y));
+		return 1.0f - abs(sign(x - y));
 	}
 	
 	float WhenNeq(float x, float y) {
@@ -529,16 +529,17 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	}
 
 	float WhenLt(float x, float y) {
-		return max(sign(y - x), 0.0);
+		return max(sign(y - x), 0.0f);
 	}
 
 	float WhenGt(float x, float y) {
-		return max(sign(x - y), 0.0);
+		return max(sign(x - y), 0.0f);
 	}
 
 	float AlphaModifier(float Index, float PerpAxisIndex, float PerpAxisSet)
 	{
 		float Result = (1.0f - WhenEq(PerpAxisIndex, Index)) + WhenEq(PerpAxisSet, 0.0f);
+		//float Result = WhenEq(PerpAxisIndex, Index) * WhenNeq(PerpAxisSet, 0.0f);
 		return Result;
 	}
 
@@ -561,15 +562,18 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		float YDotP = abs(dot(YAxis.xyz, DirFromCenter));
 		float ZDotP = abs(dot(ZAxis.xyz, DirFromCenter));
 
-		float XAlpha = WhenLt(XDotP, Thickness) ;//* AlphaModifier(0, PerpInfo.x, PerpInfo.y);
-		float YAlpha = WhenLt(YDotP, Thickness) ;//* AlphaModifier(1, PerpInfo.x, PerpInfo.y);
-		float ZAlpha = WhenLt(ZDotP, Thickness) ;//* AlphaModifier(2, PerpInfo.x, PerpInfo.y);
-		float FinalAlpha = max(XAlpha, max(YAlpha, ZAlpha));
-		
-		// TODO: Fix bug here
-		vec3 FinalColor = ((AxisColor[RED] * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha)) * AlphaModifier(0, PerpInfo.x, PerpInfo.y);
-		FinalColor += ((AxisColor[GREEN] * YAlpha) * (1.0f - ZAlpha)) * AlphaModifier(1, PerpInfo.x, PerpInfo.y);
-		FinalColor += (AxisColor[BLUE] * ZAlpha) * AlphaModifier(2, PerpInfo.x, PerpInfo.y);
+		float XModifier = AlphaModifier(0, PerpInfo.x, PerpInfo.y);
+		float YModifier = AlphaModifier(1, PerpInfo.x, PerpInfo.y);
+		float ZModifier = AlphaModifier(2, PerpInfo.x, PerpInfo.y);
+
+		float XAlpha = WhenLt(XDotP, Thickness) * XModifier;
+		float YAlpha = WhenLt(YDotP, Thickness) * YModifier;
+		float ZAlpha = WhenLt(ZDotP, Thickness) * ZModifier;
+		float FinalAlpha = max(XAlpha, max(YAlpha, ZAlpha));		
+
+		vec3 FinalColor = ((AxisColor[RED] * XAlpha) * (1.0f - YAlpha) * (1.0f - ZAlpha));
+		FinalColor += ((AxisColor[GREEN] * YAlpha) * (1.0f - ZAlpha));
+		FinalColor += (AxisColor[BLUE] * ZAlpha);
 		
 		// TODO: Check for non zero origin
 		// TODO: Get rid of branch
