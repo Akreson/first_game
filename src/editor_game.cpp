@@ -313,12 +313,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		EndPushModel(&RenderGroup);
 	}
 
-#if 0
-	RenderText(&RenderGroup, GameState->FontAsset,
-		(char *)"helloygj world", V3(0.5f, 0.5f, 0.5f), 0,
-		RenderGroup.ScreenDim.y, 0.45f);
-#endif
-#if 0
+#if 1
 	char Buffer[1024];
 	sprintf(Buffer, "%f", Input->PrevFrameTime * 1000.0f);
 	RenderText(&RenderGroup, Buffer, V3(0.7f), 0, RenderGroup.ScreenDim.y, 0.2f);

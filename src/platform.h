@@ -141,6 +141,25 @@ union m4x4
 	};
 };
 
+union m3x3
+{
+	f32 E[3][3];
+
+	struct
+	{
+		v3 Row0;
+		v3 Row1;
+		v3 Row2;
+	};
+
+	struct
+	{
+		v3 X;
+		v3 Y;
+		v3 Z;
+	};
+};
+
 struct m4x4_inv
 {
 	m4x4 Forward;

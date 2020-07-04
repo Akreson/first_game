@@ -386,12 +386,8 @@ GetRotateMatrixFormAxisID(f32 Angle, tools_axis_id ID)
 internal inline void
 UpdateModelAxis(model *Model, tools_axis_id ID, m4x4 Rotate)
 {
-	m4x4 I = Identity();
-
-	m4x4 RotateAxis = I * Rotate;
 	m4x4 CurrentAxisState = Row3x3(Model->XAxis, Model->YAxis, Model->ZAxis);
-
-	m4x4 Result = RotateAxis * CurrentAxisState;
+	m4x4 Result = Rotate * CurrentAxisState;
 
 	Model->XAxis = GetRow(Result, 0);
 	Model->YAxis = GetRow(Result, 1);
@@ -488,6 +484,13 @@ IsRotateToolAxisPerp(rotate_tools *Tool, v3 Axis, v3 CameraZ)
 	return Result;
 }
 
+void
+SetAxisForTools(model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget,
+	v3 *XAxis, v3 *YAxis, v3 *ZAxis)
+{
+
+}
+
 // TODO: Add more tools!!!
 void
 InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
@@ -518,6 +521,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	ui_interaction Interaction = {};
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	tools *Tools = &WorldUI->Tools;
+	model *Model = Editor->Models + WorldUI->IModel.ID;
 
 	// TODO: Extend
 	if (!Tools->IsInit)
@@ -532,8 +536,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
-			model *Model = Editor->Models + WorldUI->IModel.ID;
-			
+			//SetAxisForTools(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 			// TODO: Set axis for face and edge
 			v3 XAxis = Model->XAxis;
 			v3 YAxis = Model->YAxis;
@@ -645,13 +648,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
 				XAxis, YAxis, ZAxis, RotateTool->AxisMask,
 				RotateTool->PerpInfo, RenderGroup->CameraZ);
-
-#if 1
-			char Buffer[1024];
-			f32 DotResult = Dot(RenderGroup->CameraZ, Model->ZAxis);
-			sprintf(Buffer, "%f", DotResult);
-			RenderText(RenderGroup, Buffer, V3(0.7f), 0, RenderGroup->ScreenDim.y, 0.2f);
-#endif
 		} break;
 		case ToolType_Scale:
 		{
