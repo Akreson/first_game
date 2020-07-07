@@ -731,7 +731,6 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 	if (A > 0)
 	{
 		f32 DSq = Dot(CRP, CRP) - Square(A);
-		f32 D = SquareRoot(DSq);
 		f32 RadiusSq = Square(Radius);
 		if (DSq <= RadiusSq)
 		{
@@ -744,6 +743,7 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 			}
 		}
 	}
+
 	return Result;
 }
 // TODO: Use this version?

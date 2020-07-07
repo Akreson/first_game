@@ -109,13 +109,13 @@ struct rotate_tools
 	// NOTE: Persistent
 	v3 CenterPos;
 	f32 Radius;
+	f32 PerpThreshold;
 
 	v3 BeginVector;
 	v3 PrevVector;
 	v4 AxisMask;
 	v2 PerpInfo;
 
-	f32 PerpThreshold;
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;
 };

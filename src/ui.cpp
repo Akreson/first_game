@@ -394,19 +394,55 @@ UpdateModelAxis(model *Model, tools_axis_id ID, m4x4 Rotate)
 	Model->ZAxis = GetRow(Result, 2);
 }
 
+internal inline b32
+SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
+{
+	b32 Result = false;
+	
+	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
+	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
+
+	v3 ToRPos = Normalize(Ray.Pos - Tool->CenterPos);
+	f32 RPosDotPlaneN = Dot(ToRPos, Tool->InteractPlane.N);
+
+	v3 CurrentVector;
+	if (Abs(RPosDotPlaneN) <= RTOOLS_AXIS_INTERACT_THRESHOLD)
+	{
+		v3 PointOnSphere;
+		if (RaySphereIntersect(Ray, Tool->CenterPos, Tool->Radius, &PointOnSphere))
+		{
+			v3 DirFromCenter = Normalize(PointOnSphere - Tool->CenterPos);
+			f32 PDotD = Dot(Tool->InteractPlane.N, DirFromCenter);
+
+			CurrentVector = Normalize(DirFromCenter - (Tool->InteractPlane.N * PDotD));
+#if 1
+			f32 CheckDot = Dot(CurrentVector, Tool->InteractPlane.N);
+			Assert(CheckDot < 0.000001);
+#endif
+			*ResultVector = CurrentVector;
+			Result = true;
+		}
+	}
+	else if (tRay >= 0)
+	{
+		CurrentVector = Ray.Pos + (Ray.Dir * tRay);
+		CurrentVector = Normalize(CurrentVector - Tool->CenterPos);
+
+		*ResultVector = CurrentVector;
+		Result = true;
+	}
+
+	return Result;
+}
+
 // TODO: Implement drawing progres angle
 internal void
 ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *SelectBuffer,
 	ray_params Ray, model_target_element ElementTarget)
 {
-	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
-	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
-	//if (DotRayPlane == 0) // TODO: Handle this case
-	if (tRay >= 0)
+	v3 CurrentVector;
+	if (SetCurrentDirVector(Tool, Ray, &CurrentVector))
 	{
-		v3 CurrentVector = Ray.Pos + (Ray.Dir * tRay);
-		CurrentVector = Normalize(CurrentVector - Tool->CenterPos);
-
 		// TODO: Move to set _move_ interaction?
 		if (!Tool->EnterActiveState)
 		{
