@@ -248,7 +248,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		if (IsKepDown(Input->Alt) && IsKepDown(Input->MouseButtons[PlatformMouseButton_Left]))
 		{
 			f32 RotationSpeed = Pi32 * 0.0005f;
-			//Editor->Camera.Orbit -= WorldUI->dMouseP.x * RotationSpeed;
+			Editor->Camera.Orbit -= WorldUI->dMouseP.x * RotationSpeed;
 			Editor->Camera.Pitch += WorldUI->dMouseP.y * RotationSpeed;
 		}
 

@@ -399,11 +399,11 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 {
 	b32 Result = false;
 	
-	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
-	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
-
 	v3 ToRPos = Normalize(Ray.Pos - Tool->CenterPos);
 	f32 RPosDotPlaneN = Dot(ToRPos, Tool->InteractPlane.N);
+
+	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
+	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
 
 	v3 CurrentVector;
 	if (Abs(RPosDotPlaneN) <= RTOOLS_AXIS_INTERACT_THRESHOLD)
@@ -417,7 +417,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 			CurrentVector = Normalize(DirFromCenter - (Tool->InteractPlane.N * PDotD));
 #if 1
 			f32 CheckDot = Dot(CurrentVector, Tool->InteractPlane.N);
-			Assert(CheckDot < 0.000001);
+			Assert(CheckDot < 0.000001f);
 #endif
 			*ResultVector = CurrentVector;
 			Result = true;
@@ -436,6 +436,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 }
 
 // TODO: Implement drawing progres angle
+// TODO: Move _ApplyTransformFor_ from ProcessRotateTool?
 internal void
 ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *SelectBuffer,
 	ray_params Ray, model_target_element ElementTarget)

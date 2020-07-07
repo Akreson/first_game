@@ -514,7 +514,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	uniform vec3 CenterPos;
 	uniform vec3 ViewDir;
 	uniform vec4 AxisState; // NOTE: _w_ - active or not
-	uniform vec2 PerpInfo; // NOTE: x - index, y - is active
+	uniform vec2 PerpInfo; // NOTE: x - index, y - is perp axis exist
 	
 	
 	in vec3 PointOnSphere;
@@ -536,7 +536,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		return max(sign(x - y), 0.0f);
 	}
 
-	float AlphaModifier(float Index, float PerpAxisIndex, float PerpAxisSet)
+	float IsAxisPerp(float Index, float PerpAxisIndex, float PerpAxisSet)
 	{
 		float SetMask = WhenEq(PerpAxisSet, 0.0f);
 		float InvSetMask = 1.0f - SetMask;
@@ -548,7 +548,6 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	{
 		float Thickness = 0.02f;
 		vec3 AxisColor[3];
-		int PerpAxisIndex = int(PerpInfo.x);
 
 		AxisColor[RED] = mix(vec3(0.6f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
 		AxisColor[GREEN] = mix(vec3(0, 0.6f, 0), vec3(0, 1.0f, 0), AxisState.y);
@@ -563,9 +562,9 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		float YDotP = abs(dot(YAxis.xyz, DirFromCenter));
 		float ZDotP = abs(dot(ZAxis.xyz, DirFromCenter));
 
-		float XModifier = AlphaModifier(0, PerpInfo.x, PerpInfo.y);
-		float YModifier = AlphaModifier(1, PerpInfo.x, PerpInfo.y);
-		float ZModifier = AlphaModifier(2, PerpInfo.x, PerpInfo.y);
+		float XModifier = IsAxisPerp(0, PerpInfo.x, PerpInfo.y);
+		float YModifier = IsAxisPerp(1, PerpInfo.x, PerpInfo.y);
+		float ZModifier = IsAxisPerp(2, PerpInfo.x, PerpInfo.y);
 
 		float XAlpha = WhenLt(XDotP, Thickness) * XModifier;
 		float YAlpha = WhenLt(YDotP, Thickness) * YModifier;
@@ -578,6 +577,8 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		
 		// TODO: Check for non zero origin
 		// TODO: Get rid of branch
+
+		int PerpAxisIndex = int(PerpInfo.x);
 		float DotResult = dot(ViewDir, DirFromCenter);
 		if (DotResult <= MAX_FILL_THRESHOLD)
 		{
