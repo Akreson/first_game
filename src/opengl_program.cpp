@@ -514,7 +514,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	uniform vec3 CenterPos;
 	uniform vec3 ViewDir;
 	uniform vec4 AxisState; // NOTE: _w_ - active or not
-	uniform vec2 PerpInfo; // NOTE: x - index, y - is perp axis exist
+	uniform ivec2 PerpInfo; // NOTE: x - index, y - is perp axis set
 	
 	
 	in vec3 PointOnSphere;
@@ -536,9 +536,9 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		return max(sign(x - y), 0.0f);
 	}
 
-	float IsAxisPerp(float Index, float PerpAxisIndex, float PerpAxisSet)
+	float IsAxisPerp(float Index, float PerpAxisIndex, float IsPerpAxisSet)
 	{
-		float SetMask = WhenEq(PerpAxisSet, 0.0f);
+		float SetMask = WhenEq(IsPerpAxisSet, 0.0f);
 		float InvSetMask = 1.0f - SetMask;
 		float Result = SetMask + (InvSetMask * (1.0f - WhenEq(PerpAxisIndex, Index)));
 		return Result;
@@ -548,6 +548,8 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 	{
 		float Thickness = 0.02f;
 		vec3 AxisColor[3];
+		float PerpAxisIndex = float(PerpInfo.x);
+		float IsPerpAxisSet = float(PerpInfo.y);
 
 		AxisColor[RED] = mix(vec3(0.6f, 0, 0), vec3(1.0f, 0, 0), AxisState.x);
 		AxisColor[GREEN] = mix(vec3(0, 0.6f, 0), vec3(0, 1.0f, 0), AxisState.y);
@@ -562,9 +564,9 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		float YDotP = abs(dot(YAxis.xyz, DirFromCenter));
 		float ZDotP = abs(dot(ZAxis.xyz, DirFromCenter));
 
-		float XModifier = IsAxisPerp(0, PerpInfo.x, PerpInfo.y);
-		float YModifier = IsAxisPerp(1, PerpInfo.x, PerpInfo.y);
-		float ZModifier = IsAxisPerp(2, PerpInfo.x, PerpInfo.y);
+		float XModifier = IsAxisPerp(0, PerpAxisIndex, IsPerpAxisSet);
+		float YModifier = IsAxisPerp(1, PerpAxisIndex, IsPerpAxisSet);
+		float ZModifier = IsAxisPerp(2, PerpAxisIndex, IsPerpAxisSet);
 
 		float XAlpha = WhenLt(XDotP, Thickness) * XModifier;
 		float YAlpha = WhenLt(YDotP, Thickness) * YModifier;
@@ -578,7 +580,6 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 		// TODO: Check for non zero origin
 		// TODO: Get rid of branch
 
-		int PerpAxisIndex = int(PerpInfo.x);
 		float DotResult = dot(ViewDir, DirFromCenter);
 		if (DotResult <= MAX_FILL_THRESHOLD)
 		{
@@ -586,7 +587,7 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 			FinalAlpha = 1.0f;
 			if (PerpInfo.y == 1)
 			{
-				FinalColor = AxisColor[PerpAxisIndex];
+				FinalColor = AxisColor[PerpInfo.x];
 			}
 		}
 
@@ -627,7 +628,7 @@ UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProgMat, m4x4 *CameraMat,
 	glUniform4fv(Prog->AxisActivityState, 1, (const GLfloat *)&Tools->AxisActivityState);
 	glUniform3fv(Prog->CenterPos, 1, (const GLfloat *)&Tools->Pos);
 	glUniform3fv(Prog->ViewDir, 1, (const GLfloat *)&Tools->ViewDir);
-	glUniform2f(Prog->PerpInfo, Tools->PerpInfo.x, Tools->PerpInfo.y);
+	glUniform2i(Prog->PerpInfo, Tools->PerpInfo.x, Tools->PerpInfo.y);
 }
 
 internal void

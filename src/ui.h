@@ -119,7 +119,7 @@ struct rotate_tools
 	v3 BeginVector;
 	v3 PrevVector;
 	v4 AxisMask;
-	v2 PerpInfo;
+	iv2 PerpInfo; // 0 - index, 1 - is have perp axis 
 
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;

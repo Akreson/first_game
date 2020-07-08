@@ -142,7 +142,7 @@ struct render_entry_tool_rotate
 	v3 Pos;
 	v3 ViewDir;
 	v4 AxisActivityState;
-	v2 PerpInfo;
+	iv2 PerpInfo;
 	// TODO: Add Selected param and rotate degre
 };
 

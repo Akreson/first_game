@@ -465,6 +465,8 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray)
 			v3 PerpVector = Cross(Tool->PrevVector, CurrentVector);
 			f32 RotateDir = Dot(PerpVector, Tool->InteractPlane.N);
 			RotateDir = RotateDir / Abs(RotateDir);
+			// TODO: Catch and fix NaN bug
+			Assert(isnan(RotateDir));
 
 			f32 DotAngle = Dot(CurrentVector, Tool->PrevVector);
 			DotAngle = Clamp(-1.0f, DotAngle, 1.0f);
@@ -599,39 +601,41 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			v3 YAxis = RotateTool->Axis.Y = Model->YAxis;
 			v3 ZAxis = RotateTool->Axis.Z = Model->ZAxis;
 
+			RotateTool->PerpInfo = {};
+			b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, XAxis, RotateTool->FromPosToRayP);
+			b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, YAxis, RotateTool->FromPosToRayP);
+			b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, ZAxis, RotateTool->FromPosToRayP);
+			b32 IsHavePerpAxis = IsXPerp | IsYPerp | IsZPerp;
+
+			u32 PerpAxisIndex;
+			if (IsHavePerpAxis)
+			{
+				RotateTool->PerpInfo.E[1] = 1;
+
+				if (IsXPerp)
+				{
+					RotateTool->PerpInfo.E[0] = PerpAxisIndex = 0;
+				}
+				else if (IsYPerp)
+				{
+					RotateTool->PerpInfo.E[0] = PerpAxisIndex = 1;
+				}
+				else if (IsZPerp)
+				{
+					RotateTool->PerpInfo.E[0] = PerpAxisIndex = 2;
+				}
+			}
+
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
 				// TODO: Move this code to separate function?
 				RotateTool->AxisMask = {};
-				RotateTool->PerpInfo = {};
 
-				b32 XPerpIntr = false;
-				b32 YPerpIntr = false;
-				b32 ZPerpIntr = false;
-
-				b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, XAxis, RotateTool->FromPosToRayP);
-				b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, YAxis, RotateTool->FromPosToRayP);
-				b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, ZAxis, RotateTool->FromPosToRayP);
-
-				if (IsXPerp | IsYPerp | IsZPerp)
+				b32 PerpAxisIntr[3] = {};
+				if (IsHavePerpAxis)
 				{
-					RotateTool->PerpInfo.E[1] = 1.0f;
-
-					if (IsXPerp)
-					{
-						XPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, XAxis);
-						RotateTool->PerpInfo.E[0] = 0;
-					}
-					if (IsYPerp)
-					{
-						YPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, YAxis);
-						RotateTool->PerpInfo.E[0] = 1.0f;
-					}
-					if (IsZPerp)
-					{
-						ZPerpIntr = IsRotateToolPerpAxisIntreract(RotateTool, Ray, ZAxis);
-						RotateTool->PerpInfo.E[0] = 2.0f;
-					}
+					PerpAxisIntr[PerpAxisIndex] =
+						IsRotateToolPerpAxisIntreract(RotateTool, Ray, RotateTool->Axis.Row[PerpAxisIndex]);
 				}
 
 				v3 PointOnSphere;
@@ -645,19 +649,19 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					f32 ZDotP = Abs(Dot(ZAxis, DirFromCenter));
 					
 					tools_axis_id InteractAxis = ToolsAxisID_None;
-					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || ZPerpIntr)
+					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[2])
 					{
 						InteractAxis = ToolsAxisID_ZAxis;
 						RotateTool->AxisMask.z = 1.0f;
 						RotateTool->InteractPlane.N = ZAxis;
 					}
-					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || YPerpIntr)
+					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[1])
 					{
 						InteractAxis = ToolsAxisID_YAxis;
 						RotateTool->AxisMask.y = 1.0f;
 						RotateTool->InteractPlane.N = YAxis;
 					}
-					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || XPerpIntr)
+					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[0])
 					{
 						InteractAxis = ToolsAxisID_XAxis;
 						RotateTool->AxisMask.x = 1.0f;

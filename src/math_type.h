@@ -101,6 +101,11 @@ union m3x3
 
 	struct
 	{
+		v3 Row[3];
+	};
+
+	struct
+	{
 		v3 X;
 		v3 Y;
 		v3 Z;
