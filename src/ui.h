@@ -101,6 +101,19 @@ enum tools_axis_id
 	ToolsAxisID_Count,
 };
 
+struct rot_tool_perp_axis
+{
+	union
+	{
+		struct
+		{
+			u32 Index;
+			u32 IsSet;
+		};
+		iv2 V;
+	};
+};
+
 // TODO: Pack smarter?
 struct rotate_tools
 {
@@ -119,7 +132,7 @@ struct rotate_tools
 	v3 BeginVector;
 	v3 PrevVector;
 	v4 AxisMask;
-	iv2 PerpInfo; // 0 - index, 1 - is have perp axis 
+	rot_tool_perp_axis PerpInfo; // 0 - index, 1 - is have perp axis 
 
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;

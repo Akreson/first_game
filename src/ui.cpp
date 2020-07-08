@@ -466,7 +466,7 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray)
 			f32 RotateDir = Dot(PerpVector, Tool->InteractPlane.N);
 			RotateDir = RotateDir / Abs(RotateDir);
 			// TODO: Catch and fix NaN bug
-			Assert(isnan(RotateDir));
+			Assert(!isnan(RotateDir));
 
 			f32 DotAngle = Dot(CurrentVector, Tool->PrevVector);
 			DotAngle = Clamp(-1.0f, DotAngle, 1.0f);
@@ -571,6 +571,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 	Tools->IsInit = true;
 }
 
+// TODO: Make tools sizeble or on same distance to the camera
 internal void inline
 UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
@@ -588,7 +589,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	ray_params Ray = WorldUI->MouseRay;
 	switch (Tools->Type)
 	{
-		// TODO: Make sphere sizeble or on same distance to the camera
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
@@ -610,19 +610,19 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			u32 PerpAxisIndex;
 			if (IsHavePerpAxis)
 			{
-				RotateTool->PerpInfo.E[1] = 1;
+				RotateTool->PerpInfo.IsSet = 1;
 
 				if (IsXPerp)
 				{
-					RotateTool->PerpInfo.E[0] = PerpAxisIndex = 0;
+					RotateTool->PerpInfo.Index = 0;
 				}
 				else if (IsYPerp)
 				{
-					RotateTool->PerpInfo.E[0] = PerpAxisIndex = 1;
+					RotateTool->PerpInfo.Index = 1;
 				}
 				else if (IsZPerp)
 				{
-					RotateTool->PerpInfo.E[0] = PerpAxisIndex = 2;
+					RotateTool->PerpInfo.Index = 2;
 				}
 			}
 
@@ -634,10 +634,13 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				b32 PerpAxisIntr[3] = {};
 				if (IsHavePerpAxis)
 				{
+					u32 PerpAxisIndex = RotateTool->PerpInfo.Index;
 					PerpAxisIntr[PerpAxisIndex] =
 						IsRotateToolPerpAxisIntreract(RotateTool, Ray, RotateTool->Axis.Row[PerpAxisIndex]);
 				}
 
+				// TODO: Make posible interaction with perp axis beyond sphere radius?
+				// (set IsHavePerpIntr and IsHaveSphereIntr?)
 				v3 PointOnSphere;
 				if (RaySphereIntersect(Ray, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
 				{
@@ -716,7 +719,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 
 			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
-				RotateTool->Axis, RotateTool->AxisMask, RotateTool->PerpInfo,
+				RotateTool->Axis, RotateTool->AxisMask, RotateTool->PerpInfo.V,
 				RotateTool->FromPosToRayP);
 		} break;
 		case ToolType_Scale:
