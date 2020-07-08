@@ -105,16 +105,16 @@ enum tools_axis_id
 struct rotate_tools
 {
 	m4x4 Transform;
-	v3 XAxis;
-	v3 YAxis;
-	v3 ZAxis;
-
+	m3x3 Axis;
+	
 	plane_params InteractPlane;
 	
 	// NOTE: Persistent
 	v3 CenterPos;
 	f32 Radius;
 	f32 PerpThreshold;
+
+	v3 FromPosToRayP;
 
 	v3 BeginVector;
 	v3 PrevVector;

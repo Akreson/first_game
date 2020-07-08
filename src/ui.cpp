@@ -407,8 +407,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 {
 	b32 Result = false;
 	
-	v3 ToRPos = Normalize(Ray.Pos - Tool->CenterPos);
-	f32 RPosDotPlaneN = Dot(ToRPos, Tool->InteractPlane.N);
+	f32 RPosDotPlaneN = Dot(Tool->FromPosToRayP, Tool->InteractPlane.N);
 
 	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
 	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
@@ -474,22 +473,22 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray)
 			if (AngleBetween != 0)
 			{
 				m4x4 Rotate = GetRotateMatrixFormAxisID(AngleBetween, Tool->InteractAxis);
-				m4x4 CurrentAxis = Row3x3(Tool->XAxis, Tool->YAxis, Tool->ZAxis);
+				m4x4 CurrentAxis = Row3x3(Tool->Axis.X, Tool->Axis.Y, Tool->Axis.Z);
 				m4x4 ResultAxis = Rotate * CurrentAxis;
 
 				m4x4 InvCurrentAxis = Transpose(CurrentAxis);
 				m4x4 ResultTransform = InvCurrentAxis * ResultAxis;
 
 				Tool->Transform = ResultTransform;
-				Tool->XAxis = GetRow(ResultAxis, 0);
-				Tool->YAxis = GetRow(ResultAxis, 1);
-				Tool->ZAxis = GetRow(ResultAxis, 2);
+				Tool->Axis.X = GetRow(ResultAxis, 0);
+				Tool->Axis.Y = GetRow(ResultAxis, 1);
+				Tool->Axis.Z = GetRow(ResultAxis, 2);
 				Tool->PrevVector = CurrentVector;
 				
 				// TODO: Catch and fix NaN bug
-				Assert(!isnan(Tool->XAxis.x) && !isnan(Tool->XAxis.y) && !isnan(Tool->XAxis.z));
-				Assert(!isnan(Tool->YAxis.x) && !isnan(Tool->YAxis.y) && !isnan(Tool->YAxis.z));
-				Assert(!isnan(Tool->ZAxis.x) && !isnan(Tool->ZAxis.y) && !isnan(Tool->ZAxis.z));
+				Assert(!isnan(Tool->Axis.X.x) && !isnan(Tool->Axis.X.y) && !isnan(Tool->Axis.X.z));
+				Assert(!isnan(Tool->Axis.Y.x) && !isnan(Tool->Axis.Y.y) && !isnan(Tool->Axis.Y.z));
+				Assert(!isnan(Tool->Axis.Z.x) && !isnan(Tool->Axis.Z.y) && !isnan(Tool->Axis.Z.z));
 
 				Result = true;
 			}
@@ -591,19 +590,18 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
+
+			RotateTool->FromPosToRayP = Normalize(Ray.Pos - RotateTool->CenterPos);
+
 			//SetAxisForTools(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 			// TODO: Set axis for face and edge
-			RotateTool->XAxis = Model->XAxis;
-			RotateTool->YAxis = Model->YAxis;
-			RotateTool->ZAxis = Model->ZAxis;
+			v3 XAxis = RotateTool->Axis.X = Model->XAxis;
+			v3 YAxis = RotateTool->Axis.Y = Model->YAxis;
+			v3 ZAxis = RotateTool->Axis.Z = Model->ZAxis;
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
 				// TODO: Move this code to separate function?
-				v3 XAxis = RotateTool->XAxis;
-				v3 YAxis = RotateTool->YAxis;
-				v3 ZAxis = RotateTool->ZAxis;
-
 				RotateTool->AxisMask = {};
 				RotateTool->PerpInfo = {};
 
@@ -611,9 +609,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				b32 YPerpIntr = false;
 				b32 ZPerpIntr = false;
 
-				b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, XAxis, RenderGroup->CameraZ);
-				b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, YAxis, RenderGroup->CameraZ);
-				b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, ZAxis, RenderGroup->CameraZ);
+				b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, XAxis, RotateTool->FromPosToRayP);
+				b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, YAxis, RotateTool->FromPosToRayP);
+				b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, ZAxis, RotateTool->FromPosToRayP);
 
 				if (IsXPerp | IsYPerp | IsZPerp)
 				{
@@ -694,9 +692,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
 						if (TargetElement == ModelTargetElement_Model)
 						{
-							Model->XAxis = RotateTool->XAxis;
-							Model->YAxis = RotateTool->YAxis;
-							Model->ZAxis = RotateTool->ZAxis;
+							Model->XAxis = RotateTool->Axis.X;
+							Model->YAxis = RotateTool->Axis.Y;
+							Model->ZAxis = RotateTool->Axis.Z;
 						}
 
 						ApplyToolsTransform(Model, &WorldUI->Selected, TargetElement, RotateTool->Transform);
@@ -714,8 +712,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 
 			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
-				RotateTool->XAxis, RotateTool->YAxis, RotateTool->ZAxis, RotateTool->AxisMask,
-				RotateTool->PerpInfo, RenderGroup->CameraZ);
+				RotateTool->Axis, RotateTool->AxisMask, RotateTool->PerpInfo,
+				RotateTool->FromPosToRayP);
 		} break;
 		case ToolType_Scale:
 		{
