@@ -104,6 +104,11 @@ enum tools_axis_id
 // TODO: Pack smarter?
 struct rotate_tools
 {
+	m4x4 Transform;
+	v3 XAxis;
+	v3 YAxis;
+	v3 ZAxis;
+
 	plane_params InteractPlane;
 	
 	// NOTE: Persistent

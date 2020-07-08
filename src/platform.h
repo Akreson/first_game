@@ -22,6 +22,15 @@
 #define MiB(Value) (KiB(Value) * 1024)
 #define GiB(Value) (MiB(Value) * 1024)
 
+#if DEVELOP_MODE
+#define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
+#else
+#define Assert(Expression)
+#endif
+
+#define InvalidCodePath Assert(0)
+#define InalidDefaultCase default: {InvalidCodePath;} break;
+
 typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -165,12 +174,6 @@ struct m4x4_inv
 	m4x4 Forward;
 	m4x4 Inverse;
 };
-
-#if DEVELOP_MODE
-#define Assert(Expression) if (!(Expression)) *((int *)0) = 0;
-#else
-#define Assert(Expression)
-#endif
 
 inline u32
 GetAlignmentOffsetForwad(memory_index Ptr, u32 Alignment)

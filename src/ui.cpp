@@ -337,17 +337,25 @@ ApplyTransformForAllFaces(model *Model, selected_elements_buffer *SelectBuffer,
 }
 
 void
-ApplyTransformForAllElement(model *Model, selected_elements_buffer *SelectBuffer,
+ApplyToolsTransform(model *Model, selected_elements_buffer *SelectBuffer,
 	model_target_element ElementTarget, m4x4 Transform)
 {	
 	switch (ElementTarget)
 	{
 		case ModelTargetElement_Model:
 		{
-			
+			for (u32 Index = 0;
+				Index < Model->VertexCount;
+				++Index)
+			{
+				v3 V = Model->Vertex[Index];
+				V = V * Transform;
+				Model->Vertex[Index] = V;
+			}
 		} break;
 
-		case ModelTargetElement_Face:
+		InalidDefaultCase;
+		/*case ModelTargetElement_Face:
 		{
 
 		} break;
@@ -355,7 +363,7 @@ ApplyTransformForAllElement(model *Model, selected_elements_buffer *SelectBuffer
 		case ModelTargetElement_Edge:
 		{
 
-		} break;
+		} break;*/
 	}
 }
 
@@ -437,10 +445,11 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 
 // TODO: Implement drawing progres angle
 // TODO: Move _ApplyTransformFor_ from ProcessRotateTool?
-internal void
-ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *SelectBuffer,
-	ray_params Ray, model_target_element ElementTarget)
+internal b32
+ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray)
 {
+	b32 Result = false;
+
 	v3 CurrentVector;
 	if (SetCurrentDirVector(Tool, Ray, &CurrentVector))
 	{
@@ -465,20 +474,29 @@ ProcessRotateTool(rotate_tools *Tool, model *Model, selected_elements_buffer *Se
 			if (AngleBetween != 0)
 			{
 				m4x4 Rotate = GetRotateMatrixFormAxisID(AngleBetween, Tool->InteractAxis);
-		
-				if (ElementTarget == ModelTargetElement_Model)
-				{
-					v3 DirDiff = Tool->PrevVector - CurrentVector;
-					UpdateModelAxis(Model, Tool->InteractAxis, Rotate);
-				}
-				// TODO: Complete
-				//ApplyTransformForAllElement()
+				m4x4 CurrentAxis = Row3x3(Tool->XAxis, Tool->YAxis, Tool->ZAxis);
+				m4x4 ResultAxis = Rotate * CurrentAxis;
 
+				m4x4 InvCurrentAxis = Transpose(CurrentAxis);
+				m4x4 ResultTransform = InvCurrentAxis * ResultAxis;
+
+				Tool->Transform = ResultTransform;
+				Tool->XAxis = GetRow(ResultAxis, 0);
+				Tool->YAxis = GetRow(ResultAxis, 1);
+				Tool->ZAxis = GetRow(ResultAxis, 2);
+				Tool->PrevVector = CurrentVector;
+				
+				// TODO: Catch and fix NaN bug
+				Assert(!isnan(Tool->XAxis.x) && !isnan(Tool->XAxis.y) && !isnan(Tool->XAxis.z));
+				Assert(!isnan(Tool->YAxis.x) && !isnan(Tool->YAxis.y) && !isnan(Tool->YAxis.z));
+				Assert(!isnan(Tool->ZAxis.x) && !isnan(Tool->ZAxis.y) && !isnan(Tool->ZAxis.z));
+
+				Result = true;
 			}
-			
-			Tool->PrevVector = CurrentVector;
 		}
 	}
+
+	return Result;
 }
 
 internal inline b32
@@ -575,13 +593,16 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			rotate_tools *RotateTool = &Tools->Rotate;
 			//SetAxisForTools(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 			// TODO: Set axis for face and edge
-			v3 XAxis = Model->XAxis;
-			v3 YAxis = Model->YAxis;
-			v3 ZAxis = Model->ZAxis;
+			RotateTool->XAxis = Model->XAxis;
+			RotateTool->YAxis = Model->YAxis;
+			RotateTool->ZAxis = Model->ZAxis;
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
 				// TODO: Move this code to separate function?
+				v3 XAxis = RotateTool->XAxis;
+				v3 YAxis = RotateTool->YAxis;
+				v3 ZAxis = RotateTool->ZAxis;
 
 				RotateTool->AxisMask = {};
 				RotateTool->PerpInfo = {};
@@ -668,8 +689,18 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				if (AreEqual(WorldUI->Interaction, Interaction))
 				{
-					ProcessRotateTool(RotateTool, Model, &WorldUI->Selected, Ray,
-						(model_target_element)WorldUI->IModel.Target);
+					if (ProcessRotateToolTransform(RotateTool, Ray))
+					{
+						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
+						if (TargetElement == ModelTargetElement_Model)
+						{
+							Model->XAxis = RotateTool->XAxis;
+							Model->YAxis = RotateTool->YAxis;
+							Model->ZAxis = RotateTool->ZAxis;
+						}
+
+						ApplyToolsTransform(Model, &WorldUI->Selected, TargetElement, RotateTool->Transform);
+					}
 				}
 				else
 				{
@@ -683,7 +714,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 
 			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
-				XAxis, YAxis, ZAxis, RotateTool->AxisMask,
+				RotateTool->XAxis, RotateTool->YAxis, RotateTool->ZAxis, RotateTool->AxisMask,
 				RotateTool->PerpInfo, RenderGroup->CameraZ);
 		} break;
 		case ToolType_Scale:
