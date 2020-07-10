@@ -99,7 +99,7 @@ MatchFaceVertex(model_face *A, model_face *B)
 
 // TODO: Set _Mask..._ function for other function?
 inline u32
-MaskMatchFaceVertex(model_face *A, model_edge *B)
+MaskOfMatchFaceVertex(model_face *A, model_edge *B)
 {
 	// TODO: See if in optimize build with same _A_ value
 	// compiler will propagate _VertexA_ to multimple sequential call
@@ -121,7 +121,7 @@ MaskMatchFaceVertex(model_face *A, model_edge *B)
 inline face_vertex_match
 MatchFaceVertex(model_face *A, model_edge *B)
 {
-	u32 Mask32 = MaskMatchFaceVertex(A, B);
+	u32 Mask32 = MaskOfMatchFaceVertex(A, B);
 	face_vertex_match Result = GetFaceVertexMatchResult(Mask32);
 
 	return Result;

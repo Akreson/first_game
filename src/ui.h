@@ -132,7 +132,7 @@ struct rotate_tools
 	v3 BeginVector;
 	v3 PrevVector;
 	v4 AxisMask;
-	rot_tool_perp_axis PerpInfo; // 0 - index, 1 - is have perp axis 
+	rot_tool_perp_axis PerpInfo; 
 
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;
@@ -145,7 +145,15 @@ struct tools
 
 	union
 	{
-		rotate_tools Rotate;
+		struct
+		{
+			b32 UpdateAxis;
+			b32 UpdatePos;
+			union
+			{
+				rotate_tools Rotate;
+			};
+		};
 	};
 };
 

@@ -108,7 +108,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					if (EdgeMatch.Succes)
 					{
 						model_edge *Edge = Model->Edges + CompFace->EdgesID[EdgeMatch.Index];
-						Result.ActiveEdge[EdgeMatch.Index] = MaskMatchFaceVertex(CompFace, Edge);
+						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, Edge);
 					}
 				}
 			}
@@ -131,7 +131,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 					if (EdgeMatch.Succes)
 					{
 						model_edge *Edge = Model->Edges + EdgeID;
-						Result.ActiveEdge[EdgeMatch.Index] = MaskMatchFaceVertex(CompFace, Edge);
+						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, Edge);
 					}
 				}
 			}
@@ -144,7 +144,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 				face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IEdgeIndex);
 				if (EdgeMatch.Succes)
 				{
-					Result.ActiveEdge[EdgeMatch.Index] = MaskMatchFaceVertex(CompFace, IEdge);
+					Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, IEdge);
 				}
 			}
 		} break;
@@ -279,8 +279,6 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	WorldUI->MouseRay.Dir = Unproject(&RenderGroup, WorldUI->MouseP);
 	WorldUI->MouseRay.Pos = CameraOt;
 
-	// TODO: Before or after model submit??
-	EditorUIInteraction(Editor, Input, &RenderGroup);
 
 	for (u32 ModelIndex = 0;
 		ModelIndex < Editor->ModelsCount;
@@ -313,6 +311,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		EndPushModel(&RenderGroup);
 	}
 
+	// TODO: Before or after model submit??
+	EditorUIInteraction(Editor, Input, &RenderGroup);
 #if 1
 	char Buffer[1024];
 	sprintf(Buffer, "%f", Input->PrevFrameTime * 1000.0f);

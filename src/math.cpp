@@ -232,7 +232,7 @@ operator+(v3 A, v3 B)
 	return Result;
 }
 
-inline v3
+inline v3&
 operator+=(v3 &A, v3 B)
 {
 	A = A + B;
@@ -272,6 +272,12 @@ operator/(f32 B, v3 A)
 	return Result;
 }
 
+inline v3&
+operator/=(v3 &A, f32 B)
+{
+	A = A / B;
+	return A;
+}
 
 inline v3
 operator*(v3 A, f32 B)

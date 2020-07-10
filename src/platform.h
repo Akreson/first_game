@@ -29,7 +29,7 @@
 #endif
 
 #define InvalidCodePath Assert(0)
-#define InalidDefaultCase default: {InvalidCodePath;} break;
+#define InvalidDefaultCase default: {InvalidCodePath;} break;
 
 typedef uint64_t u64;
 typedef uint32_t u32;

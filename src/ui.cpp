@@ -304,9 +304,10 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 // TODO: Delete or change implementation
 v3
-ComputeAveragePos(model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget)
+ComputeToolPos(model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget, memory_arena *MemArena)
 {
-	v3 Result;
+	v3 Result = {};
+	temp_memory TempMem = BeginTempMemory(MemArena);
 
 	v3 ModelOffset = Model->Offset;
 	switch (ElementTarget)
@@ -316,17 +317,121 @@ ComputeAveragePos(model *Model, selected_elements_buffer *SelectBuffer, u32 Elem
 			Result = ((Model->AABB.Min + ModelOffset) + (Model->AABB.Max + ModelOffset)) / 2.0f;
 		} break;
 
+		// TODO: Optimize for face and edge
 		case ModelTargetElement_Face:
 		{
-			
+			// NOTE: Just approximation
+			u32 IndexBufferSize = SelectBuffer->Count * 4;
+			u32 *UniqueIndeces = PushArray(MemArena, u32, IndexBufferSize);
+			u32 UniqueIndexCount = 0;
+
+			for (u32 Index = 0;
+				Index < SelectBuffer->Count;
+				++Index)
+			{
+				u32 FaceIndex = SelectBuffer->Elements[Index];
+				model_face *Face = Model->Faces + FaceIndex;
+
+				for (u32 InFaceIndex = 0;
+					InFaceIndex < ArrayCount(Face->VertexID);
+					++InFaceIndex)
+				{
+					b32 IsAddToUniqBuff = true;
+					u32 VertexIndex = Face->VertexID[InFaceIndex];
+
+					if (UniqueIndexCount != 0)
+					{
+						for (u32 UniqIndex = 0;
+							UniqIndex < UniqueIndexCount;
+							++UniqIndex)
+						{
+							if (UniqueIndeces[UniqIndex] == VertexIndex)
+							{
+								IsAddToUniqBuff = false;
+								break;
+							}
+						}
+					}
+					
+					if (IsAddToUniqBuff)
+					{
+						UniqueIndeces[UniqueIndexCount++] = VertexIndex;
+					}
+				}
+			}
+
+			// TODO: See if it don't get enough precision
+			for (u32 Index = 0;
+				Index < UniqueIndexCount;
+				++Index)
+			{
+				u32 VertexIndex = UniqueIndeces[Index];
+
+				v3 V = Model->Vertex[VertexIndex] + ModelOffset;
+				Result += V;
+			}
+
+			Result /= (f32)UniqueIndexCount;
 		} break;
 
 		case ModelTargetElement_Edge:
 		{
+			// NOTE: Just approximation
+			u32 IndexBufferSize = SelectBuffer->Count * 4;
+			u32 *UniqueIndeces = PushArray(MemArena, u32, IndexBufferSize);
+			u32 UniqueIndexCount = 0;
 
+			for (u32 Index = 0;
+				Index < SelectBuffer->Count;
+				++Index)
+			{
+				u32 EdgeIndex = SelectBuffer->Elements[Index];
+				model_edge *Edge = Model->Edges + EdgeIndex;
+
+				for (u32 InEdgeIndex = 0;
+					InEdgeIndex < ArrayCount(Edge->VertexID);
+					++InEdgeIndex)
+				{
+					b32 IsAddToUniqBuff = true;
+					u32 VertexIndex = Edge->VertexID[InEdgeIndex];
+
+					if (UniqueIndexCount != 0)
+					{
+						for (u32 UniqIndex = 0;
+							UniqIndex < UniqueIndexCount;
+							++UniqIndex)
+						{
+							if (UniqueIndeces[UniqIndex] == VertexIndex)
+							{
+								IsAddToUniqBuff = false;
+								break;
+							}
+						}
+					}
+
+					if (IsAddToUniqBuff)
+					{
+						UniqueIndeces[UniqueIndexCount++] = VertexIndex;
+					}
+				}
+			}
+
+			// TODO: See if it don't get enough precision
+			for (u32 Index = 0;
+				Index < UniqueIndexCount;
+				++Index)
+			{
+				u32 VertexIndex = UniqueIndeces[Index];
+
+				v3 V = Model->Vertex[VertexIndex] + ModelOffset;
+				Result += V;
+			}
+
+			Result /= (f32)UniqueIndexCount;
 		} break;
 	}
 
+	EndTempMemory(TempMem);
 	return Result;
 }
 
@@ -354,7 +459,7 @@ ApplyToolsTransform(model *Model, selected_elements_buffer *SelectBuffer,
 			}
 		} break;
 
-		InalidDefaultCase;
+		//InvalidDefaultCase;
 		/*case ModelTargetElement_Face:
 		{
 
@@ -389,17 +494,6 @@ GetRotateMatrixFormAxisID(f32 Angle, tools_axis_id ID)
 	}
 
 	return Result;
-}
-
-internal inline void
-UpdateModelAxis(model *Model, tools_axis_id ID, m4x4 Rotate)
-{
-	m4x4 CurrentAxisState = Row3x3(Model->XAxis, Model->YAxis, Model->ZAxis);
-	m4x4 Result = Rotate * CurrentAxisState;
-
-	Model->XAxis = GetRow(Result, 0);
-	Model->YAxis = GetRow(Result, 1);
-	Model->ZAxis = GetRow(Result, 2);
 }
 
 internal inline b32
@@ -441,9 +535,6 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 
 	return Result;
 }
-
-// TODO: Implement drawing progres angle
-// TODO: Move _ApplyTransformFor_ from ProcessRotateTool?
 internal b32
 ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray)
 {
@@ -541,15 +632,16 @@ IsRotateToolAxisPerp(rotate_tools *Tool, v3 Axis, v3 CameraZ)
 }
 
 void
-SetAxisForTools(model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget,
+SetAxisForTools(tools *Tools, model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget,
 	v3 *XAxis, v3 *YAxis, v3 *ZAxis)
 {
 
+	Tools->UpdateAxis = false;
 }
 
 // TODO: Add more tools!!!
 void
-InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
+InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena *TranArena)
 {
 	selected_elements_buffer *SelectBuffer = &WorldUI->Selected;
 	interact_model *IModel = &WorldUI->IModel;
@@ -557,15 +649,20 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr)
 
 	// TODO: Define pos. as common
 	tool_type ToolType = (tool_type)Tools->Type;
-	if (ToolType == ToolType_Rotate ||
-		ToolType == ToolType_Translate ||
-		ToolType == ToolType_Scale)
+	switch (ToolType)
 	{
-		Tools->Rotate = {};
+		case ToolType_Scale:
+		case ToolType_Translate:
+		case ToolType_Rotate:
+		{
+			Tools->Rotate = {};
 
-		Tools->Rotate.CenterPos = ComputeAveragePos(Model, SelectBuffer, IModel->Target);
-		Tools->Rotate.Radius = ROTATE_TOOLS_DIAMETER / 2.0f;
-		Tools->Rotate.PerpThreshold = 0.95f;
+			Tools->Rotate.CenterPos = ComputeToolPos(Model, SelectBuffer, IModel->Target, TranArena);
+			Tools->Rotate.Radius = ROTATE_TOOLS_DIAMETER / 2.0f;
+			Tools->Rotate.PerpThreshold = 0.95f;
+		} break;
+
+		InvalidDefaultCase;
 	}
 
 	Tools->IsInit = true;
@@ -583,19 +680,20 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	// TODO: Extend
 	if (!Tools->IsInit)
 	{
-		InitTools(WorldUI, Tools, Editor->Models);
+		InitTools(WorldUI, Tools, Editor->Models, &Editor->TranArena);
 	}
 
 	ray_params Ray = WorldUI->MouseRay;
 	switch (Tools->Type)
 	{
+		// TODO: Implement drawing progres angle
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
 
 			RotateTool->FromPosToRayP = Normalize(Ray.Pos - RotateTool->CenterPos);
 
-			//SetAxisForTools(Model, &WorldUI->Selected, WorldUI->IModel.Target);
+			//SetAxisForTools(Tools, Model, &WorldUI->Selected, WorldUI->IModel.Target);
 			// TODO: Set axis for face and edge
 			v3 XAxis = RotateTool->Axis.X = Model->XAxis;
 			v3 YAxis = RotateTool->Axis.Y = Model->YAxis;
@@ -705,6 +803,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 						}
 
 						ApplyToolsTransform(Model, &WorldUI->Selected, TargetElement, RotateTool->Transform);
+						Tools->UpdateAxis = true;
 					}
 				}
 				else
