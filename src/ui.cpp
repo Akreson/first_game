@@ -126,18 +126,28 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 }
 
 // TODO: Make possible buffer clearing
-
 // TODO: Collate Add..ToSelectedBuffer?
+// TODO: Fix delete and add from buffer logic, for now it imposible
+// delete form buffer because of looping and add redundant same element
+// to buffer
+// TODO: Does need perform vertex match at all??
 inline void
 AddFaceToSelectedBuffer(selected_elements_buffer *Buffer, model *Model, u32 ElementID)
 {
 	model_face *AddFace = Model->Faces + ElementID;
+	u32 ElementCount = Buffer->Count;
+
 	for (u32 Index = 0;
-		Index < Buffer->Count;
+		Index < ElementCount;
 		++Index)
 	{
 		u32 BufferElementID = Buffer->Elements[Index];
-		if (BufferElementID != ElementID)
+		if (BufferElementID == ElementID)
+		{
+			Buffer->Elements[Index] = Buffer->Elements[Buffer->Count--];
+			break;
+		}
+		else
 		{
 			model_face *CompFace = Model->Faces + BufferElementID;
 			face_edge_match MatchResult = MatchFaceEdge(AddFace, CompFace);
@@ -148,6 +158,7 @@ AddFaceToSelectedBuffer(selected_elements_buffer *Buffer, model *Model, u32 Elem
 				if (Buffer->Count < Buffer->MaxCount)
 				{
 					Buffer->Elements[Buffer->Count++] = ElementID;
+					break;
 				}
 				else
 				{
@@ -162,12 +173,19 @@ inline void
 AddEdgeToSelectedBuffer(selected_elements_buffer *Buffer, model *Model, u32 ElementID)
 {
 	model_edge *AddEdge = Model->Edges + ElementID;
+	u32 ElementCount = Buffer->Count;
+
 	for (u32 Index = 0;
-		Index < Buffer->Count;
+		Index < ElementCount;
 		++Index)
 	{
 		u32 BufferElementID = Buffer->Elements[Index];
-		if (BufferElementID != ElementID)
+		if (BufferElementID == ElementID)
+		{
+			Buffer->Elements[Index] = Buffer->Elements[Buffer->Count--];
+			break;
+		}
+		else
 		{
 			model_edge *CompEdge = Model->Edges + BufferElementID;
 			edge_vertex_match MatchResult = MatchEdgeVertex(AddEdge, CompEdge);
@@ -178,6 +196,7 @@ AddEdgeToSelectedBuffer(selected_elements_buffer *Buffer, model *Model, u32 Elem
 				if (Buffer->Count < Buffer->MaxCount)
 				{
 					Buffer->Elements[Buffer->Count++] = ElementID;
+					break;
 				}
 				else
 				{
@@ -209,9 +228,21 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	}
 	else
 	{
-		Buffer->Count = 1;
-		Assert(Buffer->Count < Buffer->MaxCount);
-		*Buffer->Elements = ElementID;
+		if (!Buffer->Count || (Buffer->Count > 1))
+		{
+			Buffer->Count = 1;
+			Assert(Buffer->Count < Buffer->MaxCount);
+			*Buffer->Elements = ElementID;
+		}
+		else
+		{
+			if (Buffer->Elements[0] == ElementID)
+			{
+				Buffer->Count = 0;
+			}
+
+			*Buffer->Elements = ElementID;
+		}
 	}
 }
 
