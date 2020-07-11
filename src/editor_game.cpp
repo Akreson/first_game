@@ -273,6 +273,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	m4x4 CameraR = XRotation(Editor->Camera.Pitch) * YRotation(Editor->Camera.Orbit);
 	v3 CameraOt = ((CameraOffset + V3(0, 0, Editor->Camera.Dolly)) * CameraR) + Editor->Camera.Pos;
 	m4x4_inv CameraTansform = CameraViewTransform(CameraR, CameraOt);
+
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 	RenderGroup.CameraZ = GetRow(CameraR, 2);
 

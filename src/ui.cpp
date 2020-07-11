@@ -125,88 +125,6 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 	}
 }
 
-// TODO: Make possible buffer clearing
-// TODO: Collate Add..ToSelectedBuffer?
-// TODO: Fix delete and add from buffer logic, for now it imposible
-// delete form buffer because of looping and add redundant same element
-// to buffer
-// TODO: Does need perform vertex match at all??
-inline void
-AddFaceToSelectedBuffer(selected_elements_buffer *Buffer, model *Model, u32 ElementID)
-{
-	model_face *AddFace = Model->Faces + ElementID;
-	u32 ElementCount = Buffer->Count;
-
-	for (u32 Index = 0;
-		Index < ElementCount;
-		++Index)
-	{
-		u32 BufferElementID = Buffer->Elements[Index];
-		if (BufferElementID == ElementID)
-		{
-			Buffer->Elements[Index] = Buffer->Elements[Buffer->Count--];
-			break;
-		}
-		else
-		{
-			model_face *CompFace = Model->Faces + BufferElementID;
-			face_edge_match MatchResult = MatchFaceEdge(AddFace, CompFace);
-			
-			if (MatchResult.Succes)
-			{
-				// TODO: Change to memory arena for resize opportunity
-				if (Buffer->Count < Buffer->MaxCount)
-				{
-					Buffer->Elements[Buffer->Count++] = ElementID;
-					break;
-				}
-				else
-				{
-					Assert(0);
-				}
-			}
-		}
-	}
-}
-
-inline void
-AddEdgeToSelectedBuffer(selected_elements_buffer *Buffer, model *Model, u32 ElementID)
-{
-	model_edge *AddEdge = Model->Edges + ElementID;
-	u32 ElementCount = Buffer->Count;
-
-	for (u32 Index = 0;
-		Index < ElementCount;
-		++Index)
-	{
-		u32 BufferElementID = Buffer->Elements[Index];
-		if (BufferElementID == ElementID)
-		{
-			Buffer->Elements[Index] = Buffer->Elements[Buffer->Count--];
-			break;
-		}
-		else
-		{
-			model_edge *CompEdge = Model->Edges + BufferElementID;
-			edge_vertex_match MatchResult = MatchEdgeVertex(AddEdge, CompEdge);
-
-			if (MatchResult.Succes)
-			{
-				// TODO: Change to memory arena for resize opportunity
-				if (Buffer->Count < Buffer->MaxCount)
-				{
-					Buffer->Elements[Buffer->Count++] = ElementID;
-					break;
-				}
-				else
-				{
-					Assert(0);
-				}
-			}
-		}
-	}
-}
-
 void
 AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	model *Model, u32 ElementID, u32 ITarget, b32 ShiftDown)
@@ -215,15 +133,40 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	{
 		switch (ITarget)
 		{
+			case ModelTargetElement_Edge:
 			case ModelTargetElement_Face:
 			{
-				AddFaceToSelectedBuffer(Buffer, Model, ElementID);
+				b32 AddToBuff = true;
+				u32 ElementCount = Buffer->Count;
+
+				for (u32 Index = 0;
+					Index < ElementCount;
+					++Index)
+				{
+					u32 BufferElementID = Buffer->Elements[Index];
+					if (BufferElementID == ElementID)
+					{
+						Buffer->Elements[Index] = Buffer->Elements[--Buffer->Count];
+						AddToBuff = false;
+						break;
+					}
+				}
+
+				if (AddToBuff)
+				{
+					if (Buffer->Count < Buffer->MaxCount)
+					{
+						Buffer->Elements[Buffer->Count++] = ElementID;
+						break;
+					}
+					else
+					{
+						Assert(0);
+					}
+				}
 			} break;
 
-			case ModelTargetElement_Edge:
-			{
-				AddEdgeToSelectedBuffer(Buffer, Model, ElementID);
-			} break;
+			InvalidDefaultCase;
 		}
 	}
 	else
