@@ -276,8 +276,8 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 	RenderGroup.CameraZ = GetRow(CameraR, 2);
 
+	WorldUI->MouseRay.P = CameraOt;
 	WorldUI->MouseRay.Dir = Unproject(&RenderGroup, WorldUI->MouseP);
-	WorldUI->MouseRay.Pos = CameraOt;
 
 
 	for (u32 ModelIndex = 0;

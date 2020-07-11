@@ -110,7 +110,7 @@ struct rot_tool_perp_axis
 			u32 Index;
 			u32 IsSet;
 		};
-		iv2 V;
+		v2i V;
 	};
 };
 
@@ -123,7 +123,7 @@ struct rotate_tools
 	plane_params InteractPlane;
 	
 	// NOTE: Persistent
-	v3 CenterPos;
+	v3 CenterP;
 	f32 Radius;
 	f32 PerpThreshold;
 

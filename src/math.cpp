@@ -13,8 +13,8 @@ struct rect3
 
 struct ray_params
 {
+	v3 P;
 	v3 Dir;
-	v3 Pos;
 };
 
 struct plane_params
@@ -709,8 +709,8 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 
 	v3 Min = (AABB.Min + AABBOffset);
 	v3 Max = (AABB.Max + AABBOffset);
-	v3 tMinV = (Min - Ray.Pos) * InvD;
-	v3 tMaxV = (Max - Ray.Pos) * InvD;
+	v3 tMinV = (Min - Ray.P) * InvD;
+	v3 tMaxV = (Max - Ray.P) * InvD;
 
 	f32 tMin = MAX(MAX(MIN(tMinV.x, tMaxV.x), MIN(tMinV.y, tMaxV.y)), MIN(tMinV.z, tMaxV.z));
 	f32 tMax = MIN(MIN(MAX(tMinV.x, tMaxV.x), MAX(tMinV.y, tMaxV.y)), MAX(tMinV.z, tMaxV.z));
@@ -721,7 +721,7 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 inline f32
 RayPlaneIntersect(ray_params Ray, plane_params Plane, f32 DotRayDPlaneN)
 {
-	f32 tResult = ((Plane.D - Dot(Plane.N, Ray.Pos)) / DotRayDPlaneN);
+	f32 tResult = ((Plane.D - Dot(Plane.N, Ray.P)) / DotRayDPlaneN);
 	return tResult;
 }
 
@@ -731,7 +731,7 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 {
 	b32 Result = false;
 
-	v3 CRP = Center - Ray.Pos;
+	v3 CRP = Center - Ray.P;
 	f32 A = Dot(CRP, Ray.Dir);
 	
 	if (A > 0)
@@ -745,7 +745,7 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 			{
 				f32 tToRay = SquareRoot(RadiusSq - DSq);
 				f32 tRay = A - tToRay;
-				*ResultP = Ray.Pos + (Ray.Dir * tRay);
+				*ResultP = Ray.P + (Ray.Dir * tRay);
 			}
 		}
 	}

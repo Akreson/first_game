@@ -9,7 +9,7 @@ union v2
 	};
 };
 
-union iv2
+union v2i
 {
 	s32 E[2];
 	struct

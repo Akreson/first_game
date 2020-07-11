@@ -541,9 +541,9 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 	if (Abs(RPosDotPlaneN) <= RTOOLS_AXIS_INTERACT_THRESHOLD)
 	{
 		v3 PointOnSphere;
-		if (RaySphereIntersect(Ray, Tool->CenterPos, Tool->Radius, &PointOnSphere))
+		if (RaySphereIntersect(Ray, Tool->CenterP, Tool->Radius, &PointOnSphere))
 		{
-			v3 DirFromCenter = Normalize(PointOnSphere - Tool->CenterPos);
+			v3 DirFromCenter = Normalize(PointOnSphere - Tool->CenterP);
 			f32 PDotD = Dot(Tool->InteractPlane.N, DirFromCenter);
 
 			CurrentVector = Normalize(DirFromCenter - (Tool->InteractPlane.N * PDotD));
@@ -557,8 +557,8 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 	}
 	else if (tRay >= 0)
 	{
-		CurrentVector = Ray.Pos + (Ray.Dir * tRay);
-		CurrentVector = Normalize(CurrentVector - Tool->CenterPos);
+		CurrentVector = Ray.P + (Ray.Dir * tRay);
+		CurrentVector = Normalize(CurrentVector - Tool->CenterP);
 
 		*ResultVector = CurrentVector;
 		Result = true;
@@ -629,14 +629,14 @@ IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
 
 	plane_params Plane = {};
 	Plane.N = Axis;
-	Plane.D = Dot(Axis, Tool->CenterPos);
+	Plane.D = Dot(Axis, Tool->CenterP);
 
 	f32 ADotR = Dot(Axis, Ray.Dir);
 	f32 tRay = RayPlaneIntersect(Ray, Plane, ADotR);
-	v3 P = Ray.Pos + (Ray.Dir * tRay);
+	v3 P = Ray.P + (Ray.Dir * tRay);
 
 	f32 RadiusSq = Square(Tool->Radius);
-	f32 FromCenterToP = LengthSq(P - Tool->CenterPos);
+	f32 FromCenterToP = LengthSq(P - Tool->CenterP);
 	f32 NormLength = FromCenterToP / RadiusSq;
 
 	if (NormLength <= 1.0f &&
@@ -688,7 +688,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 		{
 			Tools->Rotate = {};
 
-			Tools->Rotate.CenterPos = ComputeToolPos(Model, SelectBuffer, IModel->Target, TranArena);
+			Tools->Rotate.CenterP = ComputeToolPos(Model, SelectBuffer, IModel->Target, TranArena);
 			Tools->Rotate.Radius = ROTATE_TOOLS_DIAMETER / 2.0f;
 			Tools->Rotate.PerpThreshold = 0.95f;
 		} break;
@@ -722,7 +722,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
 
-			RotateTool->FromPosToRayP = Normalize(Ray.Pos - RotateTool->CenterPos);
+			RotateTool->FromPosToRayP = Normalize(Ray.P - RotateTool->CenterP);
 
 			//SetAxisForTools(Tools, Model, &WorldUI->Selected, WorldUI->IModel.Target);
 			// TODO: Set axis for face and edge
@@ -771,11 +771,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				// TODO: Make posible interaction with perp axis beyond sphere radius?
 				// (set IsHavePerpIntr and IsHaveSphereIntr?)
 				v3 PointOnSphere;
-				if (RaySphereIntersect(Ray, RotateTool->CenterPos, RotateTool->Radius, &PointOnSphere))
+				if (RaySphereIntersect(Ray, RotateTool->CenterP, RotateTool->Radius, &PointOnSphere))
 				{
 					// TODO: Move this code to separate function?
 
-					v3 DirFromCenter = Normalize(PointOnSphere - RotateTool->CenterPos);
+					v3 DirFromCenter = Normalize(PointOnSphere - RotateTool->CenterP);
 					f32 XDotP = Abs(Dot(XAxis, DirFromCenter));
 					f32 YDotP = Abs(Dot(YAxis, DirFromCenter));
 					f32 ZDotP = Abs(Dot(ZAxis, DirFromCenter));
@@ -807,7 +807,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 					{
 						RotateTool->InteractAxis = InteractAxis;
-						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->CenterPos);
+						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->CenterP);
 						RotateTool->AxisMask.w = 1.0f;
 
 						Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
@@ -848,7 +848,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				}
 			}
 
-			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterPos,
+			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterP,
 				RotateTool->Axis, RotateTool->AxisMask, RotateTool->PerpInfo.V,
 				RotateTool->FromPosToRayP);
 		} break;

@@ -532,7 +532,7 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			v3 NormCapDir = Normalize(Capsule.Dir);
 
 			// NOTE: Colosest points between rays
-			v3 R = Capsule.V0 - Ray.Pos;
+			v3 R = Capsule.V0 - Ray.P;
 			f32 CDotC = Dot(NormCapDir, NormCapDir);
 			f32 CDotL = Dot(NormCapDir, Ray.Dir);
 			f32 CDotR = Dot(NormCapDir, R);
@@ -545,7 +545,7 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			f32 t1 = (CDotC * LDotR - CDotL * CDotR) / Det;
 		
 			v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
-			v3 PointOnRay = Ray.Pos + (Ray.Dir * t1);
+			v3 PointOnRay = Ray.P + (Ray.Dir * t1);
 
 			f32 CapRSquare = Capsule.R * Capsule.R;
 			f32 Dist = LengthSq(PointOnEdge - PointOnRay);
@@ -602,7 +602,7 @@ RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResu
 			f32 tRay = RayPlaneIntersect(Ray, Plane, DotRayPlane);
 			if (tRay >= 0)
 			{
-				v3 IntersetPoint = Ray.Pos + (Ray.Dir * tRay);
+				v3 IntersetPoint = Ray.P + (Ray.Dir * tRay);
 
 				b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
 				if (!HitTest)
@@ -652,7 +652,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			v3 CenterOfAABB = ((Model->AABB.Min + Model->Offset) + (Model->AABB.Max + Model->Offset)) / 2.0f;
 
 			SortEntry->Index = ModelIndex;
-			SortEntry->Length = LengthSq(CenterOfAABB - Ray.Pos);
+			SortEntry->Length = LengthSq(CenterOfAABB - Ray.P);
 
 			if (ModelsHitCount >= ModelsSortArraySize)
 			{
