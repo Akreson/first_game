@@ -459,11 +459,13 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_tool_rotate *RotateTool = (render_entry_tool_rotate *)Data;
 				BufferOffset += sizeof(render_entry_tool_rotate);
 
+				m4x4 Scale = ScaleMat(RotateTool->Scale);
 				m4x4 Traslate = Identity();
 				SetTranslation(&Traslate, RotateTool->Pos);
 
+				m4x4 Transform = Scale * Traslate;
 				UseProgramBegin(&OpenGL.RotateTools, &Commands->PersProj.Forward,
-					&Commands->CameraTransform.Forward, &Traslate, RotateTool);
+					&Commands->CameraTransform.Forward, &Transform, RotateTool);
 				glBindVertexArray((GLuint)RotateTool->Mesh.Handle);
 				glDrawElements(GL_TRIANGLES, RotateTool->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);

@@ -205,6 +205,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		u32 SelectedBufferSize = MiB(1);
 		Editor->WorldUI.Selected.Elements = (u32 *)PushSize(&Editor->MainArena, SelectedBufferSize);
 		Editor->WorldUI.Selected.MaxCount = SelectedBufferSize / sizeof(u32);
+		Editor->WorldUI.Tools.AdjustScaleDist = 9.0f;
 
 		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 

@@ -110,6 +110,7 @@ struct rot_tool_perp_axis
 			u32 Index;
 			u32 IsSet;
 		};
+
 		v2i V;
 	};
 };
@@ -124,9 +125,10 @@ struct rotate_tools
 	
 	// NOTE: Persistent
 	v3 CenterP;
-	f32 Radius;
+	f32 InitRadius;
 	f32 PerpThreshold;
 
+	f32 Radius;
 	v3 FromPosToRayP;
 
 	v3 BeginVector;
@@ -140,6 +142,7 @@ struct rotate_tools
 
 struct tools
 {
+	f32 AdjustScaleDist;
 	u16 Type;
 	b16 IsInit;
 
