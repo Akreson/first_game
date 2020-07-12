@@ -126,10 +126,10 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 }
 
 void
-AddToSelectedBuffer(selected_elements_buffer *Buffer,
+AddToSelectedBuffer(element_id_buffer *Selected,
 	model *Model, u32 ElementID, u32 ITarget, b32 ShiftDown)
 {
-	if (Model && ShiftDown && Buffer->Count)
+	if (Model && ShiftDown && Selected->Count)
 	{
 		switch (ITarget)
 		{
@@ -137,16 +137,16 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 			case ModelTargetElement_Face:
 			{
 				b32 AddToBuff = true;
-				u32 ElementCount = Buffer->Count;
+				u32 ElementCount = Selected->Count;
 
 				for (u32 Index = 0;
 					Index < ElementCount;
 					++Index)
 				{
-					u32 BufferElementID = Buffer->Elements[Index];
+					u32 BufferElementID = Selected->Elements[Index];
 					if (BufferElementID == ElementID)
 					{
-						Buffer->Elements[Index] = Buffer->Elements[--Buffer->Count];
+						Selected->Elements[Index] = Selected->Elements[--Selected->Count];
 						AddToBuff = false;
 						break;
 					}
@@ -154,8 +154,8 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 
 				if (AddToBuff)
 				{
-					if (Buffer->Count < Buffer->MaxCount)
-						Buffer->Elements[Buffer->Count++] = ElementID;
+					if (Selected->Count < Selected->MaxCount)
+						Selected->Elements[Selected->Count++] = ElementID;
 					else
 						Assert(0);
 				}
@@ -166,20 +166,20 @@ AddToSelectedBuffer(selected_elements_buffer *Buffer,
 	}
 	else
 	{
-		if (!Buffer->Count || (Buffer->Count > 1))
+		if (!Selected->Count || (Selected->Count > 1))
 		{
-			Buffer->Count = 1;
-			Assert(Buffer->Count < Buffer->MaxCount);
-			*Buffer->Elements = ElementID;
+			Selected->Count = 1;
+			Assert(Selected->Count < Selected->MaxCount);
+			*Selected->Elements = ElementID;
 		}
 		else
 		{
-			if (Buffer->Elements[0] == ElementID)
+			if (Selected->Elements[0] == ElementID)
 			{
-				Buffer->Count = 0;
+				Selected->Count = 0;
 			}
 
-			*Buffer->Elements = ElementID;
+			*Selected->Elements = ElementID;
 		}
 	}
 }
@@ -273,7 +273,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 // TODO: Delete or change implementation
 v3
-ComputeToolPos(model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget, memory_arena *MemArena)
+ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, memory_arena *MemArena)
 {
 	v3 Result = {};
 	temp_memory TempMem = BeginTempMemory(MemArena);
@@ -290,15 +290,15 @@ ComputeToolPos(model *Model, selected_elements_buffer *SelectBuffer, u32 Element
 		case ModelTargetElement_Face:
 		{
 			// NOTE: Just approximation
-			u32 IndexBufferSize = SelectBuffer->Count * 4;
+			u32 IndexBufferSize = Selected->Count * 4;
 			u32 *UniqueIndeces = PushArray(MemArena, u32, IndexBufferSize);
 			u32 UniqueIndexCount = 0;
 
 			for (u32 Index = 0;
-				Index < SelectBuffer->Count;
+				Index < Selected->Count;
 				++Index)
 			{
-				u32 FaceIndex = SelectBuffer->Elements[Index];
+				u32 FaceIndex = Selected->Elements[Index];
 				model_face *Face = Model->Faces + FaceIndex;
 
 				for (u32 InFaceIndex = 0;
@@ -346,15 +346,15 @@ ComputeToolPos(model *Model, selected_elements_buffer *SelectBuffer, u32 Element
 		case ModelTargetElement_Edge:
 		{
 			// NOTE: Just approximation
-			u32 IndexBufferSize = SelectBuffer->Count * 4;
+			u32 IndexBufferSize = Selected->Count * 4;
 			u32 *UniqueIndeces = PushArray(MemArena, u32, IndexBufferSize);
 			u32 UniqueIndexCount = 0;
 
 			for (u32 Index = 0;
-				Index < SelectBuffer->Count;
+				Index < Selected->Count;
 				++Index)
 			{
-				u32 EdgeIndex = SelectBuffer->Elements[Index];
+				u32 EdgeIndex = Selected->Elements[Index];
 				model_edge *Edge = Model->Edges + EdgeIndex;
 
 				for (u32 InEdgeIndex = 0;
@@ -406,21 +406,15 @@ ComputeToolPos(model *Model, selected_elements_buffer *SelectBuffer, u32 Element
 
 
 void
-SetAxisForTools(tools *Tools, model *Model, selected_elements_buffer *SelectBuffer, u32 ElementTarget,
+SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 ElementTarget,
 	v3 *XAxis, v3 *YAxis, v3 *ZAxis)
 {
 
 	Tools->UpdateAxis = false;
 }
 
-internal void
-ApplyTransformForAllFaces(model *Model, selected_elements_buffer *SelectBuffer,
-	model_target_element ElementTarget, m4x4 Transform)
-{
-}
-
 void
-ApplyToolsTransform(model *Model, selected_elements_buffer *SelectBuffer,
+ApplyToolsTransform(model *Model, element_id_buffer *Selected,
 	model_target_element ElementTarget, m4x4 Transform)
 {	
 	switch (ElementTarget)
@@ -613,7 +607,7 @@ IsRotateToolAxisPerp(rotate_tools *Tool, v3 Axis, v3 CameraZ)
 void
 InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena *TranArena)
 {
-	selected_elements_buffer *SelectBuffer = &WorldUI->Selected;
+	element_id_buffer *Selected = &WorldUI->Selected;
 	interact_model *IModel = &WorldUI->IModel;
 	model *Model = ModelsArr + IModel->ID;
 
@@ -627,7 +621,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 		{
 			Tools->Rotate = {};
 
-			Tools->Rotate.CenterP = ComputeToolPos(Model, SelectBuffer, IModel->Target, TranArena);
+			Tools->Rotate.CenterP = ComputeToolPos(Model, Selected, IModel->Target, TranArena);
 			Tools->Rotate.InitRadius = ROTATE_TOOLS_DIAMETER / 2.0f;
 			Tools->Rotate.PerpThreshold = 0.95f;
 		} break;

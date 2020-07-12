@@ -51,12 +51,11 @@ enum select_element_type
 	SelectElementType_Face
 };
 
-struct selected_elements_buffer
+struct element_id_buffer
 {
 	u32 *Elements;
 	u32 Count;
 	u32 MaxCount;
-	// slect_element_type Type;
 };
 
 struct ui_id
@@ -146,6 +145,8 @@ struct tools
 	u16 Type;
 	b16 IsInit;
 
+	element_id_buffer UniqIndeces;
+
 	union
 	{
 		struct
@@ -167,6 +168,8 @@ struct editor_world_ui
 	u32 ITarget;
 	b32 UpdateModelInteraction;
 
+	memory_arena MemArena;
+
 	ui_interaction Interaction;
 	ui_interaction HotInteraction;
 	ui_interaction NextHotInteraction;
@@ -175,7 +178,7 @@ struct editor_world_ui
 	ui_interaction NextToExecute;
 
 	interact_model IModel;
-	selected_elements_buffer Selected;
+	element_id_buffer Selected;
 	tools Tools;
 
 	v2 MouseP;

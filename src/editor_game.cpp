@@ -8,15 +8,15 @@
 #include <cstdio>
 
 inline b32
-IsInSelectedBuffer(selected_elements_buffer *Buffer, u32 ElementID)
+IsInSelectedBuffer(element_id_buffer *Selected, u32 ElementID)
 {
 	b32 Result = false;
 
 	for (u32 Index = 0;
-		Index < Buffer->Count;
+		Index < Selected->Count;
 		++Index)
 	{
-		u32 BufferElementID = Buffer->Elements[Index];
+		u32 BufferElementID = Selected->Elements[Index];
 		if (BufferElementID == ElementID)
 		{
 			Result = true;
@@ -37,7 +37,7 @@ struct select_buffer_face_edges_match
 
 // TODO: Improve SIMD implementation?
 inline select_buffer_face_edges_match
-IsInSelectedBuffer(selected_elements_buffer *Buffer, model_face *Face)
+IsInSelectedBuffer(element_id_buffer *Selected, model_face *Face)
 {
 	select_buffer_face_edges_match Result;
 
@@ -45,10 +45,10 @@ IsInSelectedBuffer(selected_elements_buffer *Buffer, model_face *Face)
 	__m128i EdgesID = _mm_load_si128((__m128i *)Face->EdgesID);
 
 	for (u32 Index = 0;
-		Index < Buffer->Count;
+		Index < Selected->Count;
 		++Index)
 	{
-		__m128i BufferElementID_4x = _mm_set1_epi32(Buffer->Elements[Index]);
+		__m128i BufferElementID_4x = _mm_set1_epi32(Selected->Elements[Index]);
 		__m128i CmpMask = _mm_cmpeq_epi32(EdgesID, BufferElementID_4x);
 		OrMask = _mm_or_si128(OrMask, CmpMask);
 	}
@@ -189,6 +189,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 {
 	game_state *GameState = (game_state *)Memory->GameStorage;
 	game_editor_state *Editor = &GameState->EditorState;
+	editor_world_ui *WorldUI = &Editor->WorldUI;
 
 	if (!GameState->IsInit)
 	{
@@ -202,10 +203,14 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		// TODO: Create TranArena and PageArena as separate arena?
 		Editor->TranArena = SubArena(&Editor->MainArena, MiB(5));
 		
-		u32 SelectedBufferSize = MiB(1);
-		Editor->WorldUI.Selected.Elements = (u32 *)PushSize(&Editor->MainArena, SelectedBufferSize);
-		Editor->WorldUI.Selected.MaxCount = SelectedBufferSize / sizeof(u32);
-		Editor->WorldUI.Tools.AdjustScaleDist = 9.0f;
+		u32 ElementsBufferSize = KiB(200);
+		u32 MaxElementsCount = ElementsBufferSize / sizeof(u32);
+		WorldUI->MemArena = SubArena(&Editor->MainArena, MiB(2));
+		WorldUI->Selected.Elements = (u32 *)PushSize(&WorldUI->MemArena, ElementsBufferSize);
+		WorldUI->Selected.MaxCount = MaxElementsCount;
+		WorldUI->Tools.UniqIndeces.Elements = (u32 *)PushSize(&WorldUI->MemArena, ElementsBufferSize);
+		WorldUI->Selected.MaxCount = MaxElementsCount;
+		WorldUI->Tools.AdjustScaleDist = 9.0f;
 
 		InitPageArena(&Editor->MainArena, &Editor->PageArena, MiB(10));
 
@@ -232,7 +237,6 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	render_group RenderGroup = InitRenderGroup(RenderCommands, Input, GameState->FontAsset);
 
 	v3 CameraOffset = Editor->Camera.Offset;
-	editor_world_ui *WorldUI = &Editor->WorldUI;
 
 	//PushSphere(&RenderGroup, Editor->StaticMesh[0].Mesh);
 
