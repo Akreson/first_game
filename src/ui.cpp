@@ -273,10 +273,11 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 // TODO: Delete or change implementation
 v3
-ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, memory_arena *MemArena)
+ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
+	element_id_buffer *Selected, u32 ElementTarget)
 {
 	v3 Result = {};
-	temp_memory TempMem = BeginTempMemory(MemArena);
+	UniqIndeces->Count = 0;
 
 	v3 ModelOffset = Model->Offset;
 	switch (ElementTarget)
@@ -289,11 +290,6 @@ ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, mem
 		// TODO: Optimize for face and edge
 		case ModelTargetElement_Face:
 		{
-			// NOTE: Just approximation
-			u32 IndexBufferSize = Selected->Count * 4;
-			u32 *UniqueIndeces = PushArray(MemArena, u32, IndexBufferSize);
-			u32 UniqueIndexCount = 0;
-
 			for (u32 Index = 0;
 				Index < Selected->Count;
 				++Index)
@@ -308,13 +304,13 @@ ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, mem
 					b32 IsAddToUniqBuff = true;
 					u32 VertexIndex = Face->VertexID[InFaceIndex];
 
-					if (UniqueIndexCount != 0)
+					if (UniqIndeces->Count != 0)
 					{
 						for (u32 UniqIndex = 0;
-							UniqIndex < UniqueIndexCount;
+							UniqIndex < UniqIndeces->Count;
 							++UniqIndex)
 						{
-							if (UniqueIndeces[UniqIndex] == VertexIndex)
+							if (UniqIndeces->Elements[UniqIndex] == VertexIndex)
 							{
 								IsAddToUniqBuff = false;
 								break;
@@ -324,32 +320,27 @@ ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, mem
 					
 					if (IsAddToUniqBuff)
 					{
-						UniqueIndeces[UniqueIndexCount++] = VertexIndex;
+						UniqIndeces->Elements[UniqIndeces->Count++] = VertexIndex;
 					}
 				}
 			}
 
 			// TODO: See if it don't get enough precision
 			for (u32 Index = 0;
-				Index < UniqueIndexCount;
+				Index < UniqIndeces->Count;
 				++Index)
 			{
-				u32 VertexIndex = UniqueIndeces[Index];
+				u32 VertexIndex = UniqIndeces->Elements[Index];
 
 				v3 V = Model->Vertex[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
-			Result /= (f32)UniqueIndexCount;
+			Result /= (f32)UniqIndeces->Count;
 		} break;
 
 		case ModelTargetElement_Edge:
 		{
-			// NOTE: Just approximation
-			u32 IndexBufferSize = Selected->Count * 4;
-			u32 *UniqueIndeces = PushArray(MemArena, u32, IndexBufferSize);
-			u32 UniqueIndexCount = 0;
-
 			for (u32 Index = 0;
 				Index < Selected->Count;
 				++Index)
@@ -364,13 +355,13 @@ ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, mem
 					b32 IsAddToUniqBuff = true;
 					u32 VertexIndex = Edge->VertexID[InEdgeIndex];
 
-					if (UniqueIndexCount != 0)
+					if (UniqIndeces->Count != 0)
 					{
 						for (u32 UniqIndex = 0;
-							UniqIndex < UniqueIndexCount;
+							UniqIndex < UniqIndeces->Count;
 							++UniqIndex)
 						{
-							if (UniqueIndeces[UniqIndex] == VertexIndex)
+							if (UniqIndeces->Elements[UniqIndex] == VertexIndex)
 							{
 								IsAddToUniqBuff = false;
 								break;
@@ -380,27 +371,26 @@ ComputeToolPos(model *Model, element_id_buffer *Selected, u32 ElementTarget, mem
 
 					if (IsAddToUniqBuff)
 					{
-						UniqueIndeces[UniqueIndexCount++] = VertexIndex;
+						UniqIndeces->Elements[UniqIndeces->Count++] = VertexIndex;
 					}
 				}
 			}
 
 			// TODO: See if it don't get enough precision
 			for (u32 Index = 0;
-				Index < UniqueIndexCount;
+				Index < UniqIndeces->Count;
 				++Index)
 			{
-				u32 VertexIndex = UniqueIndeces[Index];
+				u32 VertexIndex = UniqIndeces->Elements[Index];
 
 				v3 V = Model->Vertex[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
-			Result /= (f32)UniqueIndexCount;
+			Result /= (f32)UniqIndeces->Count;
 		} break;
 	}
 
-	EndTempMemory(TempMem);
 	return Result;
 }
 
@@ -414,7 +404,7 @@ SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 Ele
 }
 
 void
-ApplyToolsTransform(model *Model, element_id_buffer *Selected,
+ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, m4x4 Transform)
 {	
 	switch (ElementTarget)
@@ -430,14 +420,22 @@ ApplyToolsTransform(model *Model, element_id_buffer *Selected,
 				Model->Vertex[Index] = V;
 			}
 		} break;
-
-		//InvalidDefaultCase;
-		/*case ModelTargetElement_Face:
+		
+		// TODO: Rotate around each element "center origin"?
+		case ModelTargetElement_Face:
 		{
-
+			for (u32 Index = 0;
+				Index < UniqIndeces->Count;
+				++Index)
+			{
+				u32 VertexIndex = UniqIndeces->Elements[Index];
+				v3 V = Model->Vertex[VertexIndex];
+				V = V * Transform;
+				Model->Vertex[VertexIndex] = V;
+			}
 		} break;
 
-		case ModelTargetElement_Edge:
+		/*case ModelTargetElement_Edge:
 		{
 
 		} break;*/
@@ -621,7 +619,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 		{
 			Tools->Rotate = {};
 
-			Tools->Rotate.CenterP = ComputeToolPos(Model, Selected, IModel->Target, TranArena);
+			Tools->Rotate.CenterP = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
 			Tools->Rotate.InitRadius = ROTATE_TOOLS_DIAMETER / 2.0f;
 			Tools->Rotate.PerpThreshold = 0.95f;
 		} break;
@@ -765,7 +763,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 							Model->ZAxis = RotateTool->Axis.Z;
 						}
 
-						ApplyToolsTransform(Model, &WorldUI->Selected, TargetElement, RotateTool->Transform);
+						ApplyRotation(Model, &Tools->UniqIndeces, TargetElement, RotateTool->Transform);
 						Tools->UpdateAxis = true;
 					}
 				}
