@@ -112,6 +112,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 		{
 			WorldUI->ITarget = UI_InteractionTarget_Model;
 			WorldUI->Tools.IsInit = false;
+			WorldUI->UpdateModelInteraction = true;
 		}
 		else if (WorldUI->Selected.Count)
 		{
@@ -232,7 +233,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
 			{
-				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
+				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face, &Editor->TranArena))
 				{
 					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
 
@@ -768,6 +769,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 						ApplyRotation(Model, &Tools->UniqIndeces, TargetElement,
 							RotateTool->CenterP, RotateTool->Transform);
+						Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 						Tools->UpdateAxis = true;
 					}
 				}

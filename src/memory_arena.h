@@ -61,6 +61,13 @@ PushSize_(memory_arena *Arena, u32 Size, u32 Alignment = 4)
 	return Result;
 }
 
+void *
+GetCurrentBaseAddr(memory_arena *Arena)
+{
+	void *Result = (void *)(Arena->Base + Arena->Used);
+	return Result;
+}
+
 inline void
 InitArena(memory_arena *Arena, memory_index Size, u8 *Base)
 {

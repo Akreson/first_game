@@ -366,6 +366,13 @@ MovePointAlongDir(v3 Pos, v3 Dir, f32 t)
 	return Result;
 }
 
+inline v3
+PointOnRay(ray_params Ray, f32 t)
+{
+	v3 Result = MovePointAlongDir(Ray.P, Ray.Dir, t);
+	return Result;
+}
+
 inline f32
 Dot(v3 A, v3 B)
 {

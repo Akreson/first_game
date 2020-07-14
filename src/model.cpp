@@ -502,6 +502,7 @@ GetPlaneNormal(model *Model, u32 FaceIndex)
 // TODO: Optimize or change to another method
 // Check if precompute and then check face visibility
 // give benefit
+// TODO: Fix hit test for deform face
 b32
 RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {
@@ -572,56 +573,97 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 	return Result;
 }
 
-// TODO: Handle deform face
 b32
-RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
+RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult, memory_arena *Arena)
 {
 	b32 Result = false;
+	temp_memory TempMem = BeginTempMemory(Arena);
+	element_ray_result *HitResult = 0;
+	u32 HitResultCount = 0;
 
+	v3 ModelOffset = Model->Offset;
 	for (u32 FaceIndex = 0;
 		FaceIndex < Model->FaceCount;
 		++FaceIndex)
 	{
+		b32 HitTest = false;
+		v3 IntersetPoint;
+		plane_params Plane0;
+		plane_params Plane1;
+
 		model_face Face = Model->Faces[FaceIndex];
 
-		v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
-		v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
-		v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
-		v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
+		v3 V0 = Model->Vertex[Face.V0] + ModelOffset;
+		v3 V1 = Model->Vertex[Face.V1] + ModelOffset;
+		v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
+		v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
 
-		v3 Edge1 = V0 - V1;
-		v3 Edge2 = V0 - V3;
+		v3 Edge01 = V2 - V1;
+		v3 Edge02 = V0 - V1;
+		Plane0.N = Normalize(Cross(Edge01, Edge02));
+		Plane0.D = Dot(Plane0.N, V0);
 
-		plane_params Plane;
-		Plane.N = Normalize(Cross(Edge1, Edge2));
-		Plane.D = Dot(Plane.N, V0);
+		v3 Edge11 = V2 - V3;
+		v3 Edge12 = V0 - V3;
+		Plane1.N = Normalize(Cross(Edge12, Edge11));
+		Plane1.D = Dot(Plane1.N, V0);
 
-		// Plane intersect
-		f32 DotRayPlane = Dot(Ray.Dir, Plane.N);
-		if (DotRayPlane < 0)
+		f32 DotRayPlane0 = Dot(Ray.Dir, Plane0.N);
+		f32 DotRayPlane1 = Dot(Ray.Dir, Plane1.N);
+
+		if ((DotRayPlane0 < 0))
 		{
-			f32 tRay = RayPlaneIntersect(Ray, Plane, DotRayPlane);
+			f32 tRay = RayPlaneIntersect(Ray, Plane0, DotRayPlane0);
 			if (tRay >= 0)
 			{
-				v3 IntersetPoint = Ray.P + (Ray.Dir * tRay);
-
-				b32 HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
-				if (!HitTest)
-				{
-					HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
-				}
-
-				if (HitTest)
-				{
-					FaceResult->ID = FaceIndex;
-					FaceResult->P = IntersetPoint;
-
-					Result = true;
-					break;
-				}
+				IntersetPoint = PointOnRay(Ray, tRay);
+				HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
 			}
 		}
+
+		if (!HitTest && (DotRayPlane1 < 0))
+		{
+			f32 tRay = RayPlaneIntersect(Ray, Plane1, DotRayPlane1);
+			if (tRay >= 0)
+			{
+				IntersetPoint = PointOnRay(Ray, tRay);
+				HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
+			}
+		}
+
+		if (HitTest)
+		{
+			HitResult = PushStruct(Arena, element_ray_result, 1);
+			HitResult->ID = FaceIndex;
+			HitResult->P = IntersetPoint;
+			++HitResultCount;
+		}
 	}
+
+	if (HitResult)
+	{
+		element_ray_result *StartHitResults = HitResult - (HitResultCount - 1);
+		element_ray_result *ClosestElementHit = 0;
+		f32 ClosestDistSq = FLOAT_MAX;
+		for (u32 Index = 0;
+			Index < HitResultCount;
+			++Index)
+		{
+			element_ray_result *Hit = StartHitResults + Index;
+			
+			f32 HitDistSq = LengthSq(Hit->P - Ray.P);
+			if (HitDistSq < ClosestDistSq)
+			{
+				ClosestElementHit = Hit;
+			}
+		}
+
+		FaceResult->ID = ClosestElementHit->ID;
+		FaceResult->P = ClosestElementHit->P;
+		Result = true;
+	}
+
+	EndTempMemory(TempMem);
 
 	return Result;
 }
@@ -694,7 +736,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
 			model *Model = Models + ModelIndex;
 
-			if (RayModelFaceIntersect(Model, Ray, Face))
+			if (RayModelFaceIntersect(Model, Ray, Face, Arena))
 			{
 				Result = true;
 				*ModelID = ModelIndex;
