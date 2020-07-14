@@ -572,6 +572,7 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 	return Result;
 }
 
+// TODO: Handle deform face
 b32
 RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
 {

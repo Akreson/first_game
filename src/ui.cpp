@@ -403,10 +403,14 @@ SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 Ele
 	Tools->UpdateAxis = false;
 }
 
+// TODO: Optimize
+// NOTE: Transform happens in model space
 void
 ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
-	model_target_element ElementTarget, m4x4 Transform)
-{	
+	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Transform)
+{
+	v3 ModelSpaleRotOrigin = RotationOrigin - Model->Offset;
+
 	switch (ElementTarget)
 	{
 		case ModelTargetElement_Model:
@@ -421,7 +425,7 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 			}
 		} break;
 		
-		// TODO: Rotate around each element "center origin"?
+		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
 			for (u32 Index = 0;
@@ -430,15 +434,14 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 				v3 V = Model->Vertex[VertexIndex];
+				
+				V -= ModelSpaleRotOrigin;
 				V = V * Transform;
+				V += ModelSpaleRotOrigin;
+
 				Model->Vertex[VertexIndex] = V;
 			}
 		} break;
-
-		/*case ModelTargetElement_Edge:
-		{
-
-		} break;*/
 	}
 }
 
@@ -763,7 +766,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 							Model->ZAxis = RotateTool->Axis.Z;
 						}
 
-						ApplyRotation(Model, &Tools->UniqIndeces, TargetElement, RotateTool->Transform);
+						ApplyRotation(Model, &Tools->UniqIndeces, TargetElement,
+							RotateTool->CenterP, RotateTool->Transform);
 						Tools->UpdateAxis = true;
 					}
 				}
