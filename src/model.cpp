@@ -574,12 +574,10 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 }
 
 b32
-RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult, memory_arena *Arena)
+RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
 {
 	b32 Result = false;
-	temp_memory TempMem = BeginTempMemory(Arena);
-	element_ray_result *HitResult = 0;
-	u32 HitResultCount = 0;
+	f32 ClosestHitDistSq = FLOAT_MAX;
 
 	v3 ModelOffset = Model->Offset;
 	for (u32 FaceIndex = 0;
@@ -633,37 +631,17 @@ RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResu
 
 		if (HitTest)
 		{
-			HitResult = PushStruct(Arena, element_ray_result, 1);
-			HitResult->ID = FaceIndex;
-			HitResult->P = IntersetPoint;
-			++HitResultCount;
-		}
-	}
-
-	if (HitResult)
-	{
-		element_ray_result *StartHitResults = HitResult - (HitResultCount - 1);
-		element_ray_result *ClosestElementHit = 0;
-		f32 ClosestDistSq = FLOAT_MAX;
-		for (u32 Index = 0;
-			Index < HitResultCount;
-			++Index)
-		{
-			element_ray_result *Hit = StartHitResults + Index;
-			
-			f32 HitDistSq = LengthSq(Hit->P - Ray.P);
-			if (HitDistSq < ClosestDistSq)
+			f32 HitDistSq = LengthSq(IntersetPoint - Ray.P);
+			if (HitDistSq < ClosestHitDistSq)
 			{
-				ClosestElementHit = Hit;
+				ClosestHitDistSq = HitDistSq;
+				FaceResult->ID = FaceIndex;
+				FaceResult->P = IntersetPoint;
+				Result = true;
 			}
+
 		}
-
-		FaceResult->ID = ClosestElementHit->ID;
-		FaceResult->P = ClosestElementHit->P;
-		Result = true;
 	}
-
-	EndTempMemory(TempMem);
 
 	return Result;
 }

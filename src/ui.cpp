@@ -233,7 +233,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
 			{
-				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face, &Editor->TranArena))
+				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
 					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
 
