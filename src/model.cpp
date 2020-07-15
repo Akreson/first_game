@@ -522,7 +522,7 @@ GetFacePlane(model *Model, u32 FaceIndex)
 // TODO: Optimize or change to another method
 // Check if precompute and then check face visibility
 // give benefit
-// TODO: Fix hit test for deform face
+// TODO: Fix hit test, test if hit point on edge behind face
 b32
 RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {
@@ -558,8 +558,9 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			Capsule.V1 = Model->Vertex[Edge.V1] + ModelOffset;
 			Capsule.Dir = Capsule.V1 - Capsule.V0;
 
-			f32 CapsuleRSquare = Square(Capsule.R);
-			v3 NormCapDir = Normalize(Capsule.Dir);
+			f32 CapsuleRSq = Square(Capsule.R);
+			f32 CapDirLength = Length(Capsule.Dir);
+			v3 NormCapDir = Normalize(Capsule.Dir, CapDirLength);
 
 			// NOTE: Colosest points between rays
 			v3 R = Capsule.V0 - Ray.P;
@@ -570,23 +571,25 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			f32 LDotR = Dot(Ray.Dir, R);
 
 			f32 Det = (CDotC * LDotL) - (CDotL * CDotL);
-
-			f32 t0 = (CDotL * LDotR - CDotR * LDotL) / Det;
-			f32 t1 = (CDotC * LDotR - CDotL * CDotR) / Det;
-		
-			v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
-			v3 PointOnRay = Ray.P + (Ray.Dir * t1);
-
-			f32 DistSq = LengthSq(PointOnEdge - PointOnRay);
-
-			if ((t0 >= 0) && (t0 <= 1.0f))
+			if (Det != 0)
 			{
-				if ((DistSq <= CapsuleRSquare) && (DistSq < ClosestRayP))
+				f32 t0 = ((CDotL * LDotR) - (CDotR * LDotL)) / Det;
+				f32 t1 = ((CDotC * LDotR) - (CDotL * CDotR)) / Det;
+		
+				v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
+				v3 PointOnRay = Ray.P + (Ray.Dir * t1);
+				//v3 P = PointOnRay(Ray, t1);
+				f32 DistSq = LengthSq(PointOnEdge - PointOnRay);
+
+				if ((t0 >= 0) && (t0 <= CapDirLength))
 				{
-					ClosestRayP = DistSq;
-					ClosestIndex = EdgeIndex;
-					ResultPointOnEdge = PointOnEdge;
-					Result = true;
+					if ((DistSq <= CapsuleRSq) && (DistSq < ClosestRayP))
+					{
+						ClosestRayP = DistSq;
+						ClosestIndex = EdgeIndex;
+						ResultPointOnEdge = PointOnEdge;
+						Result = true;
+					}
 				}
 			}
 		}
