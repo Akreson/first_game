@@ -23,6 +23,13 @@ struct plane_params
 	f32 D;
 };
 
+struct capsule_params
+{
+	v3 V0, V1;
+	v3 Dir;
+	f32 R;
+};
+
 inline f32
 AngleToRadian(f32 Angle)
 {

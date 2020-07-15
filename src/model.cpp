@@ -451,34 +451,6 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 	return Sphere;
 }
 
-internal plane_params
-GetPlaneFromFace(model *Model, u32 FaceIndex)
-{
-	plane_params Result;
-
-	model_face Face = Model->Faces[FaceIndex];
-
-	v3 V0 = Model->Vertex[Face.V0] + Model->Offset;
-	v3 V1 = Model->Vertex[Face.V1] + Model->Offset;
-	v3 V2 = Model->Vertex[Face.V2] + Model->Offset;
-	v3 V3 = Model->Vertex[Face.V3] + Model->Offset;
-
-	v3 Edge1 = V0 - V1;
-	v3 Edge2 = V0 - V3;
-
-	Result.N = Normalize(Cross(Edge1, Edge2));
-	Result.D = Dot(Result.N, V0);
-
-	return Result;
-}
-
-struct capsule_params
-{
-	v3 V0, V1;
-	v3 Dir;
-	f32 R;
-};
-
 inline v3
 GetPlaneNormal(model *Model, u32 FaceIndex)
 {
@@ -499,6 +471,54 @@ GetPlaneNormal(model *Model, u32 FaceIndex)
 	return Result;
 }
 
+struct face_plane
+{
+	union
+	{
+		plane_params Plane[2];
+		struct
+		{
+			plane_params P0;
+			plane_params P1;
+		};
+	};
+};
+
+internal inline face_plane
+GetFacePlane(v3 V0, v3 V1, v3 V2, v3 V3)
+{
+	face_plane Result;
+
+	v3 Edge01 = V2 - V1;
+	v3 Edge02 = V0 - V1;
+	Result.P0.N = Normalize(Cross(Edge01, Edge02));
+	Result.P0.D = Dot(Result.P0.N, V0);
+
+	v3 Edge11 = V2 - V3;
+	v3 Edge12 = V0 - V3;
+	Result.P1.N = Normalize(Cross(Edge12, Edge11));
+	Result.P1.D = Dot(Result.P1.N, V0);
+
+	return Result;
+}
+
+internal inline face_plane
+GetFacePlane(model *Model, u32 FaceIndex)
+{
+	face_plane Result;
+
+	v3 ModelOffset = Model->Offset;
+	model_face Face = Model->Faces[FaceIndex];
+
+	v3 V0 = Model->Vertex[Face.V0] + ModelOffset;
+	v3 V1 = Model->Vertex[Face.V1] + ModelOffset;
+	v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
+	v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
+
+	Result = GetFacePlane(V0, V1, V2, V3);
+	return Result;
+}
+
 // TODO: Optimize or change to another method
 // Check if precompute and then check face visibility
 // give benefit
@@ -512,21 +532,30 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 	f32 ClosestRayP = FLOAT_MAX;
 
 	// NOTE: 0 - edge ray, 1 - mouse ray
+	v3 ModelOffset = Model->Offset;
 	for (u32 EdgeIndex = 0;
 		EdgeIndex < Model->EdgeCount;
 		++EdgeIndex)
 	{
 		model_edge Edge = Model->Edges[EdgeIndex];
-		v3 PlaneN0 = GetPlaneNormal(Model, Edge.Face0);
-		v3 PlaneN1 = GetPlaneNormal(Model, Edge.Face1);
 
-		if ((Dot(PlaneN0, Ray.Dir) < 0) || (Dot(PlaneN1, Ray.Dir) < 0))
+		face_plane Plane0 = GetFacePlane(Model, Edge.Face0);
+		face_plane Plane1 = GetFacePlane(Model, Edge.Face1);
+
+		f32 Face0DotRayPlane0 = Dot(Ray.Dir, Plane0.P0.N);
+		f32 Face0DotRayPlane1 = Dot(Ray.Dir, Plane0.P1.N);
+
+		f32 Face1DotRayPlane0 = Dot(Ray.Dir, Plane1.P0.N);
+		f32 Face1DotRayPlane1 = Dot(Ray.Dir, Plane1.P1.N);
+
+		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
+			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
 		{
 			capsule_params Capsule;
 
 			Capsule.R = IntrRadius;
-			Capsule.V0 = Model->Vertex[Edge.V0] + Model->Offset;
-			Capsule.V1 = Model->Vertex[Edge.V1] + Model->Offset;
+			Capsule.V0 = Model->Vertex[Edge.V0] + ModelOffset;
+			Capsule.V1 = Model->Vertex[Edge.V1] + ModelOffset;
 			Capsule.Dir = Capsule.V1 - Capsule.V0;
 
 			f32 CapsuleRSquare = Square(Capsule.R);
@@ -548,14 +577,13 @@ RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResul
 			v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
 			v3 PointOnRay = Ray.P + (Ray.Dir * t1);
 
-			f32 CapRSquare = Capsule.R * Capsule.R;
-			f32 Dist = LengthSq(PointOnEdge - PointOnRay);
+			f32 DistSq = LengthSq(PointOnEdge - PointOnRay);
 
 			if ((t0 >= 0) && (t0 <= 1.0f))
 			{
-				if ((Dist <= CapsuleRSquare) && (Dist < ClosestRayP))
+				if ((DistSq <= CapsuleRSquare) && (DistSq < ClosestRayP))
 				{
-					ClosestRayP = Dist;
+					ClosestRayP = DistSq;
 					ClosestIndex = EdgeIndex;
 					ResultPointOnEdge = PointOnEdge;
 					Result = true;
@@ -596,22 +624,14 @@ RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResu
 		v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
 		v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
 
-		v3 Edge01 = V2 - V1;
-		v3 Edge02 = V0 - V1;
-		Plane0.N = Normalize(Cross(Edge01, Edge02));
-		Plane0.D = Dot(Plane0.N, V0);
+		face_plane Plane = GetFacePlane(V0, V1, V2, V3);
 
-		v3 Edge11 = V2 - V3;
-		v3 Edge12 = V0 - V3;
-		Plane1.N = Normalize(Cross(Edge12, Edge11));
-		Plane1.D = Dot(Plane1.N, V0);
-
-		f32 DotRayPlane0 = Dot(Ray.Dir, Plane0.N);
-		f32 DotRayPlane1 = Dot(Ray.Dir, Plane1.N);
+		f32 DotRayPlane0 = Dot(Ray.Dir, Plane.P0.N);
+		f32 DotRayPlane1 = Dot(Ray.Dir, Plane.P1.N);
 
 		if ((DotRayPlane0 < 0))
 		{
-			f32 tRay = RayPlaneIntersect(Ray, Plane0, DotRayPlane0);
+			f32 tRay = RayPlaneIntersect(Ray, Plane.P0, DotRayPlane0);
 			if (tRay >= 0)
 			{
 				IntersetPoint = PointOnRay(Ray, tRay);
@@ -621,7 +641,7 @@ RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResu
 
 		if (!HitTest && (DotRayPlane1 < 0))
 		{
-			f32 tRay = RayPlaneIntersect(Ray, Plane1, DotRayPlane1);
+			f32 tRay = RayPlaneIntersect(Ray, Plane.P1, DotRayPlane1);
 			if (tRay >= 0)
 			{
 				IntersetPoint = PointOnRay(Ray, tRay);
@@ -714,7 +734,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
 			model *Model = Models + ModelIndex;
 
-			if (RayModelFaceIntersect(Model, Ray, Face, Arena))
+			if (RayModelFaceIntersect(Model, Ray, Face))
 			{
 				Result = true;
 				*ModelID = ModelIndex;
