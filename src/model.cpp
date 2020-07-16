@@ -616,43 +616,40 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
 			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
 		{
-			capsule_params Capsule;
+			v3 SegmentStart = Model->Vertex[Edge.V0] + ModelOffset;
+			v3 SegmentEnd = Model->Vertex[Edge.V1] + ModelOffset;
+			v3 SegmentDirV = SegmentEnd - SegmentStart;
 
-			Capsule.R = IntrRadius;
-			Capsule.V0 = Model->Vertex[Edge.V0] + ModelOffset;
-			Capsule.V1 = Model->Vertex[Edge.V1] + ModelOffset;
-			Capsule.Dir = Capsule.V1 - Capsule.V0;
-
-			f32 CapsuleRSq = Square(Capsule.R);
-			f32 CapDirLength = Length(Capsule.Dir);
-			v3 NormCapDir = Normalize(Capsule.Dir, CapDirLength);
+			f32 IntrRadiusSq = Square(IntrRadius);
+			f32 SegmentLength = Length(SegmentDirV);
+			v3 NormSegDir = Normalize(SegmentDirV, SegmentLength);
 
 			// NOTE: Colosest points between rays
-			v3 R = Capsule.V0 - Ray.P;
-			f32 CDotC = Dot(NormCapDir, NormCapDir);
-			f32 CDotL = Dot(NormCapDir, Ray.Dir);
-			f32 CDotR = Dot(NormCapDir, R);
+			v3 R = SegmentStart - Ray.P;
+			f32 SDotS = Dot(NormSegDir, NormSegDir);
+			f32 SDotL = Dot(NormSegDir, Ray.Dir);
+			f32 SDotR = Dot(NormSegDir, R);
 			f32 LDotL = Dot(Ray.Dir, Ray.Dir);
 			f32 LDotR = Dot(Ray.Dir, R);
 
-			f32 Det = (CDotC * LDotL) - (CDotL * CDotL);
+			f32 Det = (SDotS * LDotL) - (SDotL * SDotL);
 			if (Det != 0)
 			{
-				f32 t0 = ((CDotL * LDotR) - (CDotR * LDotL)) / Det;
-				f32 t1 = ((CDotC * LDotR) - (CDotL * CDotR)) / Det;
+				f32 t0 = ((SDotL * LDotR) - (SDotR * LDotL)) / Det;
+				f32 t1 = ((SDotS * LDotR) - (SDotL * SDotR)) / Det;
 
-				v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
-				v3 PointOnRay = Ray.P + (Ray.Dir * t1);
-				//v3 P = PointOnRay(Ray, t1);
-				f32 DistSq = LengthSq(PointOnEdge - PointOnRay);
+				v3 OnEdgeP = SegmentStart + (NormSegDir * t0);
+				v3 OnRayP = PointOnRay(Ray, t1);
 
-				if ((t0 >= 0) && (t0 <= CapDirLength))
+				f32 DistSq = LengthSq(OnEdgeP - OnRayP);
+
+				if ((t0 >= 0) && (t0 <= SegmentLength))
 				{
-					if ((DistSq <= CapsuleRSq) && (DistSq < ClosestRayPSq))
+					if ((DistSq <= IntrRadiusSq) && (DistSq < ClosestRayPSq))
 					{
 						ClosestRayPSq = DistSq;
 						ClosestIndex = EdgeIndex;
-						ResultPointOnEdge = PointOnEdge;
+						ResultPointOnEdge = OnEdgeP;
 						Result = true;
 					}
 				}
