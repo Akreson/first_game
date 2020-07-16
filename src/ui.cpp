@@ -233,7 +233,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
 			{
-				if (RayModelFaceIntersect(Model, WorldUI->MouseRay, &IModel->Face))
+				if (RayModelFacesIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
 					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
 
@@ -255,7 +255,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			f32 EdgeIntersetRadius = 0.015f;
 			if (RayAABBIntersect(WorldUI->MouseRay, AddRadiusTo(Model->AABB, EdgeIntersetRadius), Model->Offset))
 			{
-				if (RayModelEdgeInterset(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
+				if (RayModelEdgesIntersect(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
 				{
 					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
 

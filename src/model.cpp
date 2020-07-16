@@ -519,93 +519,8 @@ GetFacePlane(model *Model, u32 FaceIndex)
 	return Result;
 }
 
-// TODO: Optimize or change to another method
-// Check if precompute and then check face visibility
-// give benefit
-// TODO: Fix hit test, test if hit point on edge behind face
 b32
-RayModelEdgeInterset(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
-{
-	b32 Result = false;
-	v3 ResultPointOnEdge;
-	u32 ClosestIndex = 0;
-	f32 ClosestRayP = FLOAT_MAX;
-
-	// NOTE: 0 - edge ray, 1 - mouse ray
-	v3 ModelOffset = Model->Offset;
-	for (u32 EdgeIndex = 0;
-		EdgeIndex < Model->EdgeCount;
-		++EdgeIndex)
-	{
-		model_edge Edge = Model->Edges[EdgeIndex];
-
-		face_plane Plane0 = GetFacePlane(Model, Edge.Face0);
-		face_plane Plane1 = GetFacePlane(Model, Edge.Face1);
-
-		f32 Face0DotRayPlane0 = Dot(Ray.Dir, Plane0.P0.N);
-		f32 Face0DotRayPlane1 = Dot(Ray.Dir, Plane0.P1.N);
-
-		f32 Face1DotRayPlane0 = Dot(Ray.Dir, Plane1.P0.N);
-		f32 Face1DotRayPlane1 = Dot(Ray.Dir, Plane1.P1.N);
-
-		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
-			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
-		{
-			capsule_params Capsule;
-
-			Capsule.R = IntrRadius;
-			Capsule.V0 = Model->Vertex[Edge.V0] + ModelOffset;
-			Capsule.V1 = Model->Vertex[Edge.V1] + ModelOffset;
-			Capsule.Dir = Capsule.V1 - Capsule.V0;
-
-			f32 CapsuleRSq = Square(Capsule.R);
-			f32 CapDirLength = Length(Capsule.Dir);
-			v3 NormCapDir = Normalize(Capsule.Dir, CapDirLength);
-
-			// NOTE: Colosest points between rays
-			v3 R = Capsule.V0 - Ray.P;
-			f32 CDotC = Dot(NormCapDir, NormCapDir);
-			f32 CDotL = Dot(NormCapDir, Ray.Dir);
-			f32 CDotR = Dot(NormCapDir, R);
-			f32 LDotL = Dot(Ray.Dir, Ray.Dir);
-			f32 LDotR = Dot(Ray.Dir, R);
-
-			f32 Det = (CDotC * LDotL) - (CDotL * CDotL);
-			if (Det != 0)
-			{
-				f32 t0 = ((CDotL * LDotR) - (CDotR * LDotL)) / Det;
-				f32 t1 = ((CDotC * LDotR) - (CDotL * CDotR)) / Det;
-		
-				v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
-				v3 PointOnRay = Ray.P + (Ray.Dir * t1);
-				//v3 P = PointOnRay(Ray, t1);
-				f32 DistSq = LengthSq(PointOnEdge - PointOnRay);
-
-				if ((t0 >= 0) && (t0 <= CapDirLength))
-				{
-					if ((DistSq <= CapsuleRSq) && (DistSq < ClosestRayP))
-					{
-						ClosestRayP = DistSq;
-						ClosestIndex = EdgeIndex;
-						ResultPointOnEdge = PointOnEdge;
-						Result = true;
-					}
-				}
-			}
-		}
-	}
-
-	if (Result)
-	{
-		EdgeResult->ID = ClosestIndex;
-		EdgeResult->P = ResultPointOnEdge;
-	}
-
-	return Result;
-}
-
-b32
-RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
+RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
 {
 	b32 Result = false;
 	f32 ClosestHitDistSq = FLOAT_MAX;
@@ -663,6 +578,108 @@ RayModelFaceIntersect(model *Model, ray_params Ray, element_ray_result *FaceResu
 				Result = true;
 			}
 
+		}
+	}
+
+	return Result;
+}
+
+// TODO: Optimize or change to another method
+// Check if precompute and then check face visibility
+// give benefit
+// TODO: Fix hit test, test if hit point on edge behind face
+b32
+RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
+{
+	b32 Result = false;
+	v3 ResultPointOnEdge;
+	u32 ClosestIndex = 0;
+	f32 ClosestRayPSq = FLOAT_MAX;
+
+	// NOTE: 0 - edge ray, 1 - mouse ray
+	v3 ModelOffset = Model->Offset;
+	for (u32 EdgeIndex = 0;
+		EdgeIndex < Model->EdgeCount;
+		++EdgeIndex)
+	{
+		model_edge Edge = Model->Edges[EdgeIndex];
+
+		face_plane Plane0 = GetFacePlane(Model, Edge.Face0);
+		face_plane Plane1 = GetFacePlane(Model, Edge.Face1);
+
+		f32 Face0DotRayPlane0 = Dot(Ray.Dir, Plane0.P0.N);
+		f32 Face0DotRayPlane1 = Dot(Ray.Dir, Plane0.P1.N);
+
+		f32 Face1DotRayPlane0 = Dot(Ray.Dir, Plane1.P0.N);
+		f32 Face1DotRayPlane1 = Dot(Ray.Dir, Plane1.P1.N);
+
+		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
+			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
+		{
+			capsule_params Capsule;
+
+			Capsule.R = IntrRadius;
+			Capsule.V0 = Model->Vertex[Edge.V0] + ModelOffset;
+			Capsule.V1 = Model->Vertex[Edge.V1] + ModelOffset;
+			Capsule.Dir = Capsule.V1 - Capsule.V0;
+
+			f32 CapsuleRSq = Square(Capsule.R);
+			f32 CapDirLength = Length(Capsule.Dir);
+			v3 NormCapDir = Normalize(Capsule.Dir, CapDirLength);
+
+			// NOTE: Colosest points between rays
+			v3 R = Capsule.V0 - Ray.P;
+			f32 CDotC = Dot(NormCapDir, NormCapDir);
+			f32 CDotL = Dot(NormCapDir, Ray.Dir);
+			f32 CDotR = Dot(NormCapDir, R);
+			f32 LDotL = Dot(Ray.Dir, Ray.Dir);
+			f32 LDotR = Dot(Ray.Dir, R);
+
+			f32 Det = (CDotC * LDotL) - (CDotL * CDotL);
+			if (Det != 0)
+			{
+				f32 t0 = ((CDotL * LDotR) - (CDotR * LDotL)) / Det;
+				f32 t1 = ((CDotC * LDotR) - (CDotL * CDotR)) / Det;
+
+				v3 PointOnEdge = Capsule.V0 + (NormCapDir * t0);
+				v3 PointOnRay = Ray.P + (Ray.Dir * t1);
+				//v3 P = PointOnRay(Ray, t1);
+				f32 DistSq = LengthSq(PointOnEdge - PointOnRay);
+
+				if ((t0 >= 0) && (t0 <= CapDirLength))
+				{
+					if ((DistSq <= CapsuleRSq) && (DistSq < ClosestRayPSq))
+					{
+						ClosestRayPSq = DistSq;
+						ClosestIndex = EdgeIndex;
+						ResultPointOnEdge = PointOnEdge;
+						Result = true;
+					}
+				}
+			}
+		}
+	}
+
+	// TODO: Optimize
+	if (Result)
+	{
+		element_ray_result FaceResult;
+		if (RayModelFacesIntersect(Model, Ray, &FaceResult))
+		{
+			model_edge Edge = Model->Edges[ClosestIndex];
+			if ((FaceResult.ID != Edge.Face0) && (FaceResult.ID != Edge.Face1))
+			{
+				f32 LengthToFacePSq = LengthSq(FaceResult.P - Ray.P);
+				f32 LengthToEdgePSq = LengthSq(ResultPointOnEdge - Ray.P);
+				if (LengthToFacePSq < LengthToEdgePSq)
+					Result = false;
+			}
+		}
+
+		if (Result)
+		{
+			EdgeResult->ID = ClosestIndex;
+			EdgeResult->P = ResultPointOnEdge;
 		}
 	}
 
@@ -737,7 +754,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
 			model *Model = Models + ModelIndex;
 
-			if (RayModelFaceIntersect(Model, Ray, Face))
+			if (RayModelFacesIntersect(Model, Ray, Face))
 			{
 				Result = true;
 				*ModelID = ModelIndex;
