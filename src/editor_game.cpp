@@ -92,7 +92,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 				Result.Active = FaceElementParams_SetAll;
 			}
 
-			if (IsHotIntrType(WorldUI, UI_InteractionType_Select))
+			ui_interaction SelectInteraction = SetModelSelectInteraction(IModel->ID, FaceIndex, 0, ModelTargetElement_Face);
+			if (AreEqual(WorldUI->HotInteraction, SelectInteraction))
 			{
 				if (IModel->Face.ID == FaceIndex)
 				{
@@ -291,7 +292,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		++ModelIndex)
 	{
 		model *Model = Editor->Models + ModelIndex;
-		ui_interaction SelectInteraction = SetSelectInteraction(ModelIndex);
+		ui_interaction SelectInteraction = SetModelSelectInteraction(ModelIndex);
 		b32 IsHot = AreEqual(SelectInteraction, WorldUI->HotInteraction);
 		b32 IsActive = IsActiveModel(WorldUI, ModelIndex);
 

@@ -46,6 +46,19 @@ struct model_face
 	};
 };
 
+struct face_plane
+{
+	union
+	{
+		plane_params Plane[2];
+		struct
+		{
+			plane_params P0;
+			plane_params P1;
+		};
+	};
+};
+
 // NOTE: Triangle specifed in conter-clokwise order
 struct model
 {

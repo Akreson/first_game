@@ -471,19 +471,6 @@ GetPlaneNormal(model *Model, u32 FaceIndex)
 	return Result;
 }
 
-struct face_plane
-{
-	union
-	{
-		plane_params Plane[2];
-		struct
-		{
-			plane_params P0;
-			plane_params P1;
-		};
-	};
-};
-
 internal inline face_plane
 GetFacePlane(v3 V0, v3 V1, v3 V2, v3 V3)
 {
@@ -587,7 +574,6 @@ RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceRes
 // TODO: Optimize or change to another method
 // Check if precompute and then check face visibility
 // give benefit
-// TODO: Fix hit test, test if hit point on edge behind face
 b32
 RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {

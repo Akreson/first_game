@@ -1,9 +1,9 @@
 
 inline ui_id
-IDFromModel(u32 ModelIndex, u32 FaceIndex = 0, u32 EdgeIndex = 0)
+IDFromModel(u16 Target, u32 ModelIndex, u32 FaceIndex = 0, u32 EdgeIndex = 0)
 {
 	ui_id Result;
-	Result.ID[0] = ModelIndex;
+	Result.ID[0] = (u64)(Target << 32) | ModelIndex;
 	Result.ID[1] = (u64)(FaceIndex << 32) | EdgeIndex;
 
 	return Result;
@@ -38,24 +38,24 @@ IsActiveModel(editor_world_ui *UI, u32 ModelID)
 }
 
 inline ui_interaction
-SetSelectInteraction(interact_model *IModel, u16 Target)
+SetModelSelectInteraction(interact_model *IModel, u16 Target)
 {
 	ui_interaction Result;
 
-	Result.TypeID = SetIntrTypeID(Target, UI_InteractionType_Select);
-	Result.ID = IDFromModel(IModel->ID, IModel->Face.ID, IModel->Edge.ID);
+	Result.TypeID = SetIntrTypeID(UI_InteractionTarget_Model, UI_InteractionType_Select);
+	Result.ID = IDFromModel(Target, IModel->ID, IModel->Face.ID, IModel->Edge.ID);
 
 	return Result;
 }
 
 // TODO: Make general
 inline ui_interaction
-SetSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0)
+SetModelSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0)
 {
 	ui_interaction Result;
 
-	Result.TypeID = SetIntrTypeID(Target, UI_InteractionType_Select);
-	Result.ID = IDFromModel(ModelID, FaceID, EdgeID);
+	Result.TypeID = SetIntrTypeID(UI_InteractionTarget_Model, UI_InteractionType_Select);
+	Result.ID = IDFromModel(Target, ModelID, FaceID, EdgeID);
 
 	return Result;
 }
@@ -202,7 +202,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
 				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
 			{
-				Interaction = SetSelectInteraction(IModel->ID, 0, 0, WorldUI->ITarget);
+				Interaction = SetModelSelectInteraction(IModel->ID, 0, 0, IModel->Target);
 
 				if (AreEqual(Interaction, WorldUI->ToExecute))
 				{
@@ -235,7 +235,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			{
 				if (RayModelFacesIntersect(Model, WorldUI->MouseRay, &IModel->Face))
 				{
-					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
+					Interaction = SetModelSelectInteraction(IModel, IModel->Target);
 
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
@@ -257,7 +257,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 			{
 				if (RayModelEdgesIntersect(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
 				{
-					Interaction = SetSelectInteraction(IModel, WorldUI->ITarget);
+					Interaction = SetModelSelectInteraction(IModel, IModel->Target);
 
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
@@ -576,7 +576,7 @@ IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
 
 	f32 ADotR = Dot(Axis, Ray.Dir);
 	f32 tRay = RayPlaneIntersect(Ray, Plane, ADotR);
-	v3 P = Ray.P + (Ray.Dir * tRay);
+	v3 P = PointOnRay(Ray, tRay);
 
 	f32 RadiusSq = Square(Tool->Radius);
 	f32 FromCenterToP = LengthSq(P - Tool->CenterP);
