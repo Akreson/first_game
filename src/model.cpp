@@ -292,9 +292,7 @@ AddModel(game_editor_state *Editor, v4 Color, v3 Offset)
 	Assert(Editor->ModelsCount < ArrayCount(Editor->Models));
 	Model->Color = Color;
 	Model->Offset = Offset;
-	Model->XAxis = V3(1, 0, 0);
-	Model->YAxis = V3(0, 1, 0);
-	Model->ZAxis = V3(0, 0, 1);
+	Model->Axis = Identity3x3();
 
 	return Model;
 }

@@ -427,6 +427,19 @@ Cross(v3 A, v3 B)
 	return Result;
 }
 
+inline m3x3
+Identity3x3(void)
+{
+	m3x3 Result =
+	{{
+		1, 0, 0,
+		0, 1, 0,
+		0, 0, 1,
+	}};
+
+	return Result;
+}
+
 // TODO: Optimize?
 inline v4
 Transform(v4 A, m4x4 B)

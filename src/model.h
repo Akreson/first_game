@@ -67,9 +67,7 @@ struct model
 	model_edge *Edges;
 	v4 Color;
 	rect3 AABB;
-	v3 XAxis;
-	v3 YAxis;
-	v3 ZAxis;
+	m3x3 Axis;
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
 	u32 FaceCount;
 	u32 VertexCount;
