@@ -149,6 +149,107 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	return Result;
 }
 
+inline v3
+GetPlaneNormal(model *Model, u32 FaceIndex)
+{
+	v3 Result;
+
+	model_face Face = Model->Faces[FaceIndex];
+
+	v3 Offset = Model->Offset;
+	v3 V0 = Model->Vertex[Face.V0] + Offset;
+	v3 V1 = Model->Vertex[Face.V1] + Offset;
+	v3 V2 = Model->Vertex[Face.V2] + Offset;
+	v3 V3 = Model->Vertex[Face.V3] + Offset;
+
+	v3 Edge1 = V0 - V1;
+	v3 Edge2 = V0 - V3;
+
+	Result = Normalize(Cross(Edge1, Edge2));
+	return Result;
+}
+
+internal inline face_plane
+GetFacePlane(v3 V0, v3 V1, v3 V2, v3 V3)
+{
+	face_plane Result;
+
+	v3 Edge01 = V2 - V1;
+	v3 Edge02 = V0 - V1;
+	Result.P0.N = Normalize(Cross(Edge01, Edge02));
+	Result.P0.D = Dot(Result.P0.N, V0);
+
+	v3 Edge11 = V2 - V3;
+	v3 Edge12 = V0 - V3;
+	Result.P1.N = Normalize(Cross(Edge12, Edge11));
+	Result.P1.D = Dot(Result.P1.N, V0);
+
+	return Result;
+}
+
+internal inline face_plane
+GetFacePlane(model *Model, u32 FaceIndex)
+{
+	face_plane Result;
+
+	v3 ModelOffset = Model->Offset;
+	model_face Face = Model->Faces[FaceIndex];
+
+	v3 V0 = Model->Vertex[Face.V0] + ModelOffset;
+	v3 V1 = Model->Vertex[Face.V1] + ModelOffset;
+	v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
+	v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
+
+	Result = GetFacePlane(V0, V1, V2, V3);
+	return Result;
+}
+
+struct edge_faces_norm
+{
+	v3 N0;
+	v3 N1;
+};
+
+//MaskMatchVertex_01 = (1 << 1) | (1 << 0),
+//MaskMatchVertex_12 = (1 << 2) | (1 << 1),
+//MaskMatchVertex_03 = (1 << 3) | (1 << 0),
+//MaskMatchVertex_23
+edge_faces_norm
+GetEdgeFacesRelatedNormals(model *Model, model_edge *Edge)
+{
+	edge_faces_norm Result;
+	model_face *Face0 = Model->Faces + Edge->Face0;
+	model_face *Face1 = Model->Faces + Edge->Face1;
+
+	face_plane Plane0 = GetFacePlane(Model, Edge->Face0);
+	face_plane Plane1 = GetFacePlane(Model, Edge->Face1);
+
+	u32 Mask0 = MaskOfMatchFaceVertex(Face0, Edge);
+	u32 Mask1 = MaskOfMatchFaceVertex(Face1, Edge);
+
+	if ((Mask0 == MaskMatchVertex_01) || (Mask0 == MaskMatchVertex_12))
+	{
+		Result.N0 = Plane0.P0.N;
+	}
+	else
+	{
+		Assert((Mask0 == MaskMatchVertex_03) || (Mask0 == MaskMatchVertex_23));
+		Result.N0 = Plane0.P1.N;
+	}
+
+	if ((Mask1 == MaskMatchVertex_01) || (Mask1 == MaskMatchVertex_12))
+	{
+		Result.N1 = Plane1.P0.N;
+	}
+	else
+	{
+		Assert((Mask1 == MaskMatchVertex_03) || (Mask1 == MaskMatchVertex_23));
+		Result.N1 = Plane1.P1.N;
+	}
+
+	return Result;
+}
+
 inline void
 MatchEdgeToFace(model_edge *Edges, u32 EdgeCount, model_face *Faces, u32 FaceCount)
 {
@@ -447,61 +548,6 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 		SetAllocMeshParams(Sphere->Vertex, (u32 *)Sphere->Tris, Sphere->VertexCount, Sphere->TrisCount));
 
 	return Sphere;
-}
-
-inline v3
-GetPlaneNormal(model *Model, u32 FaceIndex)
-{
-	v3 Result;
-
-	model_face Face = Model->Faces[FaceIndex];
-
-	v3 Offset = Model->Offset;
-	v3 V0 = Model->Vertex[Face.V0] + Offset;
-	v3 V1 = Model->Vertex[Face.V1] + Offset;
-	v3 V2 = Model->Vertex[Face.V2] + Offset;
-	v3 V3 = Model->Vertex[Face.V3] + Offset;
-
-	v3 Edge1 = V0 - V1;
-	v3 Edge2 = V0 - V3;
-
-	Result = Normalize(Cross(Edge1, Edge2));
-	return Result;
-}
-
-internal inline face_plane
-GetFacePlane(v3 V0, v3 V1, v3 V2, v3 V3)
-{
-	face_plane Result;
-
-	v3 Edge01 = V2 - V1;
-	v3 Edge02 = V0 - V1;
-	Result.P0.N = Normalize(Cross(Edge01, Edge02));
-	Result.P0.D = Dot(Result.P0.N, V0);
-
-	v3 Edge11 = V2 - V3;
-	v3 Edge12 = V0 - V3;
-	Result.P1.N = Normalize(Cross(Edge12, Edge11));
-	Result.P1.D = Dot(Result.P1.N, V0);
-
-	return Result;
-}
-
-internal inline face_plane
-GetFacePlane(model *Model, u32 FaceIndex)
-{
-	face_plane Result;
-
-	v3 ModelOffset = Model->Offset;
-	model_face Face = Model->Faces[FaceIndex];
-
-	v3 V0 = Model->Vertex[Face.V0] + ModelOffset;
-	v3 V1 = Model->Vertex[Face.V1] + ModelOffset;
-	v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
-	v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
-
-	Result = GetFacePlane(V0, V1, V2, V3);
-	return Result;
 }
 
 b32

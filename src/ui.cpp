@@ -613,19 +613,35 @@ SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 Ele
 {
 	m3x3 Result = {};
 
-	switch (ElementTarget)
+	if (ElementTarget == ModelTargetElement_Model)
 	{
-		case ModelTargetElement_Model:
-		{
-			Result = Model->Axis;
-		} break;
-
-		case ModelTargetElement_Edge:
-		case ModelTargetElement_Face:
-		{
-
-		} break;
+		Result = Model->Axis;
 	}
+	else if (ElementTarget == ModelTargetElement_Edge ||
+		ElementTarget == ModelTargetElement_Face)
+	{
+		if (Selected->Count == 1)
+		{
+			u32 ElementID = Selected->Elements[0];
+			if (ElementTarget == ModelTargetElement_Edge)
+			{
+				model_edge *Edge = Model->Edges + ElementID;
+				edge_faces_norm RelatedNorm = GetEdgeFacesRelatedNormals(Model, Edge);
+				v3 V0 = Model->Vertex[Edge->V0];
+				v3 V1 = Model->Vertex[Edge->V1];
+
+				Result.Z = Normalize(V1 - V0);
+				Result.Y = NLerp(RelatedNorm.N0, 0.5f, RelatedNorm.N1);
+				Result.X = Cross(Result.Y, Result.Z);
+
+			}
+			else if (ElementTarget == ModelTargetElement_Face)
+			{
+				Result = Identity3x3();
+			}
+		}
+	}
+	
 	Tools->UpdateAxis = false;
 
 	return Result;
@@ -693,14 +709,16 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			//SetAxisForTools(Tools, Model, &WorldUI->Selected, WorldUI->IModel.Target);
 			// TODO: Set axis for face and edge
 			m3x3 Axis;
-			if (IsDown(Input->Shift))
+			if (IsDown(Input->Ctrl))
 			{
 				Axis = Identity3x3();
 				RotateTool->DefaultAxisSet = true;
 			}
 			else
 			{
-				Axis = RotateTool->Axis = Model->Axis;
+				// TODO: Set start axis once or on change RotateTool->DefaultAxisSet
+				Axis = RotateTool->Axis =
+					SetAxisForTools(Tools, Model, &WorldUI->Selected, WorldUI->IModel.Target);
 				RotateTool->DefaultAxisSet = false;
 			}
 			

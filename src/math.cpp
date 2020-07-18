@@ -305,6 +305,13 @@ operator*(v3 A, f32 B)
 }
 
 inline v3
+operator*(f32 B, v3 A)
+{
+	v3 Result = A * B;
+	return Result;
+}
+
+inline v3
 operator-(v3 A, f32 B)
 {
 	v3 Result;
@@ -424,6 +431,20 @@ Cross(v3 A, v3 B)
 	Result.y = A.z*B.x - A.x*B.z;
 	Result.z = A.x*B.y - A.y*B.x;
 
+	return Result;
+}
+
+inline v3
+Lerp(v3 A, f32 t, v3 B)
+{
+	v3 Result = (1.0f - t)*A + B*t;
+	return Result;
+}
+
+inline v3
+NLerp(v3 A, f32 t, v3 B)
+{
+	v3 Result = Normalize(Lerp(A, t, B));
 	return Result;
 }
 
