@@ -135,6 +135,7 @@ struct rotate_tools
 	v4 AxisMask;
 	rot_tool_perp_axis PerpInfo; 
 
+	b32 AxisSet;
 	b32 DefaultAxisSet;
 	tools_axis_id InteractAxis;
 	b8 EnterActiveState;
@@ -152,7 +153,6 @@ struct tools
 	{
 		struct
 		{
-			b32 UpdateAxis;
 			b32 UpdatePos;
 			union
 			{

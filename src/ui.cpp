@@ -103,6 +103,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 			{
 				WorldUI->Tools.Type = 0;
 			}
+			WorldUI->Tools.IsInit = false;
 		}
 	}
 
@@ -439,7 +440,7 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 }
 
 internal inline m4x4
-GetRotateMatrixFormAxisID(f32 Angle, tools_axis_id ID)
+GetRotateMatrixFromAxisID(f32 Angle, tools_axis_id ID)
 {
 	m4x4 Result;
 
@@ -484,7 +485,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 			CurrentVector = Normalize(DirFromCenter - (Tool->InteractPlane.N * PDotD));
 #if 1
 			f32 CheckDot = Dot(CurrentVector, Tool->InteractPlane.N);
-			Assert(CheckDot < 0.000001f);
+			Assert(CheckDot < 0.00001f);
 #endif
 			*ResultVector = CurrentVector;
 			Result = true;
@@ -531,7 +532,7 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 
 			if (AngleBetween != 0)
 			{
-				m4x4 Rotate = GetRotateMatrixFormAxisID(AngleBetween, Tool->InteractAxis);
+				m4x4 Rotate = GetRotateMatrixFromAxisID(AngleBetween, Tool->InteractAxis);
 				m4x4 CurrentRotateAxis = Row3x3(Axis.X, Axis.Y, Axis.Z);
 				m4x4 ResultAxis = Rotate * CurrentRotateAxis;
 
@@ -609,7 +610,7 @@ IsRotateToolAxisPerp(rotate_tools *Tool, v3 Axis, v3 CameraZ)
 }
 
 m3x3
-SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 ElementTarget)
+SetAxisForTool(rotate_tools *Tool, model *Model, element_id_buffer *Selected, u32 ElementTarget)
 {
 	m3x3 Result = {};
 
@@ -617,13 +618,16 @@ SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 Ele
 	{
 		Result = Model->Axis;
 	}
-	else if (ElementTarget == ModelTargetElement_Edge ||
-		ElementTarget == ModelTargetElement_Face)
+	else if (Selected->Count > 1)
 	{
-		if (Selected->Count == 1)
+		Result = Identity3x3();
+	}
+	else if (Selected->Count == 1)
+	{
+		u32 ElementID = Selected->Elements[0];
+		switch (ElementTarget)
 		{
-			u32 ElementID = Selected->Elements[0];
-			if (ElementTarget == ModelTargetElement_Edge)
+			case ModelTargetElement_Edge:
 			{
 				model_edge *Edge = Model->Edges + ElementID;
 				edge_faces_norm RelatedNorm = GetEdgeFacesRelatedNormals(Model, Edge);
@@ -633,17 +637,38 @@ SetAxisForTools(tools *Tools, model *Model, element_id_buffer *Selected, u32 Ele
 				Result.Z = Normalize(V1 - V0);
 				Result.Y = NLerp(RelatedNorm.N0, 0.5f, RelatedNorm.N1);
 				Result.X = Cross(Result.Y, Result.Z);
+			} break;
 
-			}
-			else if (ElementTarget == ModelTargetElement_Face)
+			case ModelTargetElement_Face:
 			{
+#if 1
+				model_face *Face = Model->Faces + ElementID;
+				face_vertex Vertex = GetFaceVertex(Model, Face);
+
+				Result.Y = GetPlaneAvgNormal(Vertex);
+				v3 OriginY = V3(0, 1, 0);
+				if (Dot(Result.Y, OriginY) != 1.0f)
+				{
+					Result.X = Normalize(Cross(V3(0, 1, 0), Result.Y));
+					Result.Z = Cross(Result.X, Result.Y);
+
+					Assert(Length(Result.Y) >= 0.98f);
+					Assert(Length(Result.X) >= 0.98f);
+					Assert(Length(Result.Z) >= 0.98f);
+				}
+				else
+				{
+					Result.X = V3(1, 0, 0);
+					Result.Z = V3(0, 0, 1);
+				}
+#else
 				Result = Identity3x3();
+#endif
 			}
 		}
 	}
 	
-	Tools->UpdateAxis = false;
-
+	Tool->AxisSet = true;
 	return Result;
 }
 
@@ -716,9 +741,13 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 			else
 			{
-				// TODO: Set start axis once or on change RotateTool->DefaultAxisSet
-				Axis = RotateTool->Axis =
-					SetAxisForTools(Tools, Model, &WorldUI->Selected, WorldUI->IModel.Target);
+				if (!RotateTool->AxisSet)
+				{
+					// TODO: Set start axis once or on change RotateTool->DefaultAxisSet
+					RotateTool->Axis = 
+						SetAxisForTool(RotateTool, Model, &WorldUI->Selected, WorldUI->IModel.Target);
+				}
+				Axis = RotateTool->Axis;
 				RotateTool->DefaultAxisSet = false;
 			}
 			
@@ -826,7 +855,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 						ApplyRotation(Model, &Tools->UniqIndeces, TargetElement,
 							RotateTool->CenterP, RotateTool->Transform);
 						Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
-						Tools->UpdateAxis = true;
 					}
 				}
 				else

@@ -23,7 +23,7 @@ struct model_edge
 };
 
 // TODO: Expand to u32??? For convenient simd usage?
-// TODO: Model vertex count never be bigger than U16_MAX_VALUE?
+// Model vertex count never be bigger than U16_MAX_VALUE?
 struct model_face
 {
 	union
@@ -80,6 +80,14 @@ struct element_ray_result
 	v3 P;
 };
 
+enum MaskMatchVertex
+{
+	MaskMatchVertex_01 = (1 << 1) | (1 << 0),
+	MaskMatchVertex_12 = (1 << 2) | (1 << 1),
+	MaskMatchVertex_03 = (1 << 3) | (1 << 0),
+	MaskMatchVertex_23 = (1 << 3) | (1 << 2),
+};
+
 struct face_edge_match
 {
 	u16 Index;
@@ -99,10 +107,12 @@ struct edge_vertex_match
 	u16 Succes;
 };
 
-enum MaskMatchVertex
+struct face_normals
 {
-	MaskMatchVertex_01 = (1 << 1) | (1 << 0),
-	MaskMatchVertex_12 = (1 << 2) | (1 << 1),
-	MaskMatchVertex_03 = (1 << 3) | (1 << 0),
-	MaskMatchVertex_23 = (1 << 3) | (1 << 2),
+	v3 N0, N1;
+};
+
+struct edge_faces_norm
+{
+	v3 N0, N1;
 };

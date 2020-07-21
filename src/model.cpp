@@ -149,40 +149,83 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	return Result;
 }
 
+struct face_vertex
+{
+	v3 V0, V1, V2, V3;
+};
+
+inline face_vertex
+GetFaceVertex(model *Model, model_face *Face)
+{
+	face_vertex Result;
+
+	v3 ModelOffset = Model->Offset;
+	Result.V0 = Model->Vertex[Face->V0] + ModelOffset;
+	Result.V1 = Model->Vertex[Face->V1] + ModelOffset;
+	Result.V2 = Model->Vertex[Face->V2] + ModelOffset;
+	Result.V3 = Model->Vertex[Face->V3] + ModelOffset;
+
+	return Result;
+}
+
+inline face_normals
+GetFaceNormals(face_vertex Vertex)
+{
+	face_normals Result;
+
+	v3 Edge01 = Vertex.V2 - Vertex.V1;
+	v3 Edge02 = Vertex.V0 - Vertex.V1;
+	Result.N0 = Normalize(Cross(Edge01, Edge02));
+
+	v3 Edge11 = Vertex.V2 - Vertex.V3;
+	v3 Edge12 = Vertex.V0 - Vertex.V3;
+	Result.N1 = Normalize(Cross(Edge12, Edge11));
+
+	return Result;
+}
+
+inline face_normals
+GetFaceNormals(model *Model, model_face *Face)
+{
+	face_normals Result;
+
+	face_vertex Vertex = GetFaceVertex(Model, Face);
+	Result = GetFaceNormals(Vertex);
+	return Result;
+}
+
 inline v3
-GetPlaneNormal(model *Model, u32 FaceIndex)
+GetPlaneAvgNormal(face_vertex Vertex)
 {
 	v3 Result;
 
-	model_face Face = Model->Faces[FaceIndex];
+	face_normals Normals = GetFaceNormals(Vertex);
+	Result = NLerp(Normals.N0, 0.5f, Normals.N1);
+	return Result;
+}
 
-	v3 Offset = Model->Offset;
-	v3 V0 = Model->Vertex[Face.V0] + Offset;
-	v3 V1 = Model->Vertex[Face.V1] + Offset;
-	v3 V2 = Model->Vertex[Face.V2] + Offset;
-	v3 V3 = Model->Vertex[Face.V3] + Offset;
-
-	v3 Edge1 = V0 - V1;
-	v3 Edge2 = V0 - V3;
-
-	Result = Normalize(Cross(Edge1, Edge2));
+inline v3
+GetPlaneAvgNormal(model *Model, model_face *Face)
+{
+	v3 Result;
+	
+	face_normals Normals = GetFaceNormals(Model, Face);
+	Result = NLerp(Normals.N0, 0.5f, Normals.N1);
 	return Result;
 }
 
 internal inline face_plane
-GetFacePlane(v3 V0, v3 V1, v3 V2, v3 V3)
+GetFacePlane(face_vertex Vertex)
 {
 	face_plane Result;
 
-	v3 Edge01 = V2 - V1;
-	v3 Edge02 = V0 - V1;
-	Result.P0.N = Normalize(Cross(Edge01, Edge02));
-	Result.P0.D = Dot(Result.P0.N, V0);
+	face_normals Normals = GetFaceNormals(Vertex);
 
-	v3 Edge11 = V2 - V3;
-	v3 Edge12 = V0 - V3;
-	Result.P1.N = Normalize(Cross(Edge12, Edge11));
-	Result.P1.D = Dot(Result.P1.N, V0);
+	Result.P0.N = Normals.N0;
+	Result.P0.D = Dot(Normals.N0, Vertex.V0);
+
+	Result.P1.N = Normals.N1;
+	Result.P1.D = Dot(Normals.N1, Vertex.V0);
 
 	return Result;
 }
@@ -192,28 +235,13 @@ GetFacePlane(model *Model, u32 FaceIndex)
 {
 	face_plane Result;
 
-	v3 ModelOffset = Model->Offset;
-	model_face Face = Model->Faces[FaceIndex];
+	model_face *Face = Model->Faces + FaceIndex;
+	face_vertex Vertex = GetFaceVertex(Model, Face);
 
-	v3 V0 = Model->Vertex[Face.V0] + ModelOffset;
-	v3 V1 = Model->Vertex[Face.V1] + ModelOffset;
-	v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
-	v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
-
-	Result = GetFacePlane(V0, V1, V2, V3);
+	Result = GetFacePlane(Vertex);
 	return Result;
 }
 
-struct edge_faces_norm
-{
-	v3 N0;
-	v3 N1;
-};
-
-//MaskMatchVertex_01 = (1 << 1) | (1 << 0),
-//MaskMatchVertex_12 = (1 << 2) | (1 << 1),
-//MaskMatchVertex_03 = (1 << 3) | (1 << 0),
-//MaskMatchVertex_23
 edge_faces_norm
 GetEdgeFacesRelatedNormals(model *Model, model_edge *Edge)
 {
@@ -566,14 +594,10 @@ RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceRes
 		plane_params Plane0;
 		plane_params Plane1;
 
-		model_face Face = Model->Faces[FaceIndex];
+		model_face *Face = Model->Faces + FaceIndex;
+		face_vertex Vertex = GetFaceVertex(Model, Face);
 
-		v3 V0 = Model->Vertex[Face.V0] + ModelOffset;
-		v3 V1 = Model->Vertex[Face.V1] + ModelOffset;
-		v3 V2 = Model->Vertex[Face.V2] + ModelOffset;
-		v3 V3 = Model->Vertex[Face.V3] + ModelOffset;
-
-		face_plane Plane = GetFacePlane(V0, V1, V2, V3);
+		face_plane Plane = GetFacePlane(Vertex);
 
 		f32 DotRayPlane0 = Dot(Ray.Dir, Plane.P0.N);
 		f32 DotRayPlane1 = Dot(Ray.Dir, Plane.P1.N);
@@ -584,7 +608,7 @@ RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceRes
 			if (tRay >= 0)
 			{
 				IntersetPoint = PointOnRay(Ray, tRay);
-				HitTest = IsPointInTriangle(V0, V1, V2, IntersetPoint);
+				HitTest = IsPointInTriangle(Vertex.V0, Vertex.V1, Vertex.V2, IntersetPoint);
 			}
 		}
 
@@ -594,7 +618,7 @@ RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceRes
 			if (tRay >= 0)
 			{
 				IntersetPoint = PointOnRay(Ray, tRay);
-				HitTest = IsPointInTriangle(V0, V2, V3, IntersetPoint);
+				HitTest = IsPointInTriangle(Vertex.V0, Vertex.V2, Vertex.V3, IntersetPoint);
 			}
 		}
 
