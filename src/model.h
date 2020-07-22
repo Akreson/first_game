@@ -107,6 +107,11 @@ struct edge_vertex_match
 	u16 Succes;
 };
 
+struct face_vertex
+{
+	v3 V0, V1, V2, V3;
+};
+
 struct face_normals
 {
 	v3 N0, N1;

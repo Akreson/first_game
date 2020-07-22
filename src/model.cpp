@@ -149,11 +149,6 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	return Result;
 }
 
-struct face_vertex
-{
-	v3 V0, V1, V2, V3;
-};
-
 inline face_vertex
 GetFaceVertex(model *Model, model_face *Face)
 {

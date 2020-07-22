@@ -312,7 +312,6 @@ WinMain(HINSTANCE Instance,
 	WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
 	WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 	WindowClass.lpszClassName = "CrossPlaneWindow";
-
 	if (RegisterClass(&WindowClass))
 	{
 		HWND Window = CreateWindowEx(

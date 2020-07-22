@@ -137,7 +137,8 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 				}
 			}
 
-			if (IsHotIntrType(WorldUI, UI_InteractionType_Select))
+			u32 IntrTypeID = SetIntrTypeID(UI_InteractionTarget_Model, UI_InteractionType_Select);
+			if (IsHotIntrTypeID(WorldUI, IntrTypeID))
 			{
 				u32 IEdgeIndex = IModel->Edge.ID;
 				model_edge *IEdge = Model->Edges + IEdgeIndex;

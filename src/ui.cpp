@@ -3,8 +3,8 @@ inline ui_id
 IDFromModel(u16 Target, u32 ModelIndex, u32 FaceIndex = 0, u32 EdgeIndex = 0)
 {
 	ui_id Result;
-	Result.ID[0] = (u64)(Target << 32) | ModelIndex;
-	Result.ID[1] = (u64)(FaceIndex << 32) | EdgeIndex;
+	Result.ID[0] = ((u64)Target << 32) | ModelIndex;
+	Result.ID[1] = ((u64)FaceIndex << 32) | EdgeIndex;
 
 	return Result;
 }
@@ -26,6 +26,13 @@ inline b32
 IsHotIntrType(editor_world_ui *WorldUI, u32 Type)
 {
 	b32 Result = (WorldUI->HotInteraction.Type == Type);
+	return Result;
+}
+
+inline b32
+IsHotIntrTypeID(editor_world_ui *WorldUI, u32 TypeID)
+{
+	b32 Result = (WorldUI->HotInteraction.TypeID == TypeID);
 	return Result;
 }
 
