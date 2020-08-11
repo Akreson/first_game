@@ -32,10 +32,11 @@ enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
 	RenderEntryType_render_entry_model,
-	RenderEntryType_render_entry_model_outline,
 	RenderEntryType_render_entry_tool_rotate,
 
 	RenderEntryType_render_entry_static_mesh,
+
+	RenderEntryType_render_entry_model_outline,
 };
 
 enum face_selection_type
@@ -88,13 +89,18 @@ struct render_entry_header
 	u16 Type;
 };
 
+struct render_triangle_vertex
+{
+	v3 V;
+	v2 UV;
+};
+
 struct render_entry_bitmap
 {
 	renderer_texture Texture;
 	// TODO: Change to Position, XAxis, YAxis?
-	v2 Min;
-	v2 Max;
 	v3 Color;
+	u32 TrinBuffOffset;
 };
 
 struct render_entry_model

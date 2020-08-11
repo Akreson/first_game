@@ -284,6 +284,9 @@ struct game_render_commands
 	u32 VertexBufferOffset;
 	u32 MaxVertexBufferSize;
 
+	u8 *TriangleBufferBase;
+	u32 TriangleBufferSize;
+	u32 MaxTriangleBufferSize;
 	// TODO: store more mat
 };
 

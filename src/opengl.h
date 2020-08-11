@@ -259,8 +259,6 @@ struct framebuffer_info
 struct bitmap_program
 {
 	GLuint ID;
-	GLuint BitmapVAO;
-	GLuint BitmapVBO;
 
 	GLuint ColorID;
 	GLuint ProjID;
@@ -329,6 +327,9 @@ struct opengl_renderer_info
 
 	GLuint VertexBufferVAO;
 	GLuint VertexBufferVBO;
+
+	GLuint TrinBufferVAO;
+	GLuint TrinBufferVBO;
 	
 	GLuint FullScreenVAO;
 	GLuint FullScreenVBO;

@@ -2,7 +2,7 @@ internal void
 CompileBitmapProgram(bitmap_program *Prog)
 {
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec2 Vertex;
+	layout (location = 0) in vec3 Vertex;
 	layout (location = 1) in vec2 TextCoord;
 
 	out vec2 TexCoords;
@@ -12,7 +12,7 @@ CompileBitmapProgram(bitmap_program *Prog)
 	void main()
 	{
 		TexCoords = TextCoord;
-		gl_Position = Proj * vec4(Vertex, 0, 1.0);
+		gl_Position = Proj * vec4(Vertex, 1.0f);
 	}
 
 	)FOO";
@@ -38,23 +38,6 @@ CompileBitmapProgram(bitmap_program *Prog)
 
 	Prog->ColorID = glGetUniformLocation(ProgID, "Color");
 	Prog->ProjID = glGetUniformLocation(ProgID, "Proj");
-
-	glGenVertexArrays(1, &Prog->BitmapVAO);
-	glGenBuffers(1, &Prog->BitmapVBO);
-
-	glBindVertexArray(Prog->BitmapVAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, Prog->BitmapVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 4), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (sizeof(f32) * 4), (void*)(sizeof(f32) * 2));
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
 	glUseProgram(0);
 }
 

@@ -311,6 +311,23 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+	//-----
+
+	// NOTE: Init triangle vertex buffer VBO
+	glGenVertexArrays(1, &OpenGL.TrinBufferVAO);
+	glGenBuffers(1, &OpenGL.TrinBufferVBO);
+
+	glBindVertexArray(OpenGL.TrinBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 3));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	//-----
 	
 	// NOTE: Set full screen VAO
 	const float Vertices[] = {
@@ -372,6 +389,12 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
+	glBindVertexArray(OpenGL.TrinBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
+	glBufferData(GL_ARRAY_BUFFER, Commands->TriangleBufferSize, (GLvoid *)Commands->TriangleBufferBase, GL_STREAM_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
 	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
 	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.MainFB.Handle);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -392,32 +415,34 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)Data;
 				BufferOffset += sizeof(render_entry_bitmap);
 
-				v2 MinPos = BitmapEntry->Min;
-				v2 MaxPos = BitmapEntry->Max;
+				//v2 MinPos = BitmapEntry->Min;
+				//v2 MaxPos = BitmapEntry->Max;
 
-				float Vertices[] = {
-					// first triangle
-					MaxPos.x, MaxPos.y, 1.0f, 1.0f,// top right
-					MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
-					MinPos.x, MaxPos.y, 0.0f, 1.0f,// top left 
-					// second triangle
-					MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
-					MinPos.x, MinPos.y, 0.0f, 0.0f,// bottom left
-					MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
-				};
+				//float Vertices[] = {
+				//	// first triangle
+				//	MaxPos.x, MaxPos.y, 1.0f, 1.0f,// top right
+				//	MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
+				//	MinPos.x, MaxPos.y, 0.0f, 1.0f,// top left 
+				//	// second triangle
+				//	MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
+				//	MinPos.x, MinPos.y, 0.0f, 0.0f,// bottom left
+				//	MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
+				//};
+
+				glBindVertexArray(OpenGL.TrinBufferVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
 
 				UseProgramBegin(&OpenGL.BitmapProg, BitmapEntry->Color, &Commands->OrthoProj.Forward);
-
-				glBindVertexArray(OpenGL.BitmapProg.BitmapVAO);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapProg.BitmapVBO);
-
 				OpenGLBindTex(GL_TEXTURE_2D, GL_TEXTURE0, (GLuint)BitmapEntry->Texture.Handle);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertices), Vertices);
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				glDrawArrays(GL_TRIANGLES, 0, 6);
 
-				glBindVertexArray(0);
+				/*glBindVertexArray(OpenGL.BitmapProg.BitmapVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapProg.BitmapVBO);
+*/
+				glDrawArrays(GL_TRIANGLES, BitmapEntry->TrinBuffOffset / sizeof(render_triangle_vertex), 6);
+
 				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindVertexArray(0);
 
 				UseProgramEnd(&OpenGL.BitmapProg);
 			} break;

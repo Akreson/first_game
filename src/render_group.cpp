@@ -87,15 +87,38 @@ PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
 
 #define PushRenderElement(Group, Type) (Type *)PushRenderElement_(Group, sizeof(Type), RenderEntryType_##Type)
 
+inline render_triangle_vertex
+CreateTrinVertex(v3 V, v2 UV)
+{
+	render_triangle_vertex Result;
+	Result.V = V;
+	Result.UV = UV;
+
+	return Result;
+}
+
 internal void
 PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 {
+	game_render_commands *Commands = Group->Commands;
 	render_entry_bitmap *BitmapEntry = PushRenderElement(Group, render_entry_bitmap);
 
+	render_triangle_vertex *TrinBuff =
+		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
+
+	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Max.y, 0.0f), V2(1.0f, 1.0f));// top right
+	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Min.y, 0.0f), V2(1.0f, 0.0f));// bottom right
+	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Max.y, 0.0f), V2(0.0f, 1.0f));// top left 
+	// second triangle
+	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Min.y, 0.0f), V2(1.0f, 0.0f));// bottom right
+	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Min.y, 0.0f), V2(0.0f, 0.0f));// bottom left
+	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Max.y, 0.0f), V2(0.0f, 1.0f)); // top left
+
 	BitmapEntry->Texture = Glyph;
-	BitmapEntry->Min = Min;
-	BitmapEntry->Max = Max;
 	BitmapEntry->Color = Color;
+	BitmapEntry->TrinBuffOffset = Commands->TriangleBufferSize;
+
+	Commands->TriangleBufferSize += 6 * sizeof(render_triangle_vertex);
 }
 
 #define IsHaveMatch(A, B) \
@@ -135,7 +158,7 @@ GetEdgeFaceParams(face_render_params FaceParam)
 #undef IsHaveMatch(A, B)
 
 internal inline render_model_face_vertex
-ConstructFaceVertex(v3 Vertex, v3 BarCoords,
+CreateFaceVertex(v3 Vertex, v3 BarCoords,
 	v3 ActiveMask = V3(0), v3 HotMask = V3(0), v2 FaceSelParam = V2(0))
 {
 	render_model_face_vertex Result;
@@ -178,14 +201,14 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 	f32 Hot03 = StateEdgeArray[EdgesParam.Hot03];
 	f32 Hot23 = StateEdgeArray[EdgesParam.Hot23];
 
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0],	V3(1, 1, 0));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2],
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], V3(1, 1, 0));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2],
 		V3(0, 1, 1), V3(Active12, 1, Active01), V3(Hot12, 1, Hot01), SelectionType);
 
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1));
-	*FaceVertex++ = ConstructFaceVertex(VertexStorage[Face.V3],
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V3],
 		V3(0, 0, 1), V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
 
 	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);

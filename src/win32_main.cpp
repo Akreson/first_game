@@ -344,10 +344,13 @@ WinMain(HINSTANCE Instance,
 			game_memory GameMemory = {};
 			game_input GameInput = {};
 
+			// TODO: Move to render struct
 			u32 PushBufferSize = MiB(2);
 			void *PushBufferBase = Win32AllocateMemory(PushBufferSize);
 			u32 VertexBufferSize = MiB(5);
 			void *VertexBuffer = Win32AllocateMemory(VertexBufferSize);
+			u32 TriangleBufferSize = MiB(5);
+			void *TriangleBuffer = Win32AllocateMemory(TriangleBufferSize);
 
 			GameMemory.GameStorageSize = MiB(20);
 			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);
@@ -414,9 +417,11 @@ WinMain(HINSTANCE Instance,
 				RenderCommands.ScreenDim = V2(ScreenWidth, ScreenHeight);
 				RenderCommands.PushBufferBase = (u8 *)PushBufferBase;
 				RenderCommands.MaxPushBufferSize = PushBufferSize;
-				RenderCommands.MaxVertexBufferSize = VertexBufferSize;
 				RenderCommands.VertexBufferBase = (u8 *)VertexBuffer;
-
+				RenderCommands.MaxVertexBufferSize = VertexBufferSize;
+				RenderCommands.TriangleBufferBase = (u8 *)TriangleBuffer;
+				RenderCommands.MaxTriangleBufferSize = TriangleBufferSize;
+				
 				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
 
 				Win32DisplayRenderCommands(Window, &RenderCommands);
