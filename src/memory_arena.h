@@ -23,7 +23,7 @@ struct page_memory_arena
 	s16 *PoolAllocInfo;//
 	u32 PageSize; // NOTE: Must be power of 2
 	u32 AllocStatusBlocksCount;
-	u16 PageCount;
+	u32 PageCount;
 	u16 UnusedSpace;
 };
 

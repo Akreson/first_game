@@ -59,4 +59,4 @@ struct static_mesh
 	renderer_mesh Mesh;
 };
 
-#define MAX_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs) / sizeof(void*))
+#define MAX_FONT_REFS_METRICS_COUNT ((u32)OffsetOf(font_asset_info, Glyphs) / sizeof(void*))

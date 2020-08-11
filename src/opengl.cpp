@@ -474,18 +474,18 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glDisable(GL_CULL_FACE);
 			} break;
 
-			case RenderEntryType_render_entry_sphere:
+			case RenderEntryType_render_entry_static_mesh:
 			{
-				render_entry_sphere *SphereEntry = (render_entry_sphere *)Data;
-				BufferOffset += sizeof(render_entry_sphere);
+				render_entry_static_mesh *MeshEntry = (render_entry_static_mesh *)Data;
+				BufferOffset += sizeof(render_entry_static_mesh);
 
 				m4x4 I = Identity();
 
 				UseProgramBegin(&OpenGL.StaticMeshProg,
-					&Commands->ForwardPersCamera, &I, SphereEntry->Color);
+					&Commands->ForwardPersCamera, &I, MeshEntry->Color);
 
-				glBindVertexArray((GLuint)SphereEntry->Mesh.Handle);
-				glDrawElements(GL_TRIANGLES, SphereEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
+				glBindVertexArray((GLuint)MeshEntry->Mesh.Handle);
+				glDrawElements(GL_TRIANGLES, MeshEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);
 			} break;
 

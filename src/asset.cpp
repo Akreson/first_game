@@ -3,7 +3,7 @@ PatchFontData(font_asset_info *FontAsset)
 {
 	umm **PtrToMetrics = (umm **)&FontAsset->Refs;
 	for (u32 RefsIndex = 0;
-		RefsIndex <= MAX_REFS_METRICS_COUNT;
+		RefsIndex <= MAX_FONT_REFS_METRICS_COUNT;
 		++RefsIndex)
 	{
 		PtrToMetrics[RefsIndex] = (umm *)((u8 *)PtrToMetrics + (u64)PtrToMetrics[RefsIndex]);

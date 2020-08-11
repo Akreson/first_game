@@ -7,6 +7,26 @@
 // TODO: Delete
 #include <cstdio>
 
+enum builtin_static_mesh
+{
+	BuiltInMesh_Sphere_High,
+	BuiltInMesh_Sphere_Low,
+	BuiltInMesh_Cube,
+	BuiltInMesh_Low,
+};
+
+static inline void
+InitHighPolySphere()
+{
+
+}
+
+static void
+InitEditorStaticModel(game_editor_state *Editor)
+{
+
+}
+
 inline b32
 IsInSelectedBuffer(element_id_buffer *Selected, u32 ElementID)
 {

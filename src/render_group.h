@@ -32,11 +32,10 @@ enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
 	RenderEntryType_render_entry_model,
-	RenderEntryType_render_entry_model_face,
 	RenderEntryType_render_entry_model_outline,
 	RenderEntryType_render_entry_tool_rotate,
 
-	RenderEntryType_render_entry_sphere,
+	RenderEntryType_render_entry_static_mesh,
 };
 
 enum face_selection_type

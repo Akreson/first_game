@@ -195,7 +195,7 @@ main(int argc, char **argv)
 		// NOTE: Store offset for later patching
 		umm **PtrToMetrics = (umm **)&FontAsset->Refs;
 		for (u32 RefsIndex = 0;
-			RefsIndex <= MAX_REFS_METRICS_COUNT;
+			RefsIndex <= MAX_FONT_REFS_METRICS_COUNT;
 			++RefsIndex)
 		{
 			PtrToMetrics[RefsIndex] = (umm *)((u8 *)PtrToMetrics[RefsIndex] - (u8 *)PtrToMetrics);

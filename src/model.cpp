@@ -441,7 +441,7 @@ AddTris(memory_arena *Arena, tris_u32 **TrisArrPtr, u32 I0, u32 I1, u32 I2)
 inline static_mesh *
 AddStaticMesh(game_editor_state *Editor)
 {
-	static_mesh *Result = Editor->StaticMesh + Editor->StaticMeshCount;
+	static_mesh *Result = Editor->StaticMesh + Editor->StaticMeshCount++;
 	Assert(Editor->StaticMeshCount < ArrayCount(Editor->StaticMesh));
 
 	return Result;
