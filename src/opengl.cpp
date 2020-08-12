@@ -323,7 +323,9 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 3));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 3));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 6));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -332,13 +334,13 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	// NOTE: Set full screen VAO
 	const float Vertices[] = {
 		// first triangle
-		 1.0f,  1.0f, 1.0f, 1.0f,// top right
-		 1.0f, -1.0f, 1.0f, 0.0f,// bottom right
-		-1.0f,  1.0f, 0.0f, 1.0f,// top left 
-		// second triangle
-		 1.0f, -1.0f, 1.0f, 0.0f,// bottom right
 		-1.0f, -1.0f, 0.0f, 0.0f,// bottom left
-		-1.0f,  1.0f, 0.0f, 1.0f // top left
+		 1.0f, -1.0f, 1.0f, 0.0f,// bottom right
+		 1.0f,  1.0f, 1.0f, 1.0f,// top right
+		// second triangle
+		-1.0f, -1.0f, 0.0f, 0.0f,// bottom left
+		 1.0f,  1.0f, 1.0f, 1.0f,// top right
+		-1.0f,  1.0f, 0.0f, 1.0f,// top left 
 	};
 
 	glGenVertexArrays(1, &OpenGL.FullScreenVAO);
@@ -375,9 +377,6 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// NOTE: Seems i have bug with this option when they enable (image get staking)
-	// When enable only within model rendred staking disappear.
-	// Maybe broblem only occur with framebuffer rendering
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -415,29 +414,11 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_bitmap *BitmapEntry = (render_entry_bitmap *)Data;
 				BufferOffset += sizeof(render_entry_bitmap);
 
-				//v2 MinPos = BitmapEntry->Min;
-				//v2 MaxPos = BitmapEntry->Max;
-
-				//float Vertices[] = {
-				//	// first triangle
-				//	MaxPos.x, MaxPos.y, 1.0f, 1.0f,// top right
-				//	MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
-				//	MinPos.x, MaxPos.y, 0.0f, 1.0f,// top left 
-				//	// second triangle
-				//	MaxPos.x, MinPos.y, 1.0f, 0.0f,// bottom right
-				//	MinPos.x, MinPos.y, 0.0f, 0.0f,// bottom left
-				//	MinPos.x, MaxPos.y, 0.0f, 1.0f // top left
-				//};
-
 				glBindVertexArray(OpenGL.TrinBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
 
 				UseProgramBegin(&OpenGL.BitmapProg, BitmapEntry->Color, &Commands->OrthoProj.Forward);
 				OpenGLBindTex(GL_TEXTURE_2D, GL_TEXTURE0, (GLuint)BitmapEntry->Texture.Handle);
-
-				/*glBindVertexArray(OpenGL.BitmapProg.BitmapVAO);
-				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.BitmapProg.BitmapVBO);
-*/
 				glDrawArrays(GL_TRIANGLES, BitmapEntry->TrinBuffOffset / sizeof(render_triangle_vertex), 6);
 
 				glBindTexture(GL_TEXTURE_2D, 0);

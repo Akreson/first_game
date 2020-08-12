@@ -34,7 +34,10 @@ struct game_world_state
 
 };
 
-#define ROTATE_TOOLS_DIAMETER 1.5f
+#define _EDITOR_TOOLS_SIZE 1.5f
+#define ROTATE_TOOL_DIAMETER _EDITOR_TOOLS_SIZE
+#define SCALE_TOOL_SIZE (_EDITOR_TOOLS_SIZE * 0.5f)
+#define TRANSLATE_TOOL_SIZE _EDITOR_TOOLS_SIZE
 
 struct model_highlight_params
 {

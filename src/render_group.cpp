@@ -88,16 +88,17 @@ PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
 #define PushRenderElement(Group, Type) (Type *)PushRenderElement_(Group, sizeof(Type), RenderEntryType_##Type)
 
 inline render_triangle_vertex
-CreateTrinVertex(v3 V, v2 UV)
+CreateTrinVertex(v3 V, v2 UV, v3 Color = V3(1.0f))
 {
 	render_triangle_vertex Result;
 	Result.V = V;
 	Result.UV = UV;
+	Result.Color = Color;
 
 	return Result;
 }
 
-internal void
+void
 PushBitmap(render_group *Group, renderer_texture BitmapTex, v2 Min, v2 Max, v3 Color)
 {
 	game_render_commands *Commands = Group->Commands;
@@ -106,19 +107,58 @@ PushBitmap(render_group *Group, renderer_texture BitmapTex, v2 Min, v2 Max, v3 C
 	render_triangle_vertex *TrinBuff =
 		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
 
-	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Max.y, 0.0f), V2(1.0f, 1.0f));// top right
-	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Min.y, 0.0f), V2(1.0f, 0.0f));// bottom right
-	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Max.y, 0.0f), V2(0.0f, 1.0f));// top left 
-	// second triangle
-	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Min.y, 0.0f), V2(1.0f, 0.0f));// bottom right
 	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Min.y, 0.0f), V2(0.0f, 0.0f));// bottom left
-	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Max.y, 0.0f), V2(0.0f, 1.0f)); // top left
+	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Min.y, 0.0f), V2(1.0f, 0.0f));// bottom right
+	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Max.y, 0.0f), V2(1.0f, 1.0f));// top right
+	// second triangle
+	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Min.y, 0.0f), V2(0.0f, 0.0f));// bottom left
+	*TrinBuff++ = CreateTrinVertex(V3(Max.x, Max.y, 0.0f), V2(1.0f, 1.0f));// top right
+	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Max.y, 0.0f), V2(0.0f, 1.0f));// top left 
 
 	BitmapEntry->Texture = BitmapTex;
 	BitmapEntry->Color = Color;
 	BitmapEntry->TrinBuffOffset = Commands->TriangleBufferSize;
 
 	Commands->TriangleBufferSize += 6 * sizeof(render_triangle_vertex);
+}
+
+struct render_entry_trin_model
+{
+
+};
+
+void
+BeginPushTrinModel(render_group *Group)
+{
+	game_render_commands *Commands = Group->Commands;
+}
+
+void
+EndPushTrinModel()
+{
+
+}
+
+internal inline rect3
+CalcScaleToolAxisRect()
+{
+
+}
+
+void
+PushScaleTool(render_group *Group, m3x3 Axis, f32 Scale, f32 EdgeLength, f32 EdgeHalfSize, f32 ArrowSize)
+{
+	v3 XMinStartP = Axis.X * (EdgeLength - (EdgeLength * 0.85f));
+	v3 XMaxStartP = Axis.X * EdgeLength;
+
+	rect3 XRect0 = {};
+	XRect0.A = MovePointAlongDir(XRect0.A, Axis.Y, EdgeHalfSize);
+	XRect0.A = MovePointAlongDir(XRect0.A, -Axis.Z, EdgeHalfSize);
+	XRect0.B = MovePointAlongDir(XRect0.B, -Axis.Y, EdgeHalfSize);
+	XRect0.B = MovePointAlongDir(XRect0.B, Axis.Z, EdgeHalfSize);
+	rect3 XRect1 = {};
+	XRect1.A = MovePointAlongDir(XRect0.A, -Axis.X, EdgeLength);
+	XRect1.B = MovePointAlongDir(XRect0.B, -Axis.X, EdgeLength);
 }
 
 #define IsHaveMatch(A, B) \
@@ -279,7 +319,7 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 }
 
 void
-PushRotateSphere(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale,
+PushRotateTool(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale,
 	m3x3 Axis, v4 AxisMask, v2i PerpInfo, v3 ViewDir)
 {
 	game_render_commands *Commands = Group->Commands;

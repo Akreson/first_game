@@ -89,9 +89,11 @@ struct render_entry_header
 	u16 Type;
 };
 
+// TODO: Remove _Color_ later?
 struct render_triangle_vertex
 {
 	v3 V;
+	v3 Color;
 	v2 UV;
 };
 

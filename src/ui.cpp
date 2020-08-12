@@ -648,7 +648,6 @@ SetAxisForTool(rotate_tools *Tool, model *Model, element_id_buffer *Selected, u3
 
 			case ModelTargetElement_Face:
 			{
-#if 1
 				model_face *Face = Model->Faces + ElementID;
 				face_vertex Vertex = GetFaceVertex(Model, Face);
 
@@ -668,9 +667,6 @@ SetAxisForTool(rotate_tools *Tool, model *Model, element_id_buffer *Selected, u3
 					Result.X = V3(1, 0, 0);
 					Result.Z = V3(0, 0, 1);
 				}
-#else
-				Result = Identity3x3();
-#endif
 			}
 		}
 	}
@@ -692,13 +688,22 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 	switch (ToolType)
 	{
 		case ToolType_Scale:
+		{
+			Tools->Scale = {};
+			
+			Tools->Scale.P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
+			Tools->Scale.InitEdgeLength = SCALE_TOOL_SIZE * 0.9f;
+			Tools->Scale.InitEdgeHalfSize = 0.03f;
+			Tools->Scale.InitArrowSize = SCALE_TOOL_SIZE * 0.25f;
+		} break;
+
 		case ToolType_Translate:
 		case ToolType_Rotate:
 		{
 			Tools->Rotate = {};
 
 			Tools->Rotate.CenterP = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-			Tools->Rotate.InitRadius = ROTATE_TOOLS_DIAMETER / 2.0f;
+			Tools->Rotate.InitRadius = ROTATE_TOOL_DIAMETER * 0.5f;
 			Tools->Rotate.PerpThreshold = 0.95f;
 		} break;
 
@@ -738,8 +743,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			RotateTool->Radius = RotateTool->InitRadius * Scale;
 			RotateTool->FromPosToRayP = Normalize(RayPCenterP, LengthRayPCenterP);
 
-			//SetAxisForTools(Tools, Model, &WorldUI->Selected, WorldUI->IModel.Target);
-			// TODO: Set axis for face and edge
 			m3x3 Axis;
 			if (IsDown(Input->Ctrl))
 			{
@@ -750,7 +753,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			{
 				if (!RotateTool->AxisSet)
 				{
-					// TODO: Set start axis once or on change RotateTool->DefaultAxisSet
 					RotateTool->Axis = 
 						SetAxisForTool(RotateTool, Model, &WorldUI->Selected, WorldUI->IModel.Target);
 				}
@@ -810,7 +812,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 						RotateTool->AxisMask.z = 1.0f;
 						RotateTool->InteractPlane.N = Axis.Z;
 					}
-					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[1])
+					else if ((YDotP <= 0.03f) || PerpAxisIntr[1])
 					{
 						InteractAxis = ToolsAxisID_YAxis;
 						RotateTool->AxisMask.y = 1.0f;
@@ -875,13 +877,24 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				}
 			}
 
-			PushRotateSphere(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterP,
+			PushRotateTool(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->CenterP,
 				Scale, Axis, RotateTool->AxisMask, RotateTool->PerpInfo.V,
 				RotateTool->FromPosToRayP);
 		} break;
 		case ToolType_Scale:
 		{
-			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 1, 0));
+			scale_tools *ScaleTool = &Tools->Scale;
+			
+			v3 RayPCenterP = Ray.P - ScaleTool->P;
+			f32 LengthRayPCenterP = Length(RayPCenterP);
+			f32 Scale = LengthRayPCenterP / Tools->AdjustScaleDist;
+
+			f32 HalfSize = ScaleTool->InitEdgeHalfSize * Scale;
+			f32 EdgeLength = ScaleTool->InitEdgeLength * Scale;
+
+			m3x3 Axis = Identity3x3();
+//			PushScaleTool(RenderGroup, Axis);
+			//PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 1, 0));
 		} break;
 		case ToolType_Translate:
 		{

@@ -7,8 +7,19 @@
 
 struct rect3
 {
-	v3 Min;
-	v3 Max;
+	union
+	{
+		struct
+		{
+			v3 Min;
+			v3 Max;
+		};
+		struct
+		{
+			v3 A;
+			v3 B;
+		};
+	};
 };
 
 struct ray_params

@@ -3,7 +3,8 @@ CompileBitmapProgram(bitmap_program *Prog)
 {
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec3 Vertex;
-	layout (location = 1) in vec2 TextCoord;
+	layout (location = 1) in vec3 Color;
+	layout (location = 2) in vec2 TextCoord;
 
 	out vec2 TexCoords;
 	

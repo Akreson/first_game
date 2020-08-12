@@ -141,6 +141,19 @@ struct rotate_tools
 	b8 EnterActiveState;
 };
 
+struct scale_tools
+{
+	v3 P;
+	
+	f32 InitEdgeLength;
+	f32 InitEdgeHalfSize;
+	f32 InitArrowSize;
+
+	f32 EdgeLength;
+
+	b32 DefaultAxisSet;
+};
+
 struct tools
 {
 	f32 AdjustScaleDist;
@@ -157,6 +170,7 @@ struct tools
 			union
 			{
 				rotate_tools Rotate;
+				scale_tools Scale;
 			};
 		};
 	};
