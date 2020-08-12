@@ -98,7 +98,7 @@ CreateTrinVertex(v3 V, v2 UV)
 }
 
 internal void
-PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
+PushBitmap(render_group *Group, renderer_texture BitmapTex, v2 Min, v2 Max, v3 Color)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_bitmap *BitmapEntry = PushRenderElement(Group, render_entry_bitmap);
@@ -114,7 +114,7 @@ PushFont(render_group *Group, renderer_texture Glyph, v2 Min, v2 Max, v3 Color)
 	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Min.y, 0.0f), V2(0.0f, 0.0f));// bottom left
 	*TrinBuff++ = CreateTrinVertex(V3(Min.x, Max.y, 0.0f), V2(0.0f, 1.0f)); // top left
 
-	BitmapEntry->Texture = Glyph;
+	BitmapEntry->Texture = BitmapTex;
 	BitmapEntry->Color = Color;
 	BitmapEntry->TrinBuffOffset = Commands->TriangleBufferSize;
 
@@ -320,7 +320,7 @@ RenderText(render_group *Group, char *Text, v3 TextColor, f32 ScreenX, f32 Scree
 			f32 XPos = ScreenX;
 			f32 YPos = ScreenY - (FontAsset->VerticalAdjast[GlyphIndex] * (f32)Glyph->Height * Scale);
 
-			PushFont(Group, Glyph->Texture, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
+			PushBitmap(Group, Glyph->Texture, V2(XPos, YPos), V2(XPos + Width, YPos + Height), TextColor);
 		}
 
 		ScreenX += GetHorizontalAdvance(FontAsset, PrevGlyphIndex, GlyphIndex, Scale);
