@@ -321,6 +321,13 @@ struct rotate_tool_program
 	GLuint PerpInfo;
 };
 
+struct trin_model_color_pass_program
+{
+	GLuint ID;
+	GLuint ModelProjID;
+	GLuint ModelTransformID;
+};
+
 struct opengl_renderer_info
 {
 	framebuffer_info MainFB;
@@ -337,9 +344,11 @@ struct opengl_renderer_info
 	bitmap_program BitmapProg;
 	model_program ModelProg;
 	model_color_pass_program ModelColorPassProg;
+	trin_model_color_pass_program TrinModelColorPassProg;
 	blur_program BlurProg;
 	outline_program OutlineProg;
 	rotate_tool_program RotateTools;
+	
 
 	static_mesh_program StaticMeshProg;
 

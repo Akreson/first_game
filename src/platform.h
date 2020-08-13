@@ -276,19 +276,38 @@ struct game_render_commands
 	m4x4 ForwardPersCamera;
 
 	v2 ScreenDim;
+
 	u8 *PushBufferBase;
 	u32 PushBufferSize;
 	u32 MaxPushBufferSize;
 
+	// NOTE: _...Guard_ not actually guard, it's ptr to PushBuffer struct
+
+	void *VBuffGroupGuard;
 	u8 *VertexBufferBase;
-	u32 VertexBufferOffset;
+	u32 VertexBufferSize;
 	u32 MaxVertexBufferSize;
 
+	void *TBuffGroupGuard;
 	u8 *TriangleBufferBase;
 	u32 TriangleBufferSize;
 	u32 MaxTriangleBufferSize;
 	// TODO: store more mat
 };
+
+inline void
+SetGuardPtr(void **Guard, void *Ptr)
+{
+	Assert(!*Guard);
+	*Guard = Ptr;
+}
+
+inline void
+ResetGuardPtr(void **Guard)
+{
+	Assert(*Guard)
+	*Guard = 0;
+}
 
 struct platform_file_handler
 {

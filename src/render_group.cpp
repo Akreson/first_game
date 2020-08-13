@@ -124,41 +124,34 @@ PushBitmap(render_group *Group, renderer_texture BitmapTex, v2 Min, v2 Max, v3 C
 
 struct render_entry_trin_model
 {
-
+	v3 Pos;
+	u32 StartOffset;
+	u32 ElementCount;
 };
 
 void
-BeginPushTrinModel(render_group *Group)
+BeginPushTrinModel(render_group *Group, v3 Pos)
 {
 	game_render_commands *Commands = Group->Commands;
+	render_entry_trin_model *TrinModelEntry =
+		(render_entry_trin_model *)PushRenderElement(Group, render_entry_trin_model);
+
+	TrinModelEntry->Pos = Pos;
+	TrinModelEntry->StartOffset = Commands->TriangleBufferSize;
+
+	SetGuardPtr(&Commands->TBuffGroupGuard, (void *)TrinModelEntry);
 }
 
 void
-EndPushTrinModel()
+EndPushTrinModel(render_group *Group)
 {
+	game_render_commands *Commands = Group->Commands;
+	render_entry_trin_model *TrinModelEntry = (render_entry_trin_model *)Commands->TBuffGroupGuard;
 
-}
+	TrinModelEntry->ElementCount =
+		(Commands->TriangleBufferSize - TrinModelEntry->StartOffset) / sizeof(render_triangle_vertex);
 
-internal inline rect3
-CalcScaleToolAxisRect()
-{
-
-}
-
-void
-PushScaleTool(render_group *Group, m3x3 Axis, f32 Scale, f32 EdgeLength, f32 EdgeHalfSize, f32 ArrowSize)
-{
-	v3 XMinStartP = Axis.X * (EdgeLength - (EdgeLength * 0.85f));
-	v3 XMaxStartP = Axis.X * EdgeLength;
-
-	rect3 XRect0 = {};
-	XRect0.A = MovePointAlongDir(XRect0.A, Axis.Y, EdgeHalfSize);
-	XRect0.A = MovePointAlongDir(XRect0.A, -Axis.Z, EdgeHalfSize);
-	XRect0.B = MovePointAlongDir(XRect0.B, -Axis.Y, EdgeHalfSize);
-	XRect0.B = MovePointAlongDir(XRect0.B, Axis.Z, EdgeHalfSize);
-	rect3 XRect1 = {};
-	XRect1.A = MovePointAlongDir(XRect0.A, -Axis.X, EdgeLength);
-	XRect1.B = MovePointAlongDir(XRect0.B, -Axis.X, EdgeLength);
+	ResetGuardPtr(&Commands->TBuffGroupGuard);
 }
 
 #define IsHaveMatch(A, B) \
@@ -217,11 +210,12 @@ CreateFaceVertex(v3 Vertex, v3 BarCoords,
 void
 PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_params FaceParam = {})
 {
-	Assert(Group->GroupRenderElement);
 	game_render_commands *Commands = Group->Commands;
 
+	Assert(Commands->VBuffGroupGuard);
+
 	render_model_face_vertex *StartFaceVertex = 
-		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferOffset);
+		(render_model_face_vertex *)(Commands->VertexBufferBase + Commands->VertexBufferSize);
 	render_model_face_vertex *FaceVertex = StartFaceVertex;
 
 	f32 StateEdgeArray[2] = {0, 1.0f};
@@ -251,7 +245,7 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V3],
 		V3(0, 0, 1), V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
 
-	Commands->VertexBufferOffset += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
+	Commands->VertexBufferSize += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }
 
 void
@@ -260,7 +254,7 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params 
 	game_render_commands *Commands = Group->Commands;
 	render_entry_model *ModelEntry = (render_entry_model *)PushRenderElement(Group, render_entry_model);
 
-	ModelEntry->StartOffset = Commands->VertexBufferOffset;
+	ModelEntry->StartOffset = Commands->VertexBufferSize;
 	ModelEntry->Offset = Offset;
 	ModelEntry->Color = Color;
 	ModelEntry->EdgeColor = ModelHiLi.EdgeColor;
@@ -274,20 +268,19 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params 
 		ModelOutlineEntry->OutlineColor = ModelHiLi.OutlineColor;
 	}
 
-	Assert(!Group->GroupRenderElement);
-	Group->GroupRenderElement = (void *)ModelEntry;
+	SetGuardPtr(&Commands->VBuffGroupGuard, (void *)ModelEntry);
 }
 
 void
 EndPushModel(render_group *Group)
 {
 	game_render_commands *Commands = Group->Commands;
-	render_entry_model *ModelEntry = (render_entry_model *)Group->GroupRenderElement;
+	render_entry_model *ModelEntry = (render_entry_model *)Commands->VBuffGroupGuard;
 
 	ModelEntry->ElementCount =
-		(Commands->VertexBufferOffset - ModelEntry->StartOffset) / sizeof(render_model_face_vertex);
+		(Commands->VertexBufferSize - ModelEntry->StartOffset) / sizeof(render_model_face_vertex);
 
-	Group->GroupRenderElement = 0;
+	ResetGuardPtr(&Commands->VBuffGroupGuard);
 }
 
 inline void
@@ -302,12 +295,6 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
 	EndPushModel(Group);
 }
 
-struct render_entry_static_mesh
-{
-	renderer_mesh Mesh;
-	v3 Color;
-};
-
 void
 PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 {
@@ -316,6 +303,101 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 
 	SphereEntry->Mesh = Mesh;
 	SphereEntry->Color = Color;
+}
+
+struct unalign_rect3
+{
+	union
+	{
+		v3 V[8];
+		
+		struct
+		{
+			struct
+			{
+				v3 V0, V1, V2, V3;
+			} Rect0;
+
+			// NOTE: Rect1 not mirror projection of Rect0
+			// It's just move copy of Rect0
+			// TODO: Make as mirror projection?
+			struct
+			{
+				v3 V0, V1, V2, V3;
+			} Rect1;
+		};
+	};
+};
+
+inline unalign_rect3
+CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
+{
+	unalign_rect3 Result;
+
+	Result.Rect0.V0 = MovePointAlongDir(CenterPoint, -YAxis, HalfDim.y);
+	Result.Rect0.V0 = MovePointAlongDir(Result.Rect0.V0, -XAxis, HalfDim.x);
+	Result.Rect0.V3 = MovePointAlongDir(CenterPoint, YAxis, HalfDim.y);
+	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, XAxis, HalfDim.x);
+
+	Result.Rect0.V1 = MovePointAlongDir(Result.Rect0.V0, XAxis, 2.0f*HalfDim.x);
+	Result.Rect0.V2 = MovePointAlongDir(Result.Rect0.V3, -XAxis, 2.0f*HalfDim.x);
+	
+	Result.Rect1.V0 = MovePointAlongDir(Result.Rect0.V0, -ZAxis, ZDim);
+	Result.Rect1.V1 = MovePointAlongDir(Result.Rect0.V1, -ZAxis, ZDim);
+	Result.Rect1.V2 = MovePointAlongDir(Result.Rect0.V2, -ZAxis, ZDim);
+	Result.Rect1.V3 = MovePointAlongDir(Result.Rect0.V3, -ZAxis, ZDim);
+
+	return Result;
+}
+
+internal inline void
+PushTrinRect(render_triangle_vertex *Buff, v3 Vec0, v3 Vec1, v3 Vec2, v3 Vec3, v3 Color)
+{
+	Buff[0] = CreateTrinVertex(Vec0, V2(0), Color);
+	Buff[1] = CreateTrinVertex(Vec1, V2(0), Color);
+	Buff[2] = CreateTrinVertex(Vec2, V2(0), Color);
+
+	Buff[3] = CreateTrinVertex(Vec0, V2(0), Color);
+	Buff[4] = CreateTrinVertex(Vec2, V2(0), Color);
+	Buff[5] = CreateTrinVertex(Vec3, V2(0), Color);
+}
+
+internal void
+PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
+{
+	render_triangle_vertex *Buff =
+		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
+
+	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, Color);
+	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, Color);
+	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V1, A.Rect0.V3, A.Rect1.V3, Color);
+	PushTrinRect((Buff + 18), A.Rect0.V1, A.Rect1.V1, A.Rect1.V2, A.Rect0.V2, Color);
+	PushTrinRect((Buff + 24), A.Rect0.V3, A.Rect0.V2, A.Rect1.V2, A.Rect1.V3, Color);
+	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, Color);
+
+	Commands->TriangleBufferSize += sizeof(render_triangle_vertex) * 36;
+}
+
+void
+PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
+	f32 Scale, f32 EdgeLength, f32 EdgeHalfSize, f32 ArrowSize)
+{
+	game_render_commands *Commands = Group->Commands;
+
+	v3 XMaxStartP = Axis.X * EdgeLength;
+	f32 AdjustEdgeLength = EdgeLength * 0.85f;
+
+	unalign_rect3 XEdge =
+		CreateRect(XMaxStartP, Axis.Z, Axis.Y, Axis.X, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+	unalign_rect3 XArrow =
+		CreateRect(XMaxStartP, Axis.Z, Axis.Y, Axis.X, V2(ArrowSize, ArrowSize), ArrowSize);
+
+	BeginPushTrinModel(Group, Pos);
+
+	PushUnalignRectAsTrin(Commands, XEdge, V3(0, 1, 0));
+	PushUnalignRectAsTrin(Commands, XArrow, V3(0, 1, 0));
+	
+	EndPushTrinModel(Group);
 }
 
 void

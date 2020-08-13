@@ -32,9 +32,10 @@ enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
 	RenderEntryType_render_entry_model,
-	RenderEntryType_render_entry_tool_rotate,
-
+	RenderEntryType_render_entry_trin_model,
 	RenderEntryType_render_entry_static_mesh,
+
+	RenderEntryType_render_entry_tool_rotate,
 
 	RenderEntryType_render_entry_model_outline,
 };
@@ -87,6 +88,12 @@ struct face_edge_params
 struct render_entry_header
 {
 	u16 Type;
+};
+
+struct render_entry_static_mesh
+{
+	renderer_mesh Mesh;
+	v3 Color;
 };
 
 // TODO: Remove _Color_ later?
@@ -157,8 +164,6 @@ struct render_entry_tool_rotate
 struct render_group
 {
 	game_render_commands *Commands;
-
-	void *GroupRenderElement;
 
 	font_asset_info *FontAsset;
 

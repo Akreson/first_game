@@ -57,6 +57,61 @@ UseProgramEnd(bitmap_program *Prog)
 	glUseProgram(0);
 }
 
+void
+CompileTrinModelColorPassProgram(trin_model_color_pass_program *Prog)
+{
+	const char *VertexCode = R"FOO(
+	layout (location = 0) in vec3 inVertex;
+	layout (location = 1) in vec3 inColor;
+	layout (location = 2) in vec2 inTextCoord;
+
+	uniform mat4 Proj;
+	uniform mat4 ModelTransform;
+
+	out vec3 Color;
+
+	void main()
+	{
+		Color = inColor;
+		gl_Position = Proj * ModelTransform * vec4(inVertex, 1.0f);
+	}
+	)FOO";
+
+	const char *FragmentCode = R"FOO(
+	out vec4 FragColor;
+
+	in vec3 Color;	
+
+	void main()
+	{
+		FragColor = vec4(Color, 1.0f);
+	}
+	)FOO";
+
+	GLuint ProgID = OpenGLCreateProgram((GLchar *)SharedHeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	Prog->ID = ProgID;
+
+	glUseProgram(ProgID);
+	Prog->ModelProjID = glGetUniformLocation(ProgID, "Proj");
+	Prog->ModelTransformID = glGetUniformLocation(ProgID, "ModelTransform");
+	glUseProgram(0);
+}
+
+internal void
+UseProgramBegin(trin_model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat)
+{
+	glUseProgram(Prog->ID);
+
+	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
+}
+
+internal void
+UseProgramEnd(trin_model_color_pass_program *Prog)
+{
+	glUseProgram(0);
+}
+
 // TODO: Fix bug with colored non selected edge for
 // small view degree on non slected face
 internal void
@@ -244,8 +299,11 @@ void
 CompileModelColorPassProgram(model_color_pass_program *Prog)
 {
 	const char *VertexCode = R"FOO(
-	layout (location = 0) in vec4 aPos;
-	layout (location = 1) in vec4 aBarCoord;
+	layout (location = 0) in vec3 aPos;
+	layout (location = 1) in vec3 aBarCoord;
+	layout (location = 2) in vec3 aActiveMask;
+	layout (location = 3) in vec3 aHotMask;
+	layout (location = 4) in vec2 aFaceSelectionParam;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;

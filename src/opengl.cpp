@@ -273,6 +273,7 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	CompileBlurProgram(&OpenGL.BlurProg);
 	CompileOutlinePassProgram(&OpenGL.OutlineProg);
 	CompileRotateToolProgram(&OpenGL.RotateTools);
+	CompileTrinModelColorPassProgram(&OpenGL.TrinModelColorPassProg);
 
 	CompileStaticMeshProgram(&OpenGL.StaticMeshProg);
 	
@@ -384,7 +385,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 	glBindVertexArray(OpenGL.VertexBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
-	glBufferData(GL_ARRAY_BUFFER, Commands->VertexBufferOffset, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, Commands->VertexBufferSize, (GLvoid *)Commands->VertexBufferBase, GL_STREAM_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
@@ -455,6 +456,28 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				UseProgramEnd(&OpenGL.ModelProg);
 				glDisable(GL_CULL_FACE);
+			} break;
+
+			case RenderEntryType_render_entry_trin_model:
+			{
+				render_entry_trin_model *TrinModel = (render_entry_trin_model *)Data;
+				BufferOffset += sizeof(render_entry_trin_model);
+			
+				m4x4 ModelTransform = Identity();
+				SetTranslation(&ModelTransform, TrinModel->Pos);
+
+				glBindVertexArray(OpenGL.TrinBufferVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
+
+				UseProgramBegin(&OpenGL.TrinModelColorPassProg, &Commands->ForwardPersCamera, &ModelTransform);
+				glDrawArrays(GL_TRIANGLES,
+					TrinModel->StartOffset / sizeof(render_triangle_vertex),
+					TrinModel->ElementCount);
+
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindVertexArray(0);
+
+				UseProgramEnd(&OpenGL.BitmapProg);
 			} break;
 
 			case RenderEntryType_render_entry_tool_rotate:

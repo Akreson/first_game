@@ -692,9 +692,9 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 			Tools->Scale = {};
 			
 			Tools->Scale.P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-			Tools->Scale.InitEdgeLength = SCALE_TOOL_SIZE * 0.9f;
+			Tools->Scale.InitEdgeLength = SCALE_TOOL_SIZE;
 			Tools->Scale.InitEdgeHalfSize = 0.03f;
-			Tools->Scale.InitArrowSize = SCALE_TOOL_SIZE * 0.25f;
+			Tools->Scale.InitArrowSize = SCALE_TOOL_SIZE * 0.2f;
 		} break;
 
 		case ToolType_Translate:
@@ -889,11 +889,13 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			f32 LengthRayPCenterP = Length(RayPCenterP);
 			f32 Scale = LengthRayPCenterP / Tools->AdjustScaleDist;
 
-			f32 HalfSize = ScaleTool->InitEdgeHalfSize * Scale;
-			f32 EdgeLength = ScaleTool->InitEdgeLength * Scale;
+			//f32 HalfSize = ScaleTool->InitEdgeHalfSize * Scale;
+			//f32 EdgeLength = ScaleTool->InitEdgeLength * Scale;
 
 			m3x3 Axis = Identity3x3();
-//			PushScaleTool(RenderGroup, Axis);
+
+			PushScaleTool(RenderGroup, ScaleTool->P, Axis, Scale, ScaleTool->InitEdgeLength,
+				ScaleTool->InitEdgeHalfSize, ScaleTool->InitArrowSize);
 			//PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 1, 0));
 		} break;
 		case ToolType_Translate:
