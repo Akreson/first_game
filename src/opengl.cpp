@@ -460,6 +460,8 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 			case RenderEntryType_render_entry_trin_model:
 			{
+				glDisable(GL_DEPTH_TEST);
+
 				render_entry_trin_model *TrinModel = (render_entry_trin_model *)Data;
 				BufferOffset += sizeof(render_entry_trin_model);
 			
@@ -478,12 +480,14 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(0);
 
 				UseProgramEnd(&OpenGL.BitmapProg);
+
+				glEnable(GL_DEPTH_TEST);
 			} break;
 
 			case RenderEntryType_render_entry_tool_rotate:
 			{
 				glEnable(GL_CULL_FACE);
-				//glDepthMask(false);
+				glDisable(GL_DEPTH_TEST);
 
 				render_entry_tool_rotate *RotateTool = (render_entry_tool_rotate *)Data;
 				BufferOffset += sizeof(render_entry_tool_rotate);
@@ -499,7 +503,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glDrawElements(GL_TRIANGLES, RotateTool->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);
 
-				//glDepthMask(true);
+				glEnable(GL_DEPTH_TEST);
 				glDisable(GL_CULL_FACE);
 			} break;
 

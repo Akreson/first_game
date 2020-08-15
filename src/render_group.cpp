@@ -122,13 +122,6 @@ PushBitmap(render_group *Group, renderer_texture BitmapTex, v2 Min, v2 Max, v3 C
 	Commands->TriangleBufferSize += 6 * sizeof(render_triangle_vertex);
 }
 
-struct render_entry_trin_model
-{
-	v3 Pos;
-	u32 StartOffset;
-	u32 ElementCount;
-};
-
 void
 BeginPushTrinModel(render_group *Group, v3 Pos)
 {
@@ -305,30 +298,6 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 	SphereEntry->Color = Color;
 }
 
-struct unalign_rect3
-{
-	union
-	{
-		v3 V[8];
-		
-		struct
-		{
-			struct
-			{
-				v3 V0, V1, V2, V3;
-			} Rect0;
-
-			// NOTE: Rect1 not mirror projection of Rect0
-			// It's just move copy of Rect0
-			// TODO: Make as mirror projection?
-			struct
-			{
-				v3 V0, V1, V2, V3;
-			} Rect1;
-		};
-	};
-};
-
 inline unalign_rect3
 CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
 {
@@ -337,10 +306,10 @@ CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
 	Result.Rect0.V0 = MovePointAlongDir(CenterPoint, -YAxis, HalfDim.y);
 	Result.Rect0.V0 = MovePointAlongDir(Result.Rect0.V0, -XAxis, HalfDim.x);
 	Result.Rect0.V3 = MovePointAlongDir(CenterPoint, YAxis, HalfDim.y);
-	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, XAxis, HalfDim.x);
+	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, -XAxis, HalfDim.x);
 
 	Result.Rect0.V1 = MovePointAlongDir(Result.Rect0.V0, XAxis, 2.0f*HalfDim.x);
-	Result.Rect0.V2 = MovePointAlongDir(Result.Rect0.V3, -XAxis, 2.0f*HalfDim.x);
+	Result.Rect0.V2 = MovePointAlongDir(Result.Rect0.V3, XAxis, 2.0f*HalfDim.x);
 	
 	Result.Rect1.V0 = MovePointAlongDir(Result.Rect0.V0, -ZAxis, ZDim);
 	Result.Rect1.V1 = MovePointAlongDir(Result.Rect0.V1, -ZAxis, ZDim);
@@ -353,13 +322,22 @@ CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
 internal inline void
 PushTrinRect(render_triangle_vertex *Buff, v3 Vec0, v3 Vec1, v3 Vec2, v3 Vec3, v3 Color)
 {
+	// TODO: Delete debug code later
+#if 1
 	Buff[0] = CreateTrinVertex(Vec0, V2(0), Color);
 	Buff[1] = CreateTrinVertex(Vec1, V2(0), Color);
 	Buff[2] = CreateTrinVertex(Vec2, V2(0), Color);
+#else
+	Buff[0] = CreateTrinVertex(Vec0, V2(0), V3(1, 0, 0));
+	Buff[1] = CreateTrinVertex(Vec2, V2(0), V3(0, 1, 0));
+	Buff[2] = CreateTrinVertex(Vec3, V2(0), V3(0, 0, 1));
+#endif
 
+#if 1
 	Buff[3] = CreateTrinVertex(Vec0, V2(0), Color);
 	Buff[4] = CreateTrinVertex(Vec2, V2(0), Color);
 	Buff[5] = CreateTrinVertex(Vec3, V2(0), Color);
+#endif
 }
 
 internal void
@@ -367,13 +345,22 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 {
 	render_triangle_vertex *Buff =
 		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
-
-	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, Color);
-	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, Color);
-	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V1, A.Rect0.V3, A.Rect1.V3, Color);
-	PushTrinRect((Buff + 18), A.Rect0.V1, A.Rect1.V1, A.Rect1.V2, A.Rect0.V2, Color);
-	PushTrinRect((Buff + 24), A.Rect0.V3, A.Rect0.V2, A.Rect1.V2, A.Rect1.V3, Color);
-	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, Color);
+#if 1
+	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, Color);// front
+	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, Color); // back
+	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V1, A.Rect0.V3, A.Rect1.V3, Color); // left
+	PushTrinRect((Buff + 18), A.Rect0.V1, A.Rect1.V1, A.Rect1.V2, A.Rect0.V2, Color); // right
+	PushTrinRect((Buff + 24), A.Rect0.V3, A.Rect0.V2, A.Rect1.V2, A.Rect1.V3, Color); // top
+	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, Color); // bottom
+#else
+	// NOTE: For debug
+	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, V3(1)); // front
+	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, V3(1, 0, 0)); // back
+	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V0, A.Rect0.V3, A.Rect1.V3, V3(0, 1, 0)); // left
+	PushTrinRect((Buff + 18), A.Rect0.V1, A.Rect1.V1, A.Rect1.V2, A.Rect0.V2, V3(0, 0, 1)); // right
+	PushTrinRect((Buff + 24), A.Rect0.V3, A.Rect0.V2, A.Rect1.V2, A.Rect1.V3, V3(0.5f , 0, 0.5f)); // top
+	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, V3(1, 0.5f, 0)); // bottom
+#endif
 
 	Commands->TriangleBufferSize += sizeof(render_triangle_vertex) * 36;
 }
@@ -385,17 +372,38 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	game_render_commands *Commands = Group->Commands;
 
 	v3 XMaxStartP = Axis.X * EdgeLength;
+	v3 YMaxStartP = Axis.Y * EdgeLength;
+	v3 ZMaxStartP = Axis.Z * EdgeLength;
 	f32 AdjustEdgeLength = EdgeLength * 0.85f;
 
+	v3 XColor = V3(0, 1, 0);
 	unalign_rect3 XEdge =
-		CreateRect(XMaxStartP, Axis.Z, Axis.Y, Axis.X, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
 	unalign_rect3 XArrow =
-		CreateRect(XMaxStartP, Axis.Z, Axis.Y, Axis.X, V2(ArrowSize, ArrowSize), ArrowSize);
+		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(ArrowSize, ArrowSize), ArrowSize);
+
+	v3 YColor = V3(1, 0, 0);
+	unalign_rect3 YEdge =
+		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+	unalign_rect3 YArrow =
+		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(ArrowSize, ArrowSize), ArrowSize);
+
+	v3 ZColor = V3(0, 0, 1);
+	unalign_rect3 ZEdge =
+		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+	unalign_rect3 ZArrow =
+		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(ArrowSize, ArrowSize), ArrowSize);
 
 	BeginPushTrinModel(Group, Pos);
 
-	PushUnalignRectAsTrin(Commands, XEdge, V3(0, 1, 0));
-	PushUnalignRectAsTrin(Commands, XArrow, V3(0, 1, 0));
+	PushUnalignRectAsTrin(Commands, XEdge, XColor);
+	PushUnalignRectAsTrin(Commands, XArrow, XColor);
+
+	PushUnalignRectAsTrin(Commands, YEdge, YColor);
+	PushUnalignRectAsTrin(Commands, YArrow, YColor);
+
+	PushUnalignRectAsTrin(Commands, ZEdge, ZColor);
+	PushUnalignRectAsTrin(Commands, ZArrow, ZColor);
 	
 	EndPushTrinModel(Group);
 }

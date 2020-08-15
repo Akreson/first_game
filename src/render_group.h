@@ -104,6 +104,13 @@ struct render_triangle_vertex
 	v2 UV;
 };
 
+struct render_entry_trin_model
+{
+	v3 Pos;
+	u32 StartOffset;
+	u32 ElementCount;
+};
+
 struct render_entry_bitmap
 {
 	renderer_texture Texture;

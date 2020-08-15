@@ -22,6 +22,30 @@ struct rect3
 	};
 };
 
+struct unalign_rect3
+{
+	union
+	{
+		v3 V[8];
+
+		struct
+		{
+			struct
+			{
+				v3 V0, V1, V2, V3;
+			} Rect0;
+
+			// NOTE: Rect1 not mirror projection of Rect0
+			// It's just move copy of Rect0
+			// TODO: Make as mirror projection?
+			struct
+			{
+				v3 V0, V1, V2, V3;
+			} Rect1;
+		};
+	};
+};
+
 struct ray_params
 {
 	v3 P;
