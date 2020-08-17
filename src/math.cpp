@@ -422,6 +422,28 @@ PointOnRay(ray_params Ray, f32 t)
 	return Result;
 }
 
+inline v3
+Min(v3 A, v3 B)
+{
+	v3 Result;
+	Result.x = A.x < B.x ? A.x : B.x;
+	Result.y = A.y < B.y ? A.y : B.y;
+	Result.z = A.z < B.z ? A.z : B.z;
+
+	return Result;
+}
+
+inline v3
+Max(v3 A, v3 B)
+{
+	v3 Result;
+	Result.x = A.x > B.x ? A.x : B.x;
+	Result.y = A.y > B.y ? A.y : B.y;
+	Result.z = A.z > B.z ? A.z : B.z;
+
+	return Result;
+}
+
 inline f32
 Dot(v3 A, v3 B)
 {
@@ -808,15 +830,20 @@ RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
 {
 	v3 InvD = 1.0 / Ray.Dir;
 
-	v3 Min = (AABB.Min + AABBOffset);
-	v3 Max = (AABB.Max + AABBOffset);
-	v3 tMinV = (Min - Ray.P) * InvD;
-	v3 tMaxV = (Max - Ray.P) * InvD;
+	v3 BoxMin = (AABB.Min + AABBOffset);
+	v3 BoxMax = (AABB.Max + AABBOffset);
 
-	f32 tMin = MAX(MAX(MIN(tMinV.x, tMaxV.x), MIN(tMinV.y, tMaxV.y)), MIN(tMinV.z, tMaxV.z));
-	f32 tMax = MIN(MIN(MAX(tMinV.x, tMaxV.x), MAX(tMinV.y, tMaxV.y)), MAX(tMinV.z, tMaxV.z));
+	v3 tMinV = (BoxMin - Ray.P) * InvD;
+	v3 tMaxV = (BoxMax - Ray.P) * InvD;
 
-	return !((tMax < 0) || (tMin > tMax));
+	v3 tMin3 = Min(tMinV, tMaxV);
+	v3 tMax3 = Max(tMinV, tMaxV);
+
+	f32 tMin = MAX(tMin3.x, MAX(tMin3.y, tMin3.z));
+	f32 tMax = MIN(tMax3.x, MIN(tMax3.y, tMax3.z));
+
+	b32 Result = (tMax > 0) && (tMin < tMax);
+	return Result;
 }
 
 inline f32
@@ -826,7 +853,6 @@ RayPlaneIntersect(ray_params Ray, plane_params Plane, f32 DotRayDPlaneN)
 	return tResult;
 }
 
-#if 1
 b32
 RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 {
@@ -853,20 +879,3 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 
 	return Result;
 }
-// TODO: Use this version?
-#else
-b32
-RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
-{
-	v3 m = Ray.Pos - Center;
-	f32 b = Dot(m, Ray.Dir);
-	f32 c = Dot(m, m) - Square(Radius);
-	if (c > 0 && b > 0) return false;
-	f32 discr = Square(b) - c;
-	if (discr < 0) return false;
-	f32 t = -b - SquareRoot(discr);
-	if (t < 0) t = 0.0;
-	*ResultP = Ray.Pos + (Ray.Dir * t);
-	return true;
-}
-#endif
