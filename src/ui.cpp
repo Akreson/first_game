@@ -500,7 +500,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 	}
 	else if (tRay >= 0)
 	{
-		CurrentVector = Ray.P + (Ray.Dir * tRay);
+		CurrentVector = PointOnRay(Ray, tRay);;
 		CurrentVector = Normalize(CurrentVector - Tool->CenterP);
 
 		*ResultVector = CurrentVector;
@@ -693,8 +693,8 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 			
 			Tools->Scale.P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
 			Tools->Scale.InitEdgeLength = SCALE_TOOL_SIZE;
-			Tools->Scale.InitEdgeHalfSize = 0.03f;
-			Tools->Scale.InitArrowSize = SCALE_TOOL_SIZE * 0.2f;
+			Tools->Scale.InitEdgeHalfSize = 0.005f;
+			Tools->Scale.InitArrowHalfSize = SCALE_TOOL_SIZE * 0.04f;
 		} break;
 
 		case ToolType_Translate:
@@ -895,7 +895,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			m3x3 Axis = Identity3x3();
 
 			PushScaleTool(RenderGroup, ScaleTool->P, Axis, Scale, ScaleTool->InitEdgeLength,
-				ScaleTool->InitEdgeHalfSize, ScaleTool->InitArrowSize);
+				ScaleTool->InitEdgeHalfSize, ScaleTool->InitArrowHalfSize);
 			//PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 1, 0));
 		} break;
 		case ToolType_Translate:

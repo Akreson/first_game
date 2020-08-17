@@ -147,7 +147,7 @@ struct scale_tools
 	
 	f32 InitEdgeLength;
 	f32 InitEdgeHalfSize;
-	f32 InitArrowSize;
+	f32 InitArrowHalfSize;
 
 	f32 EdgeLength;
 

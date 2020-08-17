@@ -148,8 +148,8 @@ EndPushTrinModel(render_group *Group)
 }
 
 #define IsHaveMatch(A, B) \
-	_mm_movemask_ps(_mm_castsi128_ps( \
-		_mm_cmpeq_epi32(_mm_and_si128(A, B), B)))
+	(_mm_movemask_ps(_mm_castsi128_ps( \
+		_mm_cmpeq_epi32(_mm_and_si128(A, B), B))))
 
 internal inline face_edge_params
 GetEdgeFaceParams(face_render_params FaceParam)
@@ -169,18 +169,19 @@ GetEdgeFaceParams(face_render_params FaceParam)
 	__m128i Mask03 = _mm_set1_epi32(MaskMatchVertex_03);
 	__m128i Mask23 = _mm_set1_epi32(MaskMatchVertex_23);
 
-	Result.Active01 = (IsHaveMatch(Active, Mask01)) ? true : false;
-	Result.Active12 = (IsHaveMatch(Active, Mask12)) ? true : false;
-	Result.Active03 = (IsHaveMatch(Active, Mask03)) ? true : false;
-	Result.Active23 = (IsHaveMatch(Active, Mask23)) ? true : false;
+	Result.Active01 = IsHaveMatch(Active, Mask01) ? true : false;
+	Result.Active12 = IsHaveMatch(Active, Mask12) ? true : false;
+	Result.Active03 = IsHaveMatch(Active, Mask03) ? true : false;
+	Result.Active23 = IsHaveMatch(Active, Mask23) ? true : false;
 
-	Result.Hot01 = (IsHaveMatch(Hot, Mask01)) ? true : false;
-	Result.Hot12 = (IsHaveMatch(Hot, Mask12)) ? true : false;
-	Result.Hot03 = (IsHaveMatch(Hot, Mask03)) ? true : false;
-	Result.Hot23 = (IsHaveMatch(Hot, Mask23)) ? true : false;
+	Result.Hot01 = IsHaveMatch(Hot, Mask01) ? true : false;
+	Result.Hot12 = IsHaveMatch(Hot, Mask12) ? true : false;
+	Result.Hot03 = IsHaveMatch(Hot, Mask03) ? true : false;
+	Result.Hot23 = IsHaveMatch(Hot, Mask23) ? true : false;
 
 	return Result;
 }
+
 #undef IsHaveMatch(A, B)
 
 internal inline render_model_face_vertex
@@ -367,9 +368,11 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 
 void
 PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
-	f32 Scale, f32 EdgeLength, f32 EdgeHalfSize, f32 ArrowSize)
+	f32 Scale, f32 EdgeLength, f32 EdgeHalfSize, f32 ArrowHalfSize)
 {
 	game_render_commands *Commands = Group->Commands;
+
+	f32 ArrowZLen = ArrowHalfSize * 2.0f;
 
 	v3 XMaxStartP = Axis.X * EdgeLength;
 	v3 YMaxStartP = Axis.Y * EdgeLength;
@@ -380,19 +383,19 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	unalign_rect3 XEdge =
 		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
 	unalign_rect3 XArrow =
-		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(ArrowSize, ArrowSize), ArrowSize);
+		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(ArrowHalfSize, ArrowHalfSize), ArrowZLen);
 
 	v3 YColor = V3(1, 0, 0);
 	unalign_rect3 YEdge =
 		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
 	unalign_rect3 YArrow =
-		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(ArrowSize, ArrowSize), ArrowSize);
+		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(ArrowHalfSize, ArrowHalfSize), ArrowZLen);
 
 	v3 ZColor = V3(0, 0, 1);
 	unalign_rect3 ZEdge =
 		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
 	unalign_rect3 ZArrow =
-		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(ArrowSize, ArrowSize), ArrowSize);
+		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(ArrowHalfSize, ArrowHalfSize), ArrowZLen);
 
 	BeginPushTrinModel(Group, Pos);
 

@@ -74,15 +74,31 @@ struct face_render_params
 
 struct face_edge_params
 {
-	b8 Active01;
-	b8 Active12;
-	b8 Active03;
-	b8 Active23;
+	union
+	{
+		b32 Active;
+		
+		struct
+		{
+			b8 Active01;
+			b8 Active12;
+			b8 Active03;
+			b8 Active23;
+		};
+	};
 
-	b8 Hot01;
-	b8 Hot12;
-	b8 Hot03;
-	b8 Hot23;
+	union
+	{
+		b32 Hot;
+
+		struct
+		{
+			b8 Hot01;
+			b8 Hot12;
+			b8 Hot03;
+			b8 Hot23;
+		};
+	};
 };
 
 struct render_entry_header
