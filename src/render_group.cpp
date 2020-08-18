@@ -299,27 +299,6 @@ PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
 	SphereEntry->Color = Color;
 }
 
-inline unalign_rect3
-CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
-{
-	unalign_rect3 Result;
-
-	Result.Rect0.V0 = MovePointAlongDir(CenterPoint, -YAxis, HalfDim.y);
-	Result.Rect0.V0 = MovePointAlongDir(Result.Rect0.V0, -XAxis, HalfDim.x);
-	Result.Rect0.V3 = MovePointAlongDir(CenterPoint, YAxis, HalfDim.y);
-	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, -XAxis, HalfDim.x);
-
-	Result.Rect0.V1 = MovePointAlongDir(Result.Rect0.V0, XAxis, 2.0f*HalfDim.x);
-	Result.Rect0.V2 = MovePointAlongDir(Result.Rect0.V3, XAxis, 2.0f*HalfDim.x);
-	
-	Result.Rect1.V0 = MovePointAlongDir(Result.Rect0.V0, -ZAxis, ZDim);
-	Result.Rect1.V1 = MovePointAlongDir(Result.Rect0.V1, -ZAxis, ZDim);
-	Result.Rect1.V2 = MovePointAlongDir(Result.Rect0.V2, -ZAxis, ZDim);
-	Result.Rect1.V3 = MovePointAlongDir(Result.Rect0.V3, -ZAxis, ZDim);
-
-	return Result;
-}
-
 internal inline void
 PushTrinRect(render_triangle_vertex *Buff, v3 Vec0, v3 Vec1, v3 Vec2, v3 Vec3, v3 Color)
 {
@@ -346,7 +325,7 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 {
 	render_triangle_vertex *Buff =
 		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
-#if 1
+#if 0
 	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, Color);// front
 	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, Color); // back
 	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V1, A.Rect0.V3, A.Rect1.V3, Color); // left
@@ -368,34 +347,35 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 
 void
 PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
-	f32 Scale, f32 EdgeLength, f32 EdgeHalfSize, f32 ArrowHalfSize)
+	scale_tool_axis_params AxisParams)
 {
 	game_render_commands *Commands = Group->Commands;
 
-	f32 ArrowZLen = ArrowHalfSize * 2.0f;
-
-	v3 XMaxStartP = Axis.X * EdgeLength;
-	v3 YMaxStartP = Axis.Y * EdgeLength;
-	v3 ZMaxStartP = Axis.Z * EdgeLength;
-	f32 AdjustEdgeLength = EdgeLength * 0.85f;
+	v3 XMaxStartP = Axis.X * AxisParams.EdgeLen;
+	v3 YMaxStartP = Axis.Y * AxisParams.EdgeLen;
+	v3 ZMaxStartP = Axis.Z * AxisParams.EdgeLen;
+	
+	f32 ArrowZLen = AxisParams.ArrowHalfSize * 2.0f;
+	v2 ArrowDim = V2(AxisParams.ArrowHalfSize, AxisParams.ArrowHalfSize);
+	v2 EdgeDim = V2(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
 
 	v3 XColor = V3(0, 1, 0);
 	unalign_rect3 XEdge =
-		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 XArrow =
-		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, V2(ArrowHalfSize, ArrowHalfSize), ArrowZLen);
+		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, ArrowDim, ArrowZLen);
 
 	v3 YColor = V3(1, 0, 0);
 	unalign_rect3 YEdge =
-		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 YArrow =
-		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, V2(ArrowHalfSize, ArrowHalfSize), ArrowZLen);
+		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, ArrowDim, ArrowZLen);
 
 	v3 ZColor = V3(0, 0, 1);
 	unalign_rect3 ZEdge =
-		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(EdgeHalfSize, EdgeHalfSize), AdjustEdgeLength);
+		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 ZArrow =
-		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, V2(ArrowHalfSize, ArrowHalfSize), ArrowZLen);
+		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, ArrowDim, ArrowZLen);
 
 	BeginPushTrinModel(Group, Pos);
 

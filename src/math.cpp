@@ -88,6 +88,13 @@ Abs(f32 A)
 }
 
 inline f32
+Sign(f32 A)
+{
+	f32 Result = A / Abs(A);
+	return Result;
+}
+
+inline f32
 Square(f32 A)
 {
 	f32 Result = A * A;
@@ -339,6 +346,13 @@ operator*(v3 A, f32 B)
 	return Result;
 }
 
+inline v3&
+operator*=(v3 &A, f32 B)
+{
+	A = A * B;
+	return A;
+}
+
 inline v3
 operator*(f32 B, v3 A)
 {
@@ -535,6 +549,38 @@ inline v3
 operator*(v3 A, m4x4 B)
 {
 	v3 Result = Transform(V4(A, 1.0f), B).xyz;
+	return Result;
+}
+
+inline rect3
+CreateRect(v3 Dim, v3 Center)
+{
+	rect3 Result;
+
+	Result.Max = Center + Dim;
+	Result.Min = Center - Dim;
+
+	return Result;
+}
+
+inline unalign_rect3
+CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
+{
+	unalign_rect3 Result;
+
+	Result.Rect0.V0 = MovePointAlongDir(CenterPoint, -YAxis, HalfDim.y);
+	Result.Rect0.V0 = MovePointAlongDir(Result.Rect0.V0, -XAxis, HalfDim.x);
+	Result.Rect0.V3 = MovePointAlongDir(CenterPoint, YAxis, HalfDim.y);
+	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, -XAxis, HalfDim.x);
+
+	Result.Rect0.V1 = MovePointAlongDir(Result.Rect0.V0, XAxis, 2.0f*HalfDim.x);
+	Result.Rect0.V2 = MovePointAlongDir(Result.Rect0.V3, XAxis, 2.0f*HalfDim.x);
+
+	Result.Rect1.V0 = MovePointAlongDir(Result.Rect0.V0, -ZAxis, ZDim);
+	Result.Rect1.V1 = MovePointAlongDir(Result.Rect0.V1, -ZAxis, ZDim);
+	Result.Rect1.V2 = MovePointAlongDir(Result.Rect0.V2, -ZAxis, ZDim);
+	Result.Rect1.V3 = MovePointAlongDir(Result.Rect0.V3, -ZAxis, ZDim);
+
 	return Result;
 }
 

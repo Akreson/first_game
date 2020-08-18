@@ -141,16 +141,21 @@ struct rotate_tools
 	b8 EnterActiveState;
 };
 
+struct scale_tool_axis_params
+{
+	f32 EdgeLen;
+	f32 AdjustEdgeLen;
+	f32 EdgeHalfSize;
+	f32 ArrowHalfSize;
+};
+
 struct scale_tools
 {
 	v3 P;
-	
-	f32 InitEdgeLength;
-	f32 InitEdgeHalfSize;
-	f32 InitArrowHalfSize;
+	v4 AxisMask; // Not need be float?
+	scale_tool_axis_params InitAxisParams;
 
-	f32 EdgeLength;
-
+	tools_axis_id InteractAxis;
 	b32 DefaultAxisSet;
 };
 
