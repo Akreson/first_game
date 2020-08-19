@@ -93,9 +93,9 @@ enum tools_axis_id
 {
 	ToolsAxisID_None,
 
-	ToolsAxisID_XAxis,
-	ToolsAxisID_YAxis,
-	ToolsAxisID_ZAxis,
+	ToolsAxisID_X,
+	ToolsAxisID_Y,
+	ToolsAxisID_Z,
 
 	ToolsAxisID_Count,
 };
@@ -149,6 +149,7 @@ struct scale_tool_axis_params
 	f32 ArrowHalfSize;
 };
 
+#define SCALE_TOOL_ADD_RADIUS 1.2f
 struct scale_tools
 {
 	v3 P;

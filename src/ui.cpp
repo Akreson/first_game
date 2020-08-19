@@ -453,15 +453,15 @@ GetRotateMatrixFromAxisID(f32 Angle, tools_axis_id ID)
 
 	switch (ID)
 	{
-		case ToolsAxisID_XAxis:
+		case ToolsAxisID_X:
 		{
 			Result = XRotation(Angle);
 		} break;
-		case ToolsAxisID_YAxis:
+		case ToolsAxisID_Y:
 		{
 			Result = YRotation(Angle);
 		} break;
-		case ToolsAxisID_ZAxis:
+		case ToolsAxisID_Z:
 		{
 			Result = ZRotation(Angle);
 		} break;
@@ -631,19 +631,39 @@ ModScaleToolAxisParams(scale_tool_axis_params Params, f32 Scale)
 
 // TODO: FINISH!!!!
 internal inline tools_axis_id
-RayScaleToolAxisTest(ray_params Ray, scale_tool_axis_params AxisParams, m3x3 Axis)
+RayScaleToolAxisTest(ray_params Ray, scale_tool_axis_params AxisParams,
+	m3x3 Axis, v3 AxisOffset, f32 ZSignMod)
 {
-	m3x3 Axis = Identity3x3();
+	tools_axis_id Result = ToolsAxisID_None;
+
+	// NOTE: Test code, not working on face and edge
+	m4x4 MAxis = ToM4x4(Axis);
+	m4x4 InvAxis = Transpose(MAxis);
+	v4 _RayD = V4(Ray.Dir, 1.0f) * InvAxis;
+	v4 _RayP = V4(Ray.P, 1.0f) * InvAxis;
+	ray_params InvRay = CreateRay(_RayP.xyz, Normalize(_RayD.xyz));
+	
+	m3x3 DefaultAxis = Identity3x3();
+	DefaultAxis.Z *= ZSignMod;
 
 	v3 ArrowDim = V3(AxisParams.ArrowHalfSize);
-	f32 ArrowCenterOffset = AxisParams.EdgeLen - AxisParams.EdgeHalfSize;
+	f32 HalfAdjustEdgeLen = AxisParams.AdjustEdgeLen * 0.5f;
+	f32 ArrowCenterOffset = AxisParams.EdgeLen - AxisParams.ArrowHalfSize;
+	f32 EdgeCenterOffset = AxisParams.EdgeLen - HalfAdjustEdgeLen;
 
-	v3 XEdgeDim = V3(AxisParams.AdjustEdgeLen, AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
-	v3 YEdgeDim = V3(AxisParams.EdgeHalfSize, AxisParams.AdjustEdgeLen, AxisParams.EdgeHalfSize);
-	v3 ZEdgeDim = V3(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize, AxisParams.AdjustEdgeLen);
+	//v3 YEdgeDim = V3(AxisParams.EdgeHalfSize, HalfAdjustEdgeLen, AxisParams.EdgeHalfSize);
+	//v3 ZEdgeDim = V3(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize, HalfAdjustEdgeLen);
 
-	rect3 XArrowAABB = CreateRect(ArrowDim, Axis.X*ArrowCenterOffset);
-	//rect3 XEdgeAABB;
+	v3 XHalfEdgeDim = V3(HalfAdjustEdgeLen, AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
+	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*ArrowCenterOffset);
+	rect3 XEdgeAABB = CreateRect(XHalfEdgeDim, DefaultAxis.X*EdgeCenterOffset);
+
+	b32 IsHitXArrow = RayAABBIntersect(InvRay, XArrowAABB, AxisOffset);
+	b32 IsHitXEdge = RayAABBIntersect(InvRay, XEdgeAABB, AxisOffset);
+
+	if (IsHitXArrow || IsHitXEdge) Result = ToolsAxisID_X;
+
+	return Result;
 }
 
 m3x3
@@ -681,22 +701,19 @@ SetAxisForTool(model *Model, element_id_buffer *Selected, u32 ElementTarget)
 				model_face *Face = Model->Faces + ElementID;
 				face_vertex Vertex = GetFaceVertex(Model, Face);
 
-				Result.Y = GetPlaneAvgNormal(Vertex);
-				v3 OriginY = V3(0, 1, 0);
-				if (Dot(Result.Y, OriginY) != 1.0f)
-				{
-					Result.X = Normalize(Cross(V3(0, 1, 0), Result.Y));
-					Result.Z = Cross(Result.X, Result.Y);
+				v3 OriginZ = V3(0, 0, 1);
+				Result.Z = GetPlaneAvgNormal(Vertex);
 
-					Assert(Length(Result.Y) >= 0.98f);
-					Assert(Length(Result.X) >= 0.98f);
-					Assert(Length(Result.Z) >= 0.98f);
-				}
-				else
-				{
-					Result.X = V3(1, 0, 0);
-					Result.Z = V3(0, 0, 1);
-				}
+				f32 ZDotResult = Abs(Dot(Result.Z, OriginZ));
+				if (ZDotResult == 1.0f)
+					OriginZ = V3(-1, 0, 0);
+
+				Result.Y = Normalize(Cross(OriginZ, Result.Z));
+				Result.X = Cross(Result.Y, Result.Z);
+
+				Assert(Length(Result.Y) >= 0.98f);
+				Assert(Length(Result.X) >= 0.98f);
+				Assert(Length(Result.Z) >= 0.98f);
 			}
 		}
 	}
@@ -838,19 +855,19 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					tools_axis_id InteractAxis = ToolsAxisID_None;
 					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[2])
 					{
-						InteractAxis = ToolsAxisID_ZAxis;
+						InteractAxis = ToolsAxisID_Z;
 						RotateTool->AxisMask.z = 1.0f;
 						RotateTool->InteractPlane.N = Axis.Z;
 					}
 					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[1])
 					{
-						InteractAxis = ToolsAxisID_YAxis;
+						InteractAxis = ToolsAxisID_Y;
 						RotateTool->AxisMask.y = 1.0f;
 						RotateTool->InteractPlane.N = Axis.Y;
 					}
 					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[0])
 					{
-						InteractAxis = ToolsAxisID_XAxis;
+						InteractAxis = ToolsAxisID_X;
 						RotateTool->AxisMask.x = 1.0f;
 						RotateTool->InteractPlane.N = Axis.X;
 					}
@@ -914,7 +931,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		case ToolType_Scale:
 		{
 			scale_tools *ScaleTool = &Tools->Scale;
-			
+			v4 AxisMask = {};
+
 			v3 RayPCenterP = Ray.P - ScaleTool->P;
 			f32 LengthRayPCenterP = Length(RayPCenterP);
 			f32 Scale = LengthRayPCenterP / Tools->AdjustScaleDist;
@@ -923,7 +941,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				ModScaleToolAxisParams(ScaleTool->InitAxisParams, Scale);
 			
 			//if (ScaleTool->InteractAxis == ToolsAxisID_None)
-			{
+			//{
 				m3x3 Axis;
 				if (IsDown(Input->Ctrl))
 				{
@@ -935,18 +953,28 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					Axis = SetAxisForTool(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 				}
 
-				f32 ZSignMod = Sign(Dot(Axis.Z, RayPCenterP));
-				Axis.Z *= ZSignMod;
+				f32 ZSignMod = 1.0f; //Sign(Dot(Axis.Z, RayPCenterP));
+				//Axis.Z *= ZSignMod;
 
 
-				tools_axis_id InteractAxis = RayScaleToolAxisTest(Ray, ScaleAxisParams, Axis);
-			}
+				tools_axis_id InteractAxis =
+					RayScaleToolAxisTest(Ray, ScaleAxisParams, Axis, ScaleTool->P, ZSignMod);
+
+				switch (InteractAxis)
+				{
+					case ToolsAxisID_X:
+					{
+						AxisMask.x = 1.0f;
+					} break;
+				}
+
+			//}
 			//else
-			{
+			//{
 
-			}
+			//}
 
-			PushScaleTool(RenderGroup, ScaleTool->P, Axis, ScaleAxisParams);
+			PushScaleTool(RenderGroup, ScaleTool->P, Axis, ScaleAxisParams, AxisMask);
 		} break;
 		case ToolType_Translate:
 		{

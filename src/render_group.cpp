@@ -325,7 +325,7 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 {
 	render_triangle_vertex *Buff =
 		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
-#if 0
+#if 1
 	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, Color);// front
 	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, Color); // back
 	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V1, A.Rect0.V3, A.Rect1.V3, Color); // left
@@ -347,7 +347,7 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 
 void
 PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
-	scale_tool_axis_params AxisParams)
+	scale_tool_axis_params AxisParams, v4 AxisMask)
 {
 	game_render_commands *Commands = Group->Commands;
 
@@ -359,19 +359,19 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	v2 ArrowDim = V2(AxisParams.ArrowHalfSize, AxisParams.ArrowHalfSize);
 	v2 EdgeDim = V2(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
 
-	v3 XColor = V3(0, 1, 0);
+	v3 XColor = Lerp(V3(0, 0.6, 0), AxisMask.x, V3(0, 1, 0));
 	unalign_rect3 XEdge =
 		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 XArrow =
 		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, ArrowDim, ArrowZLen);
 
-	v3 YColor = V3(1, 0, 0);
+	v3 YColor = V3(0.6, 0, 0);
 	unalign_rect3 YEdge =
 		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 YArrow =
 		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, ArrowDim, ArrowZLen);
 
-	v3 ZColor = V3(0, 0, 1);
+	v3 ZColor = V3(0, 0, 0.6);
 	unalign_rect3 ZEdge =
 		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 ZArrow =

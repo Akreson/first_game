@@ -79,6 +79,16 @@ RadianToAngle(f32 Radian)
 	return Result;
 }
 
+inline ray_params
+CreateRay(v3 P, v3 Dir)
+{
+	ray_params Result;
+	Result.P = P;
+	Result.Dir = Dir;
+
+	return Result;
+}
+
 // TODO: Improve for float
 inline f32
 Abs(f32 A)
@@ -553,6 +563,17 @@ operator*(v3 A, m4x4 B)
 }
 
 inline rect3
+CreateRect(v3 Dim)
+{
+	rect3 Result;
+
+	Result.Max = Dim;
+	Result.Min = -Dim;
+
+	return Result;
+}
+
+inline rect3
 CreateRect(v3 Dim, v3 Center)
 {
 	rect3 Result;
@@ -628,6 +649,18 @@ Identity(void)
 		0, 0, 1, 0,
 		0, 0, 0, 1
 	}};
+
+	return Result;
+}
+
+inline m4x4
+ToM4x4(m3x3 A)
+{
+	m4x4 Result = {};
+	Result.Row0.xyz = A.X;
+	Result.Row1.xyz = A.Y;
+	Result.Row2.xyz = A.Z;
+	Result.E[3][3] = 1.0f;
 
 	return Result;
 }
@@ -870,9 +903,8 @@ AddRadiusTo(rect3 A, f32 B)
 	return Result;
 }
 
-// TODO: Consider to optimize
 b32
-RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset)
+RayAABBIntersect(ray_params Ray, rect3 AABB, v3 AABBOffset = V3(0))
 {
 	v3 InvD = 1.0 / Ray.Dir;
 

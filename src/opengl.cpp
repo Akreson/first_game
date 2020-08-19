@@ -460,7 +460,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 			case RenderEntryType_render_entry_trin_model:
 			{
-				//glDisable(GL_DEPTH_TEST);
+				glDisable(GL_DEPTH_TEST);
 
 				render_entry_trin_model *TrinModel = (render_entry_trin_model *)Data;
 				BufferOffset += sizeof(render_entry_trin_model);
@@ -481,7 +481,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				UseProgramEnd(&OpenGL.BitmapProg);
 
-				//glEnable(GL_DEPTH_TEST);
+				glEnable(GL_DEPTH_TEST);
 			} break;
 
 			case RenderEntryType_render_entry_tool_rotate:
