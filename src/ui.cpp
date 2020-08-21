@@ -636,12 +636,13 @@ RayScaleToolAxisTest(ray_params Ray, scale_tool_axis_params AxisParams,
 {
 	tools_axis_id Result = ToolsAxisID_None;
 
-	// NOTE: Test code, not working on face and edge
-	m4x4 MAxis = ToM4x4(Axis);
-	m4x4 InvAxis = Transpose(MAxis);
-	v4 _RayD = V4(Ray.Dir, 1.0f) * InvAxis;
-	v4 _RayP = V4(Ray.P, 1.0f) * InvAxis;
-	ray_params InvRay = CreateRay(_RayP.xyz, Normalize(_RayD.xyz));
+	m4x4 InvAxis = Transpose(ToM4x4(Axis));
+	v3 InvPos = -(AxisOffset * InvAxis);
+	SetTranslation(&InvAxis, InvPos);
+
+	v4 InvRayD = V4(Ray.Dir, 0) * InvAxis;
+	v4 InvRayP = V4(Ray.P, 1.0f) * InvAxis;
+	ray_params InvRay = CreateRay(InvRayP.xyz, InvRayD.xyz);
 	
 	m3x3 DefaultAxis = Identity3x3();
 	DefaultAxis.Z *= ZSignMod;
@@ -651,17 +652,30 @@ RayScaleToolAxisTest(ray_params Ray, scale_tool_axis_params AxisParams,
 	f32 ArrowCenterOffset = AxisParams.EdgeLen - AxisParams.ArrowHalfSize;
 	f32 EdgeCenterOffset = AxisParams.EdgeLen - HalfAdjustEdgeLen;
 
-	//v3 YEdgeDim = V3(AxisParams.EdgeHalfSize, HalfAdjustEdgeLen, AxisParams.EdgeHalfSize);
-	//v3 ZEdgeDim = V3(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize, HalfAdjustEdgeLen);
-
-	v3 XHalfEdgeDim = V3(HalfAdjustEdgeLen, AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
+	v3 XEdgeHalfDim = V3(HalfAdjustEdgeLen, AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
 	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*ArrowCenterOffset);
-	rect3 XEdgeAABB = CreateRect(XHalfEdgeDim, DefaultAxis.X*EdgeCenterOffset);
+	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*EdgeCenterOffset);
 
-	b32 IsHitXArrow = RayAABBIntersect(InvRay, XArrowAABB, AxisOffset);
-	b32 IsHitXEdge = RayAABBIntersect(InvRay, XEdgeAABB, AxisOffset);
+	v3 YEdgeHalfDim = V3(AxisParams.EdgeHalfSize, HalfAdjustEdgeLen, AxisParams.EdgeHalfSize);
+	rect3 YArrowAABB = CreateRect(ArrowDim, DefaultAxis.Y*ArrowCenterOffset);
+	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*EdgeCenterOffset);
+
+	v3 ZEdgeHalfDim = V3(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize, HalfAdjustEdgeLen);
+	rect3 ZArrowAABB = CreateRect(ArrowDim, DefaultAxis.Z*ArrowCenterOffset);
+	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*EdgeCenterOffset);
+
+	b32 IsHitXArrow = RayAABBIntersect(InvRay, XArrowAABB);
+	b32 IsHitXEdge = RayAABBIntersect(InvRay, XEdgeAABB);
+
+	b32 IsHitYArrow = RayAABBIntersect(InvRay, YArrowAABB);
+	b32 IsHitYEdge = RayAABBIntersect(InvRay, YEdgeAABB);
+
+	b32 IsHitZArrow = RayAABBIntersect(InvRay, ZArrowAABB);
+	b32 IsHitZEdge = RayAABBIntersect(InvRay, ZEdgeAABB);
 
 	if (IsHitXArrow || IsHitXEdge) Result = ToolsAxisID_X;
+	if (IsHitYArrow || IsHitYEdge) Result = ToolsAxisID_Y;
+	if (IsHitZArrow || IsHitZEdge) Result = ToolsAxisID_Z;
 
 	return Result;
 }
@@ -711,9 +725,9 @@ SetAxisForTool(model *Model, element_id_buffer *Selected, u32 ElementTarget)
 				Result.Y = Normalize(Cross(OriginZ, Result.Z));
 				Result.X = Cross(Result.Y, Result.Z);
 
-				Assert(Length(Result.Y) >= 0.98f);
-				Assert(Length(Result.X) >= 0.98f);
-				Assert(Length(Result.Z) >= 0.98f);
+				Assert((Length(Result.Z) >= 0.98f) && (Length(Result.Z) <= 1.001f));
+				Assert((Length(Result.Y) >= 0.98f) && (Length(Result.Y) <= 1.001f));
+				Assert((Length(Result.X) >= 0.98f) && (Length(Result.X) <= 1.001f));
 			}
 		}
 	}
@@ -901,6 +915,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 						if (TargetElement == ModelTargetElement_Model)
 						{
 							Model->Axis = RotateTool->Axis;
+							Assert((Length(Model->Axis.Z) >= 0.98f) && (Length(Model->Axis.Z) <= 1.001f));
+							Assert((Length(Model->Axis.Y) >= 0.98f) && (Length(Model->Axis.Y) <= 1.001f));
+							Assert((Length(Model->Axis.X) >= 0.98f) && (Length(Model->Axis.X) <= 1.001f));
 						}
 
 						if (!RotateTool->DefaultAxisSet)
@@ -965,6 +982,16 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					case ToolsAxisID_X:
 					{
 						AxisMask.x = 1.0f;
+					} break;
+
+					case ToolsAxisID_Y:
+					{
+						AxisMask.y = 1.0f;
+					} break;
+
+					case ToolsAxisID_Z:
+					{
+						AxisMask.z = 1.0f;
 					} break;
 				}
 

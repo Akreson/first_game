@@ -359,19 +359,19 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	v2 ArrowDim = V2(AxisParams.ArrowHalfSize, AxisParams.ArrowHalfSize);
 	v2 EdgeDim = V2(AxisParams.EdgeHalfSize, AxisParams.EdgeHalfSize);
 
-	v3 XColor = Lerp(V3(0, 0.6, 0), AxisMask.x, V3(0, 1, 0));
+	v3 XColor = Lerp(V3(0, 0.6f, 0), AxisMask.x, V3(0, 1, 0));
 	unalign_rect3 XEdge =
 		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 XArrow =
 		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, ArrowDim, ArrowZLen);
 
-	v3 YColor = V3(0.6, 0, 0);
+	v3 YColor = Lerp(V3(0.6f, 0, 0), AxisMask.y, V3(1, 0, 0));
 	unalign_rect3 YEdge =
 		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 YArrow =
 		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, ArrowDim, ArrowZLen);
 
-	v3 ZColor = V3(0, 0, 0.6);
+	v3 ZColor = Lerp(V3(0, 0, 0.6f), AxisMask.z, V3(0, 0, 1));
 	unalign_rect3 ZEdge =
 		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, EdgeDim, AxisParams.AdjustEdgeLen);
 	unalign_rect3 ZArrow =
