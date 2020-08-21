@@ -143,18 +143,37 @@ struct rotate_tools
 
 struct scale_tool_axis_params
 {
-	f32 EdgeLen;
-	f32 AdjustEdgeLen;
-	f32 EdgeHalfSize;
+	f32 AxisLen;
+	f32 EdgeCenter;
+	f32 EdgeXYHalfSize;
+	f32 EdgeLenHalfSize;
 	f32 ArrowHalfSize;
 };
+
+// TODO: Pass dunamic structure axis state, that include state
+// for passive and active edge to PushScaleTool
+//struct xxx
+//{
+//	f32 AxisLen;
+//	f32 EdgeCentert;
+//	f32 EdgeZLen;
+//};
+//
+//struct scale_tool_axis_states
+//{
+//	xxx X;
+//	xxx Y;
+//	xxx Z;
+//};
 
 #define SCALE_TOOL_ADD_RADIUS 1.2f
 struct scale_tools
 {
+	m3x3 Axis;
 	v3 P;
-	v4 AxisMask; // Not need be float?
+	v4 AxisMask;
 	scale_tool_axis_params InitAxisParams;
+
 
 	tools_axis_id InteractAxis;
 	b32 DefaultAxisSet;

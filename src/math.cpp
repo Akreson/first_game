@@ -585,18 +585,22 @@ CreateRect(v3 Dim, v3 Center)
 }
 
 inline unalign_rect3
-CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v2 HalfDim, f32 ZDim)
+CreateRect(v3 CenterPoint, v3 XAxis, v3 YAxis, v3 ZAxis, v3 HalfDim)
 {
 	unalign_rect3 Result;
 
 	Result.Rect0.V0 = MovePointAlongDir(CenterPoint, -YAxis, HalfDim.y);
 	Result.Rect0.V0 = MovePointAlongDir(Result.Rect0.V0, -XAxis, HalfDim.x);
+	Result.Rect0.V0 = MovePointAlongDir(Result.Rect0.V0, ZAxis, HalfDim.z);
+
 	Result.Rect0.V3 = MovePointAlongDir(CenterPoint, YAxis, HalfDim.y);
 	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, -XAxis, HalfDim.x);
+	Result.Rect0.V3 = MovePointAlongDir(Result.Rect0.V3, ZAxis, HalfDim.z);
 
 	Result.Rect0.V1 = MovePointAlongDir(Result.Rect0.V0, XAxis, 2.0f*HalfDim.x);
 	Result.Rect0.V2 = MovePointAlongDir(Result.Rect0.V3, XAxis, 2.0f*HalfDim.x);
 
+	f32 ZDim = HalfDim.z * 2.0f;
 	Result.Rect1.V0 = MovePointAlongDir(Result.Rect0.V0, -ZAxis, ZDim);
 	Result.Rect1.V1 = MovePointAlongDir(Result.Rect0.V1, -ZAxis, ZDim);
 	Result.Rect1.V2 = MovePointAlongDir(Result.Rect0.V2, -ZAxis, ZDim);
