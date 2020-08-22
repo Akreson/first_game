@@ -684,15 +684,15 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 			f32 Det = (SDotS * LDotL) - (SDotL * SDotL);
 			if (Det != 0)
 			{
-				f32 t0 = ((SDotL * LDotR) - (SDotR * LDotL)) / Det;
-				f32 t1 = ((SDotS * LDotR) - (SDotL * SDotR)) / Det;
+				f32 tEdge = ((SDotL * LDotR) - (SDotR * LDotL)) / Det;
+				f32 tRay = ((SDotS * LDotR) - (SDotL * SDotR)) / Det;
 
-				v3 OnEdgeP = SegmentStart + (NormSegDir * t0);
-				v3 OnRayP = PointOnRay(Ray, t1);
+				v3 OnEdgeP = MovePointAlongDir(SegmentStart, NormSegDir, tEdge);
+				v3 OnRayP = PointOnRay(Ray, tRay);
 
 				f32 DistSq = LengthSq(OnEdgeP - OnRayP);
 
-				if ((t0 >= 0) && (t0 <= SegmentLength))
+				if ((tEdge >= 0) && (tEdge <= SegmentLength))
 				{
 					if ((DistSq <= IntrRadiusSq) && (DistSq < ClosestRayPSq))
 					{

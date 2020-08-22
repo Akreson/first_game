@@ -78,6 +78,11 @@ union v4
 union m4x4
 {
 	f32 E[4][4];
+	
+	struct
+	{
+		v4 Row[4];
+	};
 
 	struct
 	{

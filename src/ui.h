@@ -76,7 +76,7 @@ struct ui_interaction
 		};
 	};
 
-	ui_id ID; //
+	ui_id ID;
 };
 
 struct interact_model
@@ -141,40 +141,53 @@ struct rotate_tools
 	b8 EnterActiveState;
 };
 
-struct scale_tool_axis_params
+struct scl_tool_axis_params
 {
-	f32 AxisLen;
+	f32 Len;
 	f32 EdgeCenter;
-	f32 EdgeXYHalfSize;
 	f32 EdgeLenHalfSize;
+};
+
+struct scl_tool_default_params
+{
+	scl_tool_axis_params Axis;
+	
+	f32 EdgeXYHalfSize;
 	f32 ArrowHalfSize;
 };
 
-// TODO: Pass dunamic structure axis state, that include state
-// for passive and active edge to PushScaleTool
-//struct xxx
-//{
-//	f32 AxisLen;
-//	f32 EdgeCentert;
-//	f32 EdgeZLen;
-//};
-//
-//struct scale_tool_axis_states
-//{
-//	xxx X;
-//	xxx Y;
-//	xxx Z;
-//};
+struct scl_tool_display_params
+{
+	f32 EdgeXYHalfSize;
+	f32 ArrowHalfSize;
+
+	union
+	{
+		scl_tool_axis_params Axis[3];
+
+		struct
+		{
+			scl_tool_axis_params X;
+			scl_tool_axis_params Y;
+			scl_tool_axis_params Z;
+		};
+	};
+};
 
 #define SCALE_TOOL_ADD_RADIUS 1.2f
 struct scale_tools
 {
+	m4x4 Transform;
 	m3x3 Axis;
 	v3 P;
 	v4 AxisMask;
-	scale_tool_axis_params InitAxisParams;
+	scl_tool_default_params InitAxisParams;
+	scl_tool_display_params DisplayState;
 
+	f32 BeginP;
+	f32 PrevP;
 
+	b32 EnterActiveState;
 	tools_axis_id InteractAxis;
 	b32 DefaultAxisSet;
 };

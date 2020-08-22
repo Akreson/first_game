@@ -961,3 +961,27 @@ RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 
 	return Result;
 }
+
+b32
+ClosestPBeetwenRay(ray_params A, ray_params B, f32 *tA, f32 *tB)
+{
+	b32 Result = false;
+
+	v3 R = B.P - A.P;
+	f32 BDotB = Dot(B.Dir, B.Dir);
+	f32 BDotA = Dot(B.Dir, A.Dir);
+	f32 BDotR = Dot(B.Dir, R);
+	f32 ADotA = Dot(A.Dir, A.Dir);
+	f32 ADotR = Dot(A.Dir, R);
+
+	f32 Det = (BDotB * ADotA) - (BDotA * BDotA);
+	if (Det != 0)
+	{
+		Result = true;
+
+		if (tB) *tB = ((BDotA * ADotR) - (BDotR * ADotA)) / Det;
+		if (tA) *tA = ((BDotB * ADotR) - (BDotA * BDotR)) / Det;
+	}
+
+	return Result;
+}

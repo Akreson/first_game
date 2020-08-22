@@ -231,13 +231,13 @@ PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_pa
 
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], V3(1, 1, 0));
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0));
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2],
-		V3(0, 1, 1), V3(Active12, 1, Active01), V3(Hot12, 1, Hot01), SelectionType);
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1),
+		V3(Active12, 1, Active01), V3(Hot12, 1, Hot01), SelectionType);
 
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1));
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1));
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V3],
-		V3(0, 0, 1), V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V3], V3(0, 0, 1),
+		V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
 
 	Commands->VertexBufferSize += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);
 }
@@ -344,44 +344,42 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 
 	Commands->TriangleBufferSize += sizeof(render_triangle_vertex) * 36;
 }
-/*
-f32 AxisLen;
-f32 EdgeCenter;
-f32 EdgeXYHalfSize;
-f32 EdgeLenHalfSize;
-f32 ArrowHalfSize;
-*/
+
 void
 PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
-	scale_tool_axis_params AxisParams, v4 AxisMask)
+	scl_tool_display_params AxisParams, v4 AxisMask)
 {
 	game_render_commands *Commands = Group->Commands;
+	v3 ActiveColor = V3(0.86f, 0.65f, 0.2f);
 
-	v3 XMaxStartP = Axis.X * AxisParams.AxisLen;
-	v3 YMaxStartP = Axis.Y * AxisParams.AxisLen;
-	v3 ZMaxStartP = Axis.Z * AxisParams.AxisLen;
+	v3 XMaxStartP = Axis.X * AxisParams.X.Len;
+	v3 YMaxStartP = Axis.Y * AxisParams.Y.Len;
+	v3 ZMaxStartP = Axis.Z * AxisParams.Z.Len;
 	
 	f32 ArrowZLen = AxisParams.ArrowHalfSize * 2.0f;
 	v3 ArrowHalfDim = V3(AxisParams.ArrowHalfSize);
-	v3 EdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.EdgeLenHalfSize);
+
+	v3 XEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.X.EdgeLenHalfSize);
+	v3 YEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Y.EdgeLenHalfSize);
+	v3 ZEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Z.EdgeLenHalfSize);
 
 	v3 XColor = Lerp(V3(0, 0.6f, 0), AxisMask.x, V3(0, 1, 0));
-	unalign_rect3 XEdge =
-		CreateRect(Axis.X *AxisParams.EdgeCenter, -Axis.Z, Axis.Y, Axis.X, EdgeHalfDim);
-	unalign_rect3 XArrow =
-		CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, ArrowHalfDim);
+	XColor = Lerp(XColor, AxisMask.x * AxisMask.w, ActiveColor);
+
+	unalign_rect3 XArrow = CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, ArrowHalfDim);
+	unalign_rect3 XEdge = CreateRect(Axis.X * AxisParams.X.EdgeCenter, -Axis.Z, Axis.Y, Axis.X, XEdgeHalfDim);
 
 	v3 YColor = Lerp(V3(0.6f, 0, 0), AxisMask.y, V3(1, 0, 0));
-	unalign_rect3 YEdge =
-		CreateRect(Axis.Y * AxisParams.EdgeCenter, Axis.Z, Axis.X, Axis.Y, EdgeHalfDim);
-	unalign_rect3 YArrow =
-		CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, ArrowHalfDim);
+	YColor = Lerp(YColor, AxisMask.y * AxisMask.w, ActiveColor);
+
+	unalign_rect3 YArrow = CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, ArrowHalfDim);
+	unalign_rect3 YEdge = CreateRect(Axis.Y * AxisParams.Y.EdgeCenter, Axis.Z, Axis.X, Axis.Y, YEdgeHalfDim);
 
 	v3 ZColor = Lerp(V3(0, 0, 0.6f), AxisMask.z, V3(0, 0, 1));
-	unalign_rect3 ZEdge =
-		CreateRect(Axis.Z * AxisParams.EdgeCenter, Axis.X, Axis.Y, Axis.Z, EdgeHalfDim);
-	unalign_rect3 ZArrow =
-		CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, ArrowHalfDim);
+	ZColor = Lerp(ZColor, AxisMask.z * AxisMask.w, ActiveColor);
+
+	unalign_rect3 ZArrow = CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, ArrowHalfDim);
+	unalign_rect3 ZEdge = CreateRect(Axis.Z * AxisParams.Z.EdgeCenter, Axis.X, Axis.Y, Axis.Z, ZEdgeHalfDim);
 
 	BeginPushTrinModel(Group, Pos);
 
