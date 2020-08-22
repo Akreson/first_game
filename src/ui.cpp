@@ -672,7 +672,6 @@ ModScaleToolDefauldParams(scl_tool_default_params Params, f32 Scale)
 	return Result;
 }
 
-// TODO: FINISH!!!!
 // TODO: Cleaning up?
 internal inline tools_axis_id
 RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
@@ -746,7 +745,7 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 		ActiveAxis->EdgeLenHalfSize = ActiveAxis->EdgeCenter;
 
 		// TODO: Finish
-		// make linear in scale for all vertex
+		// make linear in scale for all vertex,
 		if (Tool->PrevP != CurrentP)
 		{
 			f32 ScaleFactor = 1.0f + (CurrentP - Tool->PrevP);
@@ -755,8 +754,8 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 			ScaleTransform.Row[IntrAxisID].E[IntrAxisID] = ScaleFactor;
 
 			m4x4 Rot = ToM4x4(Tool->Axis);
-			Tool->Transform = ScaleTransform * Rot;
-
+			m4x4 InvRot = Transpose(Rot);
+			Tool->Transform = InvRot * ScaleTransform * Rot;
 
 			Tool->PrevP = CurrentP;
 			Result = true;
@@ -843,7 +842,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 			
 			scl_tool_default_params *InitAxisParams = &Scale->InitAxisParams;
 			InitAxisParams->Axis.Len = SCALE_TOOL_SIZE;
-			InitAxisParams->Axis.EdgeLenHalfSize = (SCALE_TOOL_SIZE * 0.8f) * 0.5f;
+			InitAxisParams->Axis.EdgeLenHalfSize = (SCALE_TOOL_SIZE * 0.85f) * 0.5f;
 			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
 			InitAxisParams->EdgeXYHalfSize = 0.004f;
 			InitAxisParams->ArrowHalfSize = SCALE_TOOL_SIZE * 0.04f;
