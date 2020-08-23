@@ -473,7 +473,7 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 		} break;
 
 		// NOTE: Must not be used for move plane int Z direction
-		// Or One edge in X direction
+		// Or one edge in X direction
 		// TODO: Implement forbidding this behavior?
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
@@ -626,6 +626,32 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 	return Result;
 }
 
+internal inline rot_tool_perp_axis
+SetRotToolPerpInfo(m3x3 Axis, f32 PerpThreshold, v3 FromPosToRayP)
+{
+	rot_tool_perp_axis Result = {};
+
+	b32 IsXPerp = IsRotateToolAxisPerp(PerpThreshold, Axis.X, FromPosToRayP);
+	b32 IsYPerp = IsRotateToolAxisPerp(PerpThreshold, Axis.Y, FromPosToRayP);
+	b32 IsZPerp = IsRotateToolAxisPerp(PerpThreshold, Axis.Z, FromPosToRayP);
+	b32 IsHavePerpAxis = IsXPerp | IsYPerp | IsZPerp;
+
+	u32 PerpAxisIndex;
+	if (IsHavePerpAxis)
+	{
+		Result.IsSet = 1;
+
+		if (IsXPerp)
+			Result.Index = 0;
+		else if (IsYPerp)
+			Result.Index = 1;
+		else if (IsZPerp)
+			Result.Index = 2;
+	}
+
+	return Result;
+}
+
 internal inline b32
 IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
 {
@@ -653,12 +679,12 @@ IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
 }
 
 internal inline b32
-IsRotateToolAxisPerp(rotate_tools *Tool, v3 Axis, v3 CameraZ)
+IsRotateToolAxisPerp(f32 PerpThreshold, v3 Axis, v3 CameraZ)
 {
 	b32 Result = false;
 
 	f32 ADotC = Abs(Dot(Axis, CameraZ));
-	if (Abs(ADotC) >= Tool->PerpThreshold)
+	if (Abs(ADotC) >= PerpThreshold)
 	{
 		Result = true;
 	}
@@ -940,7 +966,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			RotateTool->FromPosToRayP = Normalize(RayPCenterP, LengthRayPCenterP);
 
 			m3x3 Axis;
-			if (IsDown(Input->Ctrl))
+			if (!IsDown(Input->Ctrl))
 			{
 				Axis = Identity3x3();
 				RotateTool->DefaultAxisSet = true;
@@ -956,24 +982,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				RotateTool->DefaultAxisSet = false;
 			}
 			
-			RotateTool->PerpInfo = {};
-			b32 IsXPerp = IsRotateToolAxisPerp(RotateTool, Axis.X, RotateTool->FromPosToRayP);
-			b32 IsYPerp = IsRotateToolAxisPerp(RotateTool, Axis.Y, RotateTool->FromPosToRayP);
-			b32 IsZPerp = IsRotateToolAxisPerp(RotateTool, Axis.Z, RotateTool->FromPosToRayP);
-			b32 IsHavePerpAxis = IsXPerp | IsYPerp | IsZPerp;
-
-			u32 PerpAxisIndex;
-			if (IsHavePerpAxis)
-			{
-				RotateTool->PerpInfo.IsSet = 1;
-
-				if (IsXPerp)
-					RotateTool->PerpInfo.Index = 0;
-				else if (IsYPerp)
-					RotateTool->PerpInfo.Index = 1;
-				else if (IsZPerp)
-					RotateTool->PerpInfo.Index = 2;
-			}
+			RotateTool->PerpInfo = SetRotToolPerpInfo(Axis, RotateTool->PerpThreshold, RotateTool->FromPosToRayP);
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
@@ -981,7 +990,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				RotateTool->AxisMask = {};
 
 				b32 PerpAxisIntr[3] = {};
-				if (IsHavePerpAxis)
+				if (RotateTool->PerpInfo.IsSet)
 				{
 					u32 PerpAxisIndex = RotateTool->PerpInfo.Index;
 					PerpAxisIntr[PerpAxisIndex] =
