@@ -123,7 +123,7 @@ struct rotate_tools
 	plane_params InteractPlane;
 	
 	// NOTE: Persistent
-	v3 CenterP;
+	v3 P;
 	f32 InitRadius;
 	f32 PerpThreshold;
 
