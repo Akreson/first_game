@@ -626,6 +626,20 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 	return Result;
 }
 
+internal inline b32
+IsRotateToolAxisPerp(f32 PerpThreshold, v3 Axis, v3 CameraZ)
+{
+	b32 Result = false;
+
+	f32 ADotC = Abs(Dot(Axis, CameraZ));
+	if (Abs(ADotC) >= PerpThreshold)
+	{
+		Result = true;
+	}
+
+	return Result;
+}
+
 internal inline rot_tool_perp_axis
 SetRotToolPerpInfo(m3x3 Axis, f32 PerpThreshold, v3 FromPosToRayP)
 {
@@ -653,20 +667,20 @@ SetRotToolPerpInfo(m3x3 Axis, f32 PerpThreshold, v3 FromPosToRayP)
 }
 
 internal inline b32
-IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
+IsRotateToolPerpAxisIntreract(v3 ToolCenterP, f32 Radius, ray_params Ray, v3 Axis)
 {
 	b32 Result = false;
 
 	plane_params Plane = {};
 	Plane.N = Axis;
-	Plane.D = Dot(Axis, Tool->CenterP);
+	Plane.D = Dot(Axis, ToolCenterP);
 
 	f32 ADotR = Dot(Axis, Ray.Dir);
 	f32 tRay = RayPlaneIntersect(Ray, Plane, ADotR);
 	v3 P = PointOnRay(Ray, tRay);
 
-	f32 RadiusSq = Square(Tool->Radius);
-	f32 FromCenterToP = LengthSq(P - Tool->CenterP);
+	f32 RadiusSq = Square(Radius);
+	f32 FromCenterToP = LengthSq(P - ToolCenterP);
 	f32 NormLength = FromCenterToP / RadiusSq;
 
 	if (NormLength <= 1.0f &&
@@ -678,15 +692,16 @@ IsRotateToolPerpAxisIntreract(rotate_tools *Tool, ray_params Ray, v3 Axis)
 	return Result;
 }
 
-internal inline b32
-IsRotateToolAxisPerp(f32 PerpThreshold, v3 Axis, v3 CameraZ)
+internal inline v3i
+GetIntrPerpAxisInfo(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 {
-	b32 Result = false;
+	v3i Result = {};
 
-	f32 ADotC = Abs(Dot(Axis, CameraZ));
-	if (Abs(ADotC) >= PerpThreshold)
+	if (Tool->PerpInfo.IsSet)
 	{
-		Result = true;
+		u32 PerpAxisIndex = Tool->PerpInfo.Index;
+		Result.E[PerpAxisIndex] =
+			IsRotateToolPerpAxisIntreract(Tool->CenterP, Tool->Radius, Ray, Axis.Row[PerpAxisIndex]);
 	}
 
 	return Result;
@@ -966,7 +981,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			RotateTool->FromPosToRayP = Normalize(RayPCenterP, LengthRayPCenterP);
 
 			m3x3 Axis;
-			if (!IsDown(Input->Ctrl))
+			if (IsDown(Input->Ctrl))
 			{
 				Axis = Identity3x3();
 				RotateTool->DefaultAxisSet = true;
@@ -988,14 +1003,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			{
 				// TODO: Move this code to separate function?
 				RotateTool->AxisMask = {};
-
-				b32 PerpAxisIntr[3] = {};
-				if (RotateTool->PerpInfo.IsSet)
-				{
-					u32 PerpAxisIndex = RotateTool->PerpInfo.Index;
-					PerpAxisIntr[PerpAxisIndex] =
-						IsRotateToolPerpAxisIntreract(RotateTool, Ray, Axis.Row[PerpAxisIndex]);
-				}
+				v3i IntrPerpAxisBool = GetIntrPerpAxisInfo(RotateTool, Ray, Axis);
 
 				// TODO: Make posible interaction with perp axis beyond sphere radius?
 				// (set IsHavePerpIntr and IsHaveSphereIntr?)
@@ -1010,19 +1018,19 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					f32 ZDotP = Abs(Dot(Axis.Z, DirFromCenter));
 					
 					tools_axis_id InteractAxis = ToolsAxisID_None;
-					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[2])
+					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || IntrPerpAxisBool.z)
 					{
 						InteractAxis = ToolsAxisID_Z;
 						RotateTool->AxisMask.z = 1.0f;
 						RotateTool->InteractPlane.N = Axis.Z;
 					}
-					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[1])
+					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || IntrPerpAxisBool.y)
 					{
 						InteractAxis = ToolsAxisID_Y;
 						RotateTool->AxisMask.y = 1.0f;
 						RotateTool->InteractPlane.N = Axis.Y;
 					}
-					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || PerpAxisIntr[0])
+					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || IntrPerpAxisBool.x)
 					{
 						InteractAxis = ToolsAxisID_X;
 						RotateTool->AxisMask.x = 1.0f;

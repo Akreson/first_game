@@ -177,7 +177,6 @@ struct scl_tool_display_params
 #define SCALE_TOOL_ADD_RADIUS 1.2f
 struct scale_tools
 {
-	m4x4 Transform;
 	m3x3 Axis;
 	v3 P;
 	v4 AxisMask;

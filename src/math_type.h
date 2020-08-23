@@ -45,6 +45,15 @@ union v3
 	};
 };
 
+union v3i
+{
+	s32 E[3];
+	struct
+	{
+		s32 x, y, z;
+	};
+};
+
 // TODO: Add _m128
 union v4
 {
