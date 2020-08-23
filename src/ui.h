@@ -187,6 +187,8 @@ struct scale_tools
 	f32 BeginP;
 	f32 PrevP;
 
+	v4 ScaleParam;
+
 	b32 EnterActiveState;
 	tools_axis_id InteractAxis;
 	b32 DefaultAxisSet;

@@ -317,6 +317,17 @@ operator*(v3 A, v3 B)
 }
 
 inline v3
+operator/(v3 A, v3 B)
+{
+	v3 Result;
+	Result.x = A.x / B.x;
+	Result.y = A.y / B.y;
+	Result.z = A.z / B.z;
+
+	return Result;
+}
+
+inline v3
 operator/(v3 A, f32 B)
 {
 	v3 Result;
@@ -429,6 +440,24 @@ operator*(v4 A, v4 B)
 	Result.z = A.z * B.z;
 	Result.w = A.w * B.w;
 
+	return Result;
+}
+
+inline v3
+Abs(v3 A)
+{
+	v3 Result;
+	Result.x = Abs(A.x);
+	Result.y = Abs(A.y);
+	Result.z = Abs(A.z);
+
+	return Result;
+}
+
+inline v3
+Sign(v3 A)
+{
+	v3 Result = A / Abs(A);
 	return Result;
 }
 
