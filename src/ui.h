@@ -213,6 +213,10 @@ struct translate_tools
 	m3x3 Axis;
 	v3 P;
 	v4 AxisMask;
+	v3 TransParam;
+
+	f32 BeginP;
+	f32 PrevP;
 
 	trans_tool_axis_params InitAxisParams;
 

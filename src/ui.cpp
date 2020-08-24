@@ -455,6 +455,8 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 			}
 		} break;
 	}
+
+	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 }
 
 // TODO: Optimize!!!
@@ -504,6 +506,39 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 				V = V + ScaleFactor;
 				Model->Vertex[VertexIndex] = V;
 			}
+		} break;
+	}
+
+	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+}
+
+// TODO: Optimize
+void
+ApplyTranslate(model *Model, element_id_buffer *UniqIndeces,
+	model_target_element ElementTarget, v3 TransParam)
+{
+	switch (ElementTarget)
+	{
+		case ModelTargetElement_Model:
+		{
+			Model->Offset += TransParam;
+		} break;
+
+		case ModelTargetElement_Edge:
+		case ModelTargetElement_Face:
+		{
+			for (u32 Index = 0;
+				Index < UniqIndeces->Count;
+				++Index)
+			{
+				u32 VertexIndex = UniqIndeces->Elements[Index];
+				v3 V = Model->Vertex[VertexIndex];
+
+				V += TransParam;
+				Model->Vertex[Index] = V;
+			}
+
+			Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 		} break;
 	}
 }
@@ -571,6 +606,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 
 	return Result;
 }
+
 internal b32
 ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 {
@@ -859,6 +895,8 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	return Result;
 }
 
+// TODO: Collate Scale and Trans tool processing
+
 internal b32
 ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 {
@@ -891,6 +929,40 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 			Tool->ScaleParam.xyz = ScaleAxis;
 			Tool->ScaleParam.w = ScaleFactor;
 			Tool->PrevP = CurrentP;
+			Result = true;
+		}
+	}
+
+	return Result;
+}
+
+internal b32
+ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
+{
+	b32 Result = false;
+
+	u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
+	v3 TransAxis = Tool->Axis.Row[IntrAxisID];
+	ray_params AxisRay = CreateRay(Tool->P, TransAxis);
+
+	f32 CurrentP = 0;
+	if (ClosestPBeetwenRay(Ray, AxisRay, 0, &CurrentP))
+	{
+		// TODO: Move to set _move_ interaction?
+		if (!Tool->EnterActiveState)
+		{
+			Tool->BeginP = CurrentP;
+			Tool->PrevP = CurrentP;
+			Tool->EnterActiveState = true;
+		}
+
+		if (Tool->PrevP != CurrentP)
+		{
+			f32 TransFactor = (CurrentP - Tool->PrevP);
+
+			Tool->TransParam = TransAxis * TransFactor;
+			Tool->P += Tool->TransParam;
+			Tool->PrevP = CurrentP - TransFactor;
 			Result = true;
 		}
 	}
@@ -938,13 +1010,13 @@ RayTranslateToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
 
 	b32 IsHitXEdge = RayAABBIntersect(InvRay, XEdgeAABB);
-	b32 IsHitXArrow = RaySphereIntersect(Ray, DefaultAxis.X*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+	b32 IsHitXArrow = RaySphereIntersect(InvRay, DefaultAxis.X*AxisParams.Axis.Len, AxisParams.ArrowRadius);
 
 	b32 IsHitYEdge = RayAABBIntersect(InvRay, YEdgeAABB);
-	b32 IsHitYArrow = RaySphereIntersect(Ray, DefaultAxis.Y*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+	b32 IsHitYArrow = RaySphereIntersect(InvRay, DefaultAxis.Y*AxisParams.Axis.Len, AxisParams.ArrowRadius);
 
 	b32 IsHitZEdge = RayAABBIntersect(InvRay, ZEdgeAABB);
-	b32 IsHitZArrow = RaySphereIntersect(Ray, DefaultAxis.Z*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+	b32 IsHitZArrow = RaySphereIntersect(InvRay, DefaultAxis.Z*AxisParams.Axis.Len, AxisParams.ArrowRadius);
 
 	if (IsHitXArrow || IsHitXEdge) Result = ToolsAxisID_X;
 	if (IsHitYArrow || IsHitYEdge) Result = ToolsAxisID_Y;
@@ -1078,6 +1150,8 @@ GetRayToolPosRelParam(v3 RayP, v3 ToolP, f32 AdjustScaleDist)
 	return Result;
 }
 
+// TODO: Apply transform only when exit move interaction
+// for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
 // for translate (and scale?)
 internal void inline
@@ -1169,7 +1243,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 						ApplyRotation(Model, &Tools->UniqIndeces, TargetElement,
 							RotateTool->P, RotateTool->Transform);
-						Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 					}
 				}
 				else
@@ -1245,7 +1318,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
 						ApplyScale(Model, &Tools->UniqIndeces, TargetElement, ScaleTool->ScaleParam);
-						Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
 					}
 				
 					SetDefaultDisplayParams(&ScaleTool->DisplayState, ScaleAxisParams, ScaleTool->InteractAxis);
@@ -1298,6 +1370,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				Interaction = SetToolAxisIntr(ToolType_Translate, UI_InteractionType_Select, InteractAxis);
 				if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 				{
+					TransTool->Axis = Axis;
+					TransTool->AxisMask.w = 1.0f;
+					TransTool->InteractAxis = InteractAxis;
 
 					Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
 					WorldUI->Interaction = Interaction;
@@ -1310,11 +1385,18 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				if (AreEqual(WorldUI->Interaction, Interaction))
 				{
-					
+					if (ProcessTransToolTransform(TransTool, Ray))
+					{
+						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
+						ApplyTranslate(Model, &Tools->UniqIndeces, TargetElement, TransTool->TransParam);
+					}
 				}
 				else
 				{
-					
+					TransTool->BeginP = 0;
+					TransTool->PrevP = 0;
+					TransTool->InteractAxis = ToolsAxisID_None;
+					TransTool->EnterActiveState = false;
 				}
 			}
 
