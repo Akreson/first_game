@@ -88,6 +88,7 @@ struct interact_model
 };
 
 #define RTOOLS_AXIS_INTERACT_THRESHOLD 0.03f
+#define RTOOLS_PERP_AXIS_INTERACT_MAX_THRESHOLD 1.08f
 #define RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD 0.94f
 enum tools_axis_id
 {

@@ -67,6 +67,17 @@ SetModelSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Targe
 	return Result;
 }
 
+inline ui_interaction
+SetToolAxisIntr(tool_type Tool, ui_interaction_type Type, tools_axis_id Axis)
+{
+	ui_interaction Result;
+	Result.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, Type);
+	Result.ID.ID[0] = Tool;
+	Result.ID.ID[1] = Axis;
+
+	return Result;
+}
+
 inline b32
 AreEqual(ui_interaction A, ui_interaction B)
 {
@@ -683,7 +694,7 @@ IsRotateToolPerpAxisIntreract(v3 ToolCenterP, f32 Radius, ray_params Ray, v3 Axi
 	f32 FromCenterToP = LengthSq(P - ToolCenterP);
 	f32 NormLength = FromCenterToP / RadiusSq;
 
-	if (NormLength <= 1.0f &&
+	if (NormLength <= RTOOLS_PERP_AXIS_INTERACT_MAX_THRESHOLD &&
 		NormLength >= RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD)
 	{
 		Result = true;
@@ -703,17 +714,6 @@ GetIntrPerpAxisInfo(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 		Result.E[PerpAxisIndex] =
 			IsRotateToolPerpAxisIntreract(Tool->P, Tool->Radius, Ray, Axis.Row[PerpAxisIndex]);
 	}
-
-	return Result;
-}
-
-inline ui_interaction
-SetToolAxisIntr(tool_type Tool, ui_interaction_type Type, tools_axis_id Axis)
-{
-	ui_interaction Result;
-	Result.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, Type);
-	Result.ID.ID[0] = Tool;
-	Result.ID.ID[1] = Axis;
 
 	return Result;
 }
@@ -748,6 +748,54 @@ SetDefaultDisplayParams(scl_tool_display_params *DispParams, scl_tool_default_pa
 			DispParams->Axis[Index] = DefParams.Axis;
 		}
 	}
+}
+
+internal inline v3i
+GetIntrOnSphereAxisInfo(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
+{
+	v3i Result = {};
+
+	v3 PointOnSphere;
+	if (RaySphereIntersect(Ray, Tool->P, Tool->Radius, &PointOnSphere))
+	{
+		v3 DirFromCenter = Normalize(PointOnSphere - Tool->P);
+		f32 XDotP = Abs(Dot(Axis.X, DirFromCenter));
+		f32 YDotP = Abs(Dot(Axis.Y, DirFromCenter));
+		f32 ZDotP = Abs(Dot(Axis.Z, DirFromCenter));
+
+		Result.z = (ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD);
+		Result.y = (YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD);
+		Result.x = (XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD);
+	}
+
+	return Result;
+}
+
+internal inline tools_axis_id
+SetRotIntrAxisInfo(rotate_tools *Tool, m3x3 Axis, v3i IntrOnSphereAxisBool, v3i IntrPerpAxisBool)
+{
+	tools_axis_id Result = ToolsAxisID_None;
+
+	if (IntrOnSphereAxisBool.z || IntrPerpAxisBool.z)
+	{
+		Result = ToolsAxisID_Z;
+		Tool->AxisMask.z = 1.0f;
+		Tool->InteractPlane.N = Axis.Z;
+	}
+	else if (IntrOnSphereAxisBool.y || IntrPerpAxisBool.y)
+	{
+		Result = ToolsAxisID_Y;
+		Tool->AxisMask.y = 1.0f;
+		Tool->InteractPlane.N = Axis.Y;
+	}
+	else if (IntrOnSphereAxisBool.x || IntrPerpAxisBool.x)
+	{
+		Result = ToolsAxisID_X;
+		Tool->AxisMask.x = 1.0f;
+		Tool->InteractPlane.N = Axis.X;
+	}
+
+	return Result;
 }
 
 internal inline scl_tool_default_params
@@ -1001,53 +1049,21 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
 			{
-				// TODO: Move this code to separate function?
 				RotateTool->AxisMask = {};
 				v3i IntrPerpAxisBool = GetIntrPerpAxisInfo(RotateTool, Ray, Axis);
+				v3i IntrOnSphereAxisBool = GetIntrOnSphereAxisInfo(RotateTool, Ray, Axis);
 
-				// TODO: Make posible interaction with perp axis beyond sphere radius?
-				// (set IsHavePerpIntr and IsHaveSphereIntr?)
-				v3 PointOnSphere;
-				if (RaySphereIntersect(Ray, RotateTool->P, RotateTool->Radius, &PointOnSphere))
+				tools_axis_id InteractAxis = SetRotIntrAxisInfo(RotateTool, Axis, IntrOnSphereAxisBool, IntrPerpAxisBool);
+
+				Interaction = SetToolAxisIntr(ToolType_Rotate, UI_InteractionType_Select, InteractAxis);
+				if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 				{
-					// TODO: Move this code to separate function?
+					RotateTool->InteractAxis = InteractAxis;
+					RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->P);
+					RotateTool->AxisMask.w = 1.0f;
 
-					v3 DirFromCenter = Normalize(PointOnSphere - RotateTool->P);
-					f32 XDotP = Abs(Dot(Axis.X, DirFromCenter));
-					f32 YDotP = Abs(Dot(Axis.Y, DirFromCenter));
-					f32 ZDotP = Abs(Dot(Axis.Z, DirFromCenter));
-					
-					tools_axis_id InteractAxis = ToolsAxisID_None;
-					if ((ZDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || IntrPerpAxisBool.z)
-					{
-						InteractAxis = ToolsAxisID_Z;
-						RotateTool->AxisMask.z = 1.0f;
-						RotateTool->InteractPlane.N = Axis.Z;
-					}
-					else if ((YDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || IntrPerpAxisBool.y)
-					{
-						InteractAxis = ToolsAxisID_Y;
-						RotateTool->AxisMask.y = 1.0f;
-						RotateTool->InteractPlane.N = Axis.Y;
-					}
-					else if ((XDotP <= RTOOLS_AXIS_INTERACT_THRESHOLD) || IntrPerpAxisBool.x)
-					{
-						InteractAxis = ToolsAxisID_X;
-						RotateTool->AxisMask.x = 1.0f;
-						RotateTool->InteractPlane.N = Axis.X;
-					}
-
-					Interaction = SetToolAxisIntr(ToolType_Rotate, UI_InteractionType_Select, InteractAxis);
-
-					if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
-					{
-						RotateTool->InteractAxis = InteractAxis;
-						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->P);
-						RotateTool->AxisMask.w = 1.0f;
-
-						Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
-						WorldUI->Interaction = Interaction;
-					}
+					Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
+					WorldUI->Interaction = Interaction;
 				}
 			}
 			else
