@@ -997,6 +997,24 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 	Tools->IsInit = true;
 }
 
+struct ray_tool_pos_params
+{
+	v3 ToolToRayV;
+	f32 LenV;
+	f32 ScaleFactor;
+};
+
+internal inline ray_tool_pos_params
+GetRayToolPosRelParam(v3 RayP, v3 ToolP, f32 AdjustScaleDist)
+{
+	ray_tool_pos_params Result;
+	Result.ToolToRayV = RayP - ToolP;
+	Result.LenV = Length(Result.ToolToRayV);
+	Result.ScaleFactor = Result.LenV / AdjustScaleDist;
+
+	return Result;
+}
+
 // TODO: Add interact quad for interact with 2 axis at the same time
 // for translate (and scale?)
 internal void inline
@@ -1020,13 +1038,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
+			ray_tool_pos_params PosRelParams =
+				GetRayToolPosRelParam(Ray.P, RotateTool->P, Tools->AdjustScaleDist);
 
-			v3 RayPCenterP = Ray.P - RotateTool->P;
-			f32 LengthRayPCenterP = Length(RayPCenterP);
-			f32 Scale = LengthRayPCenterP / Tools->AdjustScaleDist;
-
-			RotateTool->Radius = RotateTool->InitRadius * Scale;
-			RotateTool->FromPosToRayP = Normalize(RayPCenterP, LengthRayPCenterP);
+			RotateTool->Radius = RotateTool->InitRadius * PosRelParams.ScaleFactor;
+			RotateTool->FromPosToRayP = Normalize(PosRelParams.ToolToRayV, PosRelParams.LenV);
 
 			m3x3 Axis;
 			if (IsDown(Input->Ctrl))
@@ -1105,7 +1121,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 
 			PushRotateTool(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->P,
-				Scale, Axis, RotateTool->AxisMask, RotateTool->PerpInfo.V,
+				PosRelParams.ScaleFactor, Axis, RotateTool->AxisMask, RotateTool->PerpInfo.V,
 				RotateTool->FromPosToRayP);
 		} break;
 
@@ -1113,12 +1129,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		{
 			scale_tools *ScaleTool = &Tools->Scale;
 
-			v3 RayPCenterP = Ray.P - ScaleTool->P;
-			f32 LengthRayPCenterP = Length(RayPCenterP);
-			f32 Scale = LengthRayPCenterP / Tools->AdjustScaleDist;
+			ray_tool_pos_params PosRelParams =
+				GetRayToolPosRelParam(Ray.P, ScaleTool->P, Tools->AdjustScaleDist);
 			
 			scl_tool_default_params ScaleAxisParams =
-				ModScaleToolDefauldParams(ScaleTool->InitAxisParams, Scale);
+				ModScaleToolDefauldParams(ScaleTool->InitAxisParams, PosRelParams.ScaleFactor);
 			
 			m3x3 Axis;
 			if (ScaleTool->InteractAxis == ToolsAxisID_None)
@@ -1135,20 +1150,16 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					Axis = SetAxisForTool(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 				}
 
-
 				f32 ZSignMod = 1.0f; //Sign(Dot(Axis.Z, RayPCenterP));
 				//Axis.Z *= ZSignMod;
 
-				tools_axis_id InteractAxis =
-					RayScaleToolAxisTest(Ray, ScaleAxisParams, Axis, ScaleTool->P, ZSignMod);
-
+				tools_axis_id InteractAxis = RayScaleToolAxisTest(Ray, ScaleAxisParams, Axis, ScaleTool->P, ZSignMod);
 				if (InteractAxis)
 				{
 					ScaleTool->AxisMask.E[(u32)InteractAxis - 1] = 1.0f;
 				}
 
 				Interaction = SetToolAxisIntr(ToolType_Scale, UI_InteractionType_Select, InteractAxis);
-
 				if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 				{
 					ScaleTool->Axis = Axis;
