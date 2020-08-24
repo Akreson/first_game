@@ -879,7 +879,7 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 			Tool->EnterActiveState = true;
 		}
 
-		scl_tool_axis_params *ActiveAxis = Tool->DisplayState.Axis + IntrAxisID;
+		tools_axis_params *ActiveAxis = Tool->DisplayState.Axis + IntrAxisID;
 		ActiveAxis->Len = CurrentP;
 		ActiveAxis->EdgeCenter = CurrentP * 0.5f;
 		ActiveAxis->EdgeLenHalfSize = ActiveAxis->EdgeCenter;
@@ -894,6 +894,61 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 			Result = true;
 		}
 	}
+
+	return Result;
+}
+
+internal inline trans_tool_axis_params
+ModTransToolDefauldParams(trans_tool_axis_params Params, f32 Scale)
+{
+	trans_tool_axis_params Result;
+
+	Result.Axis.Len = Params.Axis.Len * Scale;
+	Result.Axis.EdgeCenter = Params.Axis.EdgeCenter * Scale;
+	Result.Axis.EdgeLenHalfSize = Params.Axis.EdgeLenHalfSize * Scale;
+	Result.EdgeXYHalfSize = Params.EdgeXYHalfSize * Scale;
+	Result.ArrowRadius = Params.ArrowRadius * Scale;
+
+	return Result;
+}
+
+internal inline tools_axis_id
+RayTranslateToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
+	m3x3 Axis, v3 AxisOffset, f32 ZSignMod)
+{
+	tools_axis_id Result = ToolsAxisID_None;
+
+	m4x4 InvAxis = Transpose(ToM4x4(Axis));
+	v3 InvPos = -(AxisOffset * InvAxis);
+	SetTranslation(&InvAxis, InvPos);
+
+	v4 InvRayD = V4(Ray.Dir, 0) * InvAxis;
+	v4 InvRayP = V4(Ray.P, 1.0f) * InvAxis;
+	ray_params InvRay = CreateRay(InvRayP.xyz, InvRayD.xyz);
+
+	m3x3 DefaultAxis = Identity3x3();
+	DefaultAxis.Z *= ZSignMod;
+
+	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize);
+	v3 YEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, AxisParams.EdgeXYHalfSize);
+	v3 ZEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
+	
+	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
+	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
+	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
+
+	b32 IsHitXEdge = RayAABBIntersect(InvRay, XEdgeAABB);
+	b32 IsHitXArrow = RaySphereIntersect(Ray, DefaultAxis.X*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+
+	b32 IsHitYEdge = RayAABBIntersect(InvRay, YEdgeAABB);
+	b32 IsHitYArrow = RaySphereIntersect(Ray, DefaultAxis.Y*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+
+	b32 IsHitZEdge = RayAABBIntersect(InvRay, ZEdgeAABB);
+	b32 IsHitZArrow = RaySphereIntersect(Ray, DefaultAxis.Z*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+
+	if (IsHitXArrow || IsHitXEdge) Result = ToolsAxisID_X;
+	if (IsHitYArrow || IsHitYEdge) Result = ToolsAxisID_Y;
+	if (IsHitZArrow || IsHitZEdge) Result = ToolsAxisID_Z;
 
 	return Result;
 }
@@ -965,7 +1020,31 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 	tool_type ToolType = (tool_type)Tools->Type;
 	switch (ToolType)
 	{
+		case ToolType_Rotate:
+		{
+			rotate_tools *Rotate = &Tools->Rotate;
+			*Rotate = {};
+
+			Rotate->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
+			Rotate->InitRadius = ROTATE_TOOL_DIAMETER * 0.5f;
+			Rotate->PerpThreshold = 0.95f;
+		} break;
+
 		case ToolType_Translate:
+		{
+			translate_tools *Trans = &Tools->Translate;
+			*Trans = {};
+
+			Trans->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
+			
+			trans_tool_axis_params *InitAxisParams = &Trans->InitAxisParams;
+			InitAxisParams->Axis.Len = TRANSLATE_TOOL_SIZE;
+			InitAxisParams->Axis.EdgeLenHalfSize = (TRANSLATE_TOOL_SIZE * 0.85f) * 0.5f;
+			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
+			InitAxisParams->EdgeXYHalfSize = 0.004f;
+			InitAxisParams->ArrowRadius = TRANSLATE_TOOL_ARROW_R;
+		} break;
+
 		case ToolType_Scale:
 		{
 			scale_tools *Scale = &Tools->Scale;
@@ -978,31 +1057,15 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 			InitAxisParams->Axis.EdgeLenHalfSize = (SCALE_TOOL_SIZE * 0.85f) * 0.5f;
 			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
 			InitAxisParams->EdgeXYHalfSize = 0.004f;
-			InitAxisParams->ArrowHalfSize = SCALE_TOOL_SIZE * 0.04f;
+			InitAxisParams->ArrowHalfSize = SCALE_TOOL_SIZE * 0.045f;
 		} break;
 
-		case ToolType_Rotate:
-		{
-			rotate_tools *Rotate = &Tools->Rotate;
-			*Rotate = {};
-
-			Rotate->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-			Rotate->InitRadius = ROTATE_TOOL_DIAMETER * 0.5f;
-			Rotate->PerpThreshold = 0.95f;
-		} break;
 
 		InvalidDefaultCase;
 	}
 
 	Tools->IsInit = true;
 }
-
-struct ray_tool_pos_params
-{
-	v3 ToolToRayV;
-	f32 LenV;
-	f32 ScaleFactor;
-};
 
 internal inline ray_tool_pos_params
 GetRayToolPosRelParam(v3 RayP, v3 ToolP, f32 AdjustScaleDist)
@@ -1120,7 +1183,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				}
 			}
 
-			PushRotateTool(RenderGroup, Editor->StaticMesh[0].Mesh, RotateTool->P,
+			PushRotateTool(RenderGroup, Editor->StaticMesh[BuiltInMesh_RotateToolSphere].Mesh, RotateTool->P,
 				PosRelParams.ScaleFactor, Axis, RotateTool->AxisMask, RotateTool->PerpInfo.V,
 				RotateTool->FromPosToRayP);
 		} break;
@@ -1143,7 +1206,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				if (IsDown(Input->Ctrl))
 				{
 					Axis = Identity3x3();
-					ScaleTool->DefaultAxisSet = true;
 				}
 				else
 				{
@@ -1202,7 +1264,62 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		} break;
 		case ToolType_Translate:
 		{
-			PushSphere(RenderGroup, Editor->StaticMesh[0].Mesh, V3(0, 0, 1));
+			translate_tools *TransTool = &Tools->Translate;
+
+			ray_tool_pos_params PosRelParams =
+				GetRayToolPosRelParam(Ray.P, TransTool->P, Tools->AdjustScaleDist);
+
+			trans_tool_axis_params ScaleAxisParams =
+				ModTransToolDefauldParams(TransTool->InitAxisParams, PosRelParams.ScaleFactor);
+
+			m3x3 Axis;
+			if (TransTool->InteractAxis == ToolsAxisID_None)
+			{
+				TransTool->AxisMask = {};
+
+				if (IsDown(Input->Ctrl))
+				{
+					Axis = Identity3x3();
+				}
+				else
+				{
+					Axis = SetAxisForTool(Model, &WorldUI->Selected, WorldUI->IModel.Target);
+				}
+
+				f32 ZSignMod = 1.0f; //Sign(Dot(Axis.Z, RayPCenterP));
+				//Axis.Z *= ZSignMod;
+
+				tools_axis_id InteractAxis = RayTranslateToolAxisTest(Ray, ScaleAxisParams, Axis, TransTool->P, ZSignMod);
+				if (InteractAxis)
+				{
+					TransTool->AxisMask.E[(u32)InteractAxis - 1] = 1.0f;
+				}
+
+				Interaction = SetToolAxisIntr(ToolType_Translate, UI_InteractionType_Select, InteractAxis);
+				if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
+				{
+
+					Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
+					WorldUI->Interaction = Interaction;
+				}
+			}
+			else
+			{
+				Axis = TransTool->Axis;
+				Interaction = SetToolAxisIntr(ToolType_Translate, UI_InteractionType_Move, TransTool->InteractAxis);
+
+				if (AreEqual(WorldUI->Interaction, Interaction))
+				{
+					
+				}
+				else
+				{
+					
+				}
+			}
+
+			PushTranslateTool(RenderGroup, ScaleAxisParams, Axis, TransTool->AxisMask,
+				TransTool->P, PosRelParams.ScaleFactor, Editor->StaticMesh[BuiltInMesh_TranslateArrow].Mesh);
 		} break;
 	}
 

@@ -109,6 +109,8 @@ struct render_entry_header
 struct render_entry_static_mesh
 {
 	renderer_mesh Mesh;
+	v3 Pos;
+	f32 Scale;
 	v3 Color;
 };
 

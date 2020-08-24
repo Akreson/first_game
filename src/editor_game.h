@@ -3,13 +3,21 @@
 #define MIN(A, B) (((A) < (B)) ? (A) : (B))
 #define MAX(A, B) (((A) > (B)) ? (A) : (B))
 
+enum builtin_static_mesh
+{
+	BuiltInMesh_RotateToolSphere,
+	BuiltInMesh_TranslateArrow,
+	BuiltInMesh_Cube,
+	BuiltInMesh_Low,
+};
+
 #include "intrinsics.cpp"
 #include "math.cpp"
 #include "string.h"
 #include "memory_arena.h"
 #include "render_group.h"
-#include "model.h"
 #include "asset.h"
+#include "model.h"
 #include "ui.h"
 
 enum game_mode
@@ -37,7 +45,8 @@ struct game_world_state
 #define _EDITOR_TOOLS_SIZE 1.5f
 #define ROTATE_TOOL_DIAMETER _EDITOR_TOOLS_SIZE
 #define SCALE_TOOL_SIZE (_EDITOR_TOOLS_SIZE * 0.5f)
-#define TRANSLATE_TOOL_SIZE _EDITOR_TOOLS_SIZE
+#define TRANSLATE_TOOL_SIZE (_EDITOR_TOOLS_SIZE * 0.5f)
+#define TRANSLATE_TOOL_ARROW_R (_EDITOR_TOOLS_SIZE * 0.04)
 
 struct model_highlight_params
 {

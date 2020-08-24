@@ -290,13 +290,15 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
 }
 
 void
-PushSphere(render_group *Group, renderer_mesh Mesh, v3 Color = V3(1))
+PushStaticMesh(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale, v3 Color = V3(1))
 {
 	game_render_commands *Commands = Group->Commands;
-	render_entry_static_mesh *SphereEntry = (render_entry_static_mesh *)PushRenderElement(Group, render_entry_static_mesh);
+	render_entry_static_mesh *MeshEntry = (render_entry_static_mesh *)PushRenderElement(Group, render_entry_static_mesh);
 
-	SphereEntry->Mesh = Mesh;
-	SphereEntry->Color = Color;
+	MeshEntry->Mesh = Mesh;
+	MeshEntry->Color = Color;
+	MeshEntry->Pos = Pos;
+	MeshEntry->Scale = Scale;
 }
 
 internal inline void
@@ -345,54 +347,121 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 	Commands->TriangleBufferSize += sizeof(render_triangle_vertex) * 36;
 }
 
+struct render_tool_axis_color
+{
+	v3 X, Y, Z;
+};
+
+
+internal inline render_tool_axis_color
+GetRenderAxisColor(v4 AxisMask)
+{
+	render_tool_axis_color Result;
+	v3 ActiveColor = V3(0.86f, 0.65f, 0.2f);
+
+	Result.X = Lerp(V3(0, 0.6f, 0), AxisMask.x, V3(0, 1, 0));
+	Result.X = Lerp(Result.X, AxisMask.x * AxisMask.w, ActiveColor);
+
+	Result.Y = Lerp(V3(0.6f, 0, 0), AxisMask.y, V3(1, 0, 0));
+	Result.Y = Lerp(Result.Y, AxisMask.y * AxisMask.w, ActiveColor);
+
+	Result.Z = Lerp(V3(0, 0, 0.6f), AxisMask.z, V3(0, 0, 1));
+	Result.Z = Lerp(Result.Z, AxisMask.z * AxisMask.w, ActiveColor);
+
+	return Result;
+}
+
+struct render_tool_axis_edge_dim
+{
+	v3 X, Y, Z;
+};
+
+internal inline render_tool_axis_edge_dim
+SetRenderAxisEdgeHalfDimSize(f32 XYHalfSize, v3 ZHalfSize)
+{
+	render_tool_axis_edge_dim Result;
+	Result.X = V3(XYHalfSize, XYHalfSize, ZHalfSize.x);
+	Result.Y = V3(XYHalfSize, XYHalfSize, ZHalfSize.y);
+	Result.Z = V3(XYHalfSize, XYHalfSize, ZHalfSize.z);
+
+	return Result;
+}
+
 void
 PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	scl_tool_display_params AxisParams, v4 AxisMask)
 {
 	game_render_commands *Commands = Group->Commands;
-	v3 ActiveColor = V3(0.86f, 0.65f, 0.2f);
 
-	v3 XMaxStartP = Axis.X * AxisParams.X.Len;
-	v3 YMaxStartP = Axis.Y * AxisParams.Y.Len;
-	v3 ZMaxStartP = Axis.Z * AxisParams.Z.Len;
+	v3 ZDimHalfSize = V3(AxisParams.X.EdgeLenHalfSize, AxisParams.Y.EdgeLenHalfSize, AxisParams.Z.EdgeLenHalfSize);
+	render_tool_axis_edge_dim EdgeHalfDim =	SetRenderAxisEdgeHalfDimSize(AxisParams.EdgeXYHalfSize, ZDimHalfSize);
+	render_tool_axis_color AxisColor = GetRenderAxisColor(AxisMask);
 	
 	f32 ArrowZLen = AxisParams.ArrowHalfSize * 2.0f;
 	v3 ArrowHalfDim = V3(AxisParams.ArrowHalfSize);
+	
+	v3 XArrowCenter = Axis.X * AxisParams.X.Len;
+	v3 YArrowCenter = Axis.Y * AxisParams.Y.Len;
+	v3 ZArrowCenter = Axis.Z * AxisParams.Z.Len;
 
-	v3 XEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.X.EdgeLenHalfSize);
-	v3 YEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Y.EdgeLenHalfSize);
-	v3 ZEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Z.EdgeLenHalfSize);
+	v3 XEdgeCenter = Axis.X * AxisParams.X.EdgeCenter;
+	v3 YEdgeCenter = Axis.Y * AxisParams.Y.EdgeCenter;
+	v3 ZEdgeCenter = Axis.Z * AxisParams.Z.EdgeCenter;
+	
+	unalign_rect3 XArrow = CreateRect(XArrowCenter, -Axis.Z, Axis.Y, Axis.X, ArrowHalfDim);
+	unalign_rect3 XEdge = CreateRect(XEdgeCenter, -Axis.Z, Axis.Y, Axis.X, EdgeHalfDim.X);
 
-	v3 XColor = Lerp(V3(0, 0.6f, 0), AxisMask.x, V3(0, 1, 0));
-	XColor = Lerp(XColor, AxisMask.x * AxisMask.w, ActiveColor);
+	unalign_rect3 YArrow = CreateRect(YArrowCenter, Axis.Z, Axis.X, Axis.Y, ArrowHalfDim);
+	unalign_rect3 YEdge = CreateRect(YEdgeCenter, Axis.Z, Axis.X, Axis.Y, EdgeHalfDim.Y);
 
-	unalign_rect3 XArrow = CreateRect(XMaxStartP, -Axis.Z, Axis.Y, Axis.X, ArrowHalfDim);
-	unalign_rect3 XEdge = CreateRect(Axis.X * AxisParams.X.EdgeCenter, -Axis.Z, Axis.Y, Axis.X, XEdgeHalfDim);
-
-	v3 YColor = Lerp(V3(0.6f, 0, 0), AxisMask.y, V3(1, 0, 0));
-	YColor = Lerp(YColor, AxisMask.y * AxisMask.w, ActiveColor);
-
-	unalign_rect3 YArrow = CreateRect(YMaxStartP, Axis.Z, Axis.X, Axis.Y, ArrowHalfDim);
-	unalign_rect3 YEdge = CreateRect(Axis.Y * AxisParams.Y.EdgeCenter, Axis.Z, Axis.X, Axis.Y, YEdgeHalfDim);
-
-	v3 ZColor = Lerp(V3(0, 0, 0.6f), AxisMask.z, V3(0, 0, 1));
-	ZColor = Lerp(ZColor, AxisMask.z * AxisMask.w, ActiveColor);
-
-	unalign_rect3 ZArrow = CreateRect(ZMaxStartP, Axis.X, Axis.Y, Axis.Z, ArrowHalfDim);
-	unalign_rect3 ZEdge = CreateRect(Axis.Z * AxisParams.Z.EdgeCenter, Axis.X, Axis.Y, Axis.Z, ZEdgeHalfDim);
+	unalign_rect3 ZArrow = CreateRect(ZArrowCenter, Axis.X, Axis.Y, Axis.Z, ArrowHalfDim);
+	unalign_rect3 ZEdge = CreateRect(ZEdgeCenter, Axis.X, Axis.Y, Axis.Z, EdgeHalfDim.Z);
 
 	BeginPushTrinModel(Group, Pos);
 
-	PushUnalignRectAsTrin(Commands, XEdge, XColor);
-	PushUnalignRectAsTrin(Commands, XArrow, XColor);
+	PushUnalignRectAsTrin(Commands, XEdge, AxisColor.X);
+	PushUnalignRectAsTrin(Commands, XArrow, AxisColor.X);
 
-	PushUnalignRectAsTrin(Commands, YEdge, YColor);
-	PushUnalignRectAsTrin(Commands, YArrow, YColor);
+	PushUnalignRectAsTrin(Commands, YEdge, AxisColor.Y);
+	PushUnalignRectAsTrin(Commands, YArrow, AxisColor.Y);
 
-	PushUnalignRectAsTrin(Commands, ZEdge, ZColor);
-	PushUnalignRectAsTrin(Commands, ZArrow, ZColor);
+	PushUnalignRectAsTrin(Commands, ZEdge, AxisColor.Z);
+	PushUnalignRectAsTrin(Commands, ZArrow, AxisColor.Z);
 	
 	EndPushTrinModel(Group);
+}
+
+void
+PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 Axis, v4 AxisMask,
+	v3 Pos, f32 Scale, renderer_mesh ArrowMesh)
+{
+	game_render_commands *Commands = Group->Commands;
+	render_tool_axis_color AxisColor = GetRenderAxisColor(AxisMask);
+
+	v3 XEdgeCenter = Axis.X * AxisParams.Axis.EdgeCenter;
+	v3 YEdgeCenter = Axis.Y * AxisParams.Axis.EdgeCenter;
+	v3 ZEdgeCenter = Axis.Z * AxisParams.Axis.EdgeCenter;
+
+	v3 EdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
+	unalign_rect3 XEdge = CreateRect(Axis.X * AxisParams.Axis.EdgeCenter, -Axis.Z, Axis.Y, Axis.X, EdgeHalfDim);
+	unalign_rect3 YEdge = CreateRect(Axis.Y * AxisParams.Axis.EdgeCenter, Axis.Z, Axis.X, Axis.Y, EdgeHalfDim);
+	unalign_rect3 ZEdge = CreateRect(Axis.Z * AxisParams.Axis.EdgeCenter, Axis.X, Axis.Y, Axis.Z, EdgeHalfDim);
+
+	BeginPushTrinModel(Group, Pos);
+
+	PushUnalignRectAsTrin(Commands, XEdge, AxisColor.X);
+	PushUnalignRectAsTrin(Commands, YEdge, AxisColor.Y);
+	PushUnalignRectAsTrin(Commands, ZEdge, AxisColor.Z);
+
+	EndPushTrinModel(Group);
+
+	v3 XArrowCenter = Pos + (Axis.X * AxisParams.Axis.Len);
+	v3 YArrowCenter = Pos + (Axis.Y * AxisParams.Axis.Len);
+	v3 ZArrowCenter = Pos + (Axis.Z * AxisParams.Axis.Len);
+	
+	PushStaticMesh(Group, ArrowMesh, XArrowCenter, Scale, AxisColor.X);
+	PushStaticMesh(Group, ArrowMesh, YArrowCenter, Scale, AxisColor.Y);
+	PushStaticMesh(Group, ArrowMesh, ZArrowCenter, Scale, AxisColor.Z);
 }
 
 void

@@ -7,14 +7,6 @@
 // TODO: Delete
 #include <cstdio>
 
-enum builtin_static_mesh
-{
-	BuiltInMesh_Sphere_High,
-	BuiltInMesh_Sphere_Low,
-	BuiltInMesh_Cube,
-	BuiltInMesh_Low,
-};
-
 static inline void
 InitHighPolySphere()
 {
@@ -252,6 +244,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		Editor->WorldUI.UpdateModelInteraction = true;
 
 		CreateStaticSphere(Editor, ROTATE_TOOL_DIAMETER, 35, 35);
+		CreateStaticSphere(Editor, TRANSLATE_TOOL_ARROW_R*2.0f, 10, 10);
 
 		GameState->IsInit = true;
 	}

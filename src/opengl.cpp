@@ -512,10 +512,13 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_static_mesh *MeshEntry = (render_entry_static_mesh *)Data;
 				BufferOffset += sizeof(render_entry_static_mesh);
 
-				m4x4 I = Identity();
+				m4x4 Scale = ScaleMat(MeshEntry->Scale);
+				m4x4 Traslate = Identity();
+				SetTranslation(&Traslate, MeshEntry->Pos);
 
+				m4x4 Transform = Scale * Traslate;
 				UseProgramBegin(&OpenGL.StaticMeshProg,
-					&Commands->ForwardPersCamera, &I, MeshEntry->Color);
+					&Commands->ForwardPersCamera, &Transform, MeshEntry->Color);
 
 				glBindVertexArray((GLuint)MeshEntry->Mesh.Handle);
 				glDrawElements(GL_TRIANGLES, MeshEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);

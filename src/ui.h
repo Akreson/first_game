@@ -101,6 +101,20 @@ enum tools_axis_id
 	ToolsAxisID_Count,
 };
 
+struct tools_axis_params
+{
+	f32 Len;
+	f32 EdgeCenter;
+	f32 EdgeLenHalfSize;
+};
+
+struct ray_tool_pos_params
+{
+	v3 ToolToRayV;
+	f32 LenV;
+	f32 ScaleFactor;
+};
+
 struct rot_tool_perp_axis
 {
 	union
@@ -142,16 +156,9 @@ struct rotate_tools
 	b8 EnterActiveState;
 };
 
-struct scl_tool_axis_params
-{
-	f32 Len;
-	f32 EdgeCenter;
-	f32 EdgeLenHalfSize;
-};
-
 struct scl_tool_default_params
 {
-	scl_tool_axis_params Axis;
+	tools_axis_params Axis;
 	
 	f32 EdgeXYHalfSize;
 	f32 ArrowHalfSize;
@@ -164,13 +171,13 @@ struct scl_tool_display_params
 
 	union
 	{
-		scl_tool_axis_params Axis[3];
+		tools_axis_params Axis[3];
 
 		struct
 		{
-			scl_tool_axis_params X;
-			scl_tool_axis_params Y;
-			scl_tool_axis_params Z;
+			tools_axis_params X;
+			tools_axis_params Y;
+			tools_axis_params Z;
 		};
 	};
 };
@@ -191,7 +198,26 @@ struct scale_tools
 
 	b32 EnterActiveState;
 	tools_axis_id InteractAxis;
-	b32 DefaultAxisSet;
+};
+
+struct trans_tool_axis_params
+{
+	tools_axis_params Axis;
+
+	f32 EdgeXYHalfSize;
+	f32 ArrowRadius;
+};
+
+struct translate_tools
+{
+	m3x3 Axis;
+	v3 P;
+	v4 AxisMask;
+
+	trans_tool_axis_params InitAxisParams;
+
+	tools_axis_id InteractAxis;
+	b32 EnterActiveState;
 };
 
 struct tools
@@ -211,6 +237,7 @@ struct tools
 			{
 				rotate_tools Rotate;
 				scale_tools Scale;
+				translate_tools Translate;
 			};
 		};
 	};
