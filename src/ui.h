@@ -87,9 +87,9 @@ struct interact_model
 	element_ray_result Edge;
 };
 
-#define RTOOLS_AXIS_INTERACT_THRESHOLD 0.03f
-#define RTOOLS_PERP_AXIS_INTERACT_MAX_THRESHOLD 1.08f
-#define RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD 0.94f
+#define TOOL_ARROW_INTR_SCALE_FALCTOR 0.02f
+#define TOOL_EDGE_INTR_SCALE_FALCTOR 0.02f
+
 enum tools_axis_id
 {
 	ToolsAxisID_None,
@@ -108,7 +108,11 @@ struct tools_axis_params
 	f32 EdgeLenHalfSize;
 };
 
-struct ray_tool_pos_params
+#define RTOOLS_AXIS_INTERACT_THRESHOLD 0.03f
+#define RTOOLS_PERP_AXIS_INTERACT_MAX_THRESHOLD 1.08f
+#define RTOOLS_PERP_AXIS_INTERACT_MIN_THRESHOLD 0.94f
+
+struct ray_to_point_params
 {
 	v3 ToolToRayV;
 	f32 LenV;

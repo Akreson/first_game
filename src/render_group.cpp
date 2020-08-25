@@ -370,32 +370,13 @@ GetRenderAxisColor(v4 AxisMask)
 	return Result;
 }
 
-struct render_tool_axis_edge_dim
-{
-	v3 X, Y, Z;
-};
-
-internal inline render_tool_axis_edge_dim
-SetRenderAxisEdgeHalfDimSize(f32 XYHalfSize, v3 ZHalfSize)
-{
-	render_tool_axis_edge_dim Result;
-	Result.X = V3(XYHalfSize, XYHalfSize, ZHalfSize.x);
-	Result.Y = V3(XYHalfSize, XYHalfSize, ZHalfSize.y);
-	Result.Z = V3(XYHalfSize, XYHalfSize, ZHalfSize.z);
-
-	return Result;
-}
-
 void
 PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	scl_tool_display_params AxisParams, v4 AxisMask)
 {
 	game_render_commands *Commands = Group->Commands;
-
-	v3 ZDimHalfSize = V3(AxisParams.X.EdgeLenHalfSize, AxisParams.Y.EdgeLenHalfSize, AxisParams.Z.EdgeLenHalfSize);
-	render_tool_axis_edge_dim EdgeHalfDim =	SetRenderAxisEdgeHalfDimSize(AxisParams.EdgeXYHalfSize, ZDimHalfSize);
 	render_tool_axis_color AxisColor = GetRenderAxisColor(AxisMask);
-	
+
 	f32 ArrowZLen = AxisParams.ArrowHalfSize * 2.0f;
 	v3 ArrowHalfDim = V3(AxisParams.ArrowHalfSize);
 	
@@ -407,14 +388,18 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	v3 YEdgeCenter = Axis.Y * AxisParams.Y.EdgeCenter;
 	v3 ZEdgeCenter = Axis.Z * AxisParams.Z.EdgeCenter;
 	
+	v3 XEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.X.EdgeLenHalfSize);
+	v3 YEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Y.EdgeLenHalfSize);
+	v3 ZEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Z.EdgeLenHalfSize);
+	
 	unalign_rect3 XArrow = CreateRect(XArrowCenter, -Axis.Z, Axis.Y, Axis.X, ArrowHalfDim);
-	unalign_rect3 XEdge = CreateRect(XEdgeCenter, -Axis.Z, Axis.Y, Axis.X, EdgeHalfDim.X);
+	unalign_rect3 XEdge = CreateRect(XEdgeCenter, -Axis.Z, Axis.Y, Axis.X, XEdgeHalfDim);
 
 	unalign_rect3 YArrow = CreateRect(YArrowCenter, Axis.Z, Axis.X, Axis.Y, ArrowHalfDim);
-	unalign_rect3 YEdge = CreateRect(YEdgeCenter, Axis.Z, Axis.X, Axis.Y, EdgeHalfDim.Y);
+	unalign_rect3 YEdge = CreateRect(YEdgeCenter, Axis.Z, Axis.X, Axis.Y, YEdgeHalfDim);
 
 	unalign_rect3 ZArrow = CreateRect(ZArrowCenter, Axis.X, Axis.Y, Axis.Z, ArrowHalfDim);
-	unalign_rect3 ZEdge = CreateRect(ZEdgeCenter, Axis.X, Axis.Y, Axis.Z, EdgeHalfDim.Z);
+	unalign_rect3 ZEdge = CreateRect(ZEdgeCenter, Axis.X, Axis.Y, Axis.Z, ZEdgeHalfDim);
 
 	BeginPushTrinModel(Group, Pos);
 

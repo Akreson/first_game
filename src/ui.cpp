@@ -55,7 +55,6 @@ SetModelSelectInteraction(interact_model *IModel, u16 Target)
 	return Result;
 }
 
-// TODO: Make general
 inline ui_interaction
 SetModelSelectInteraction(u32 ModelID, u32 FaceID = 0, u32 EdgeID = 0, u16 Target = 0)
 {
@@ -204,6 +203,17 @@ AddToSelectedBuffer(element_id_buffer *Selected,
 	}
 }
 
+internal inline ray_to_point_params
+GetRayToPointRelParam(v3 RayP, v3 ToolP, f32 AdjustScaleDist)
+{
+	ray_to_point_params Result;
+	Result.ToolToRayV = RayP - ToolP;
+	Result.LenV = Length(Result.ToolToRayV);
+	Result.ScaleFactor = Result.LenV / AdjustScaleDist;
+
+	return Result;
+}
+
 // TODO: Make selection as tool?
 internal void inline
 UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
@@ -269,9 +279,11 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 		{
 			model *Model = Editor->Models + WorldUI->IModel.ID;
 			IModel->Edge = {};
+			
+			ray_to_point_params PosRelParams =
+				GetRayToPointRelParam(WorldUI->MouseRay.P, Model->Offset, WorldUI->Tools.AdjustScaleDist);
 
-			// TODO: Adjust dynamically?
-			f32 EdgeIntersetRadius = 0.015f;
+			f32 EdgeIntersetRadius = 0.017f * PosRelParams.ScaleFactor;
 			if (RayAABBIntersect(WorldUI->MouseRay, AddRadiusTo(Model->AABB, EdgeIntersetRadius), Model->Offset))
 			{
 				if (RayModelEdgesIntersect(Model, WorldUI->MouseRay, &IModel->Edge, EdgeIntersetRadius))
@@ -885,16 +897,20 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	m3x3 DefaultAxis = Identity3x3();
 	DefaultAxis.Z *= ZSignMod;
 
-	v3 ArrowDim = V3(AxisParams.ArrowHalfSize);
-	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize);
+	f32 ArrowIntrScaleFactor = 0.02f;
+	f32 EdgeIntrScaleFactor = 0.02f;
+	f32 ModEdgeXYHalfSize = AxisParams.EdgeXYHalfSize + TOOL_EDGE_INTR_SCALE_FALCTOR;
+
+	v3 ArrowDim = V3(AxisParams.ArrowHalfSize + TOOL_ARROW_INTR_SCALE_FALCTOR);
+	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize, ModEdgeXYHalfSize);
 	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*AxisParams.Axis.Len);
 	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
 
-	v3 YEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, AxisParams.EdgeXYHalfSize);
+	v3 YEdgeHalfDim = V3(ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize);
 	rect3 YArrowAABB = CreateRect(ArrowDim, DefaultAxis.Y*AxisParams.Axis.Len);
 	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
 
-	v3 ZEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
+	v3 ZEdgeHalfDim = V3(ModEdgeXYHalfSize, ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
 	rect3 ZArrowAABB = CreateRect(ArrowDim, DefaultAxis.Z*AxisParams.Axis.Len);
 	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
 
@@ -1020,22 +1036,25 @@ RayTranslateToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 	m3x3 DefaultAxis = Identity3x3();
 	DefaultAxis.Z *= ZSignMod;
 
-	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize);
-	v3 YEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, AxisParams.EdgeXYHalfSize);
-	v3 ZEdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
+	f32 ModArrowRadius = AxisParams.ArrowRadius + TOOL_ARROW_INTR_SCALE_FALCTOR;
+	f32 ModEdgeXYHalfSize = AxisParams.EdgeXYHalfSize + TOOL_EDGE_INTR_SCALE_FALCTOR;
+
+	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize, ModEdgeXYHalfSize);
+	v3 YEdgeHalfDim = V3(ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize);
+	v3 ZEdgeHalfDim = V3(ModEdgeXYHalfSize, ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
 	
 	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
 	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
 	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
 
 	b32 IsHitXEdge = RayAABBIntersect(InvRay, XEdgeAABB);
-	b32 IsHitXArrow = RaySphereIntersect(InvRay, DefaultAxis.X*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+	b32 IsHitXArrow = RaySphereIntersect(InvRay, DefaultAxis.X*AxisParams.Axis.Len, ModArrowRadius);
 
 	b32 IsHitYEdge = RayAABBIntersect(InvRay, YEdgeAABB);
-	b32 IsHitYArrow = RaySphereIntersect(InvRay, DefaultAxis.Y*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+	b32 IsHitYArrow = RaySphereIntersect(InvRay, DefaultAxis.Y*AxisParams.Axis.Len, ModArrowRadius);
 
 	b32 IsHitZEdge = RayAABBIntersect(InvRay, ZEdgeAABB);
-	b32 IsHitZArrow = RaySphereIntersect(InvRay, DefaultAxis.Z*AxisParams.Axis.Len, AxisParams.ArrowRadius);
+	b32 IsHitZArrow = RaySphereIntersect(InvRay, DefaultAxis.Z*AxisParams.Axis.Len, ModArrowRadius);
 
 	if (IsHitXArrow || IsHitXEdge) Result = ToolsAxisID_X;
 	if (IsHitYArrow || IsHitYEdge) Result = ToolsAxisID_Y;
@@ -1158,19 +1177,6 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 	Tools->IsInit = true;
 }
 
-internal inline ray_tool_pos_params
-GetRayToolPosRelParam(v3 RayP, v3 ToolP, f32 AdjustScaleDist)
-{
-	ray_tool_pos_params Result;
-	Result.ToolToRayV = RayP - ToolP;
-	Result.LenV = Length(Result.ToolToRayV);
-	Result.ScaleFactor = Result.LenV / AdjustScaleDist;
-
-	return Result;
-}
-
-// TODO: Debug Transfarom order error
-// TODO: Remove _EnterActiveState_
 // TODO: Apply transform only when exit move interaction
 // for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
@@ -1183,7 +1189,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	tools *Tools = &WorldUI->Tools;
 	model *Model = Editor->Models + WorldUI->IModel.ID;
 
-	// TODO: Extend
 	if (!Tools->IsInit)
 	{
 		InitTools(WorldUI, Tools, Editor->Models, &Editor->TranArena);
@@ -1196,8 +1201,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
-			ray_tool_pos_params PosRelParams =
-				GetRayToolPosRelParam(Ray.P, RotateTool->P, Tools->AdjustScaleDist);
+			ray_to_point_params PosRelParams =
+				GetRayToPointRelParam(Ray.P, RotateTool->P, Tools->AdjustScaleDist);
 
 			RotateTool->Radius = RotateTool->InitRadius * PosRelParams.ScaleFactor;
 			RotateTool->FromPosToRayP = Normalize(PosRelParams.ToolToRayV, PosRelParams.LenV);
@@ -1234,11 +1239,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				{
 					if (InitRotToolProcessing(RotateTool, Ray, InteractAxis))
 					{
-
-						/*RotateTool->InteractAxis = InteractAxis;
-						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->P);
-						RotateTool->AxisMask.w = 1.0f;
-*/
 						Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
 						WorldUI->Interaction = Interaction;
 					}
@@ -1290,8 +1290,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		{
 			scale_tools *ScaleTool = &Tools->Scale;
 
-			ray_tool_pos_params PosRelParams =
-				GetRayToolPosRelParam(Ray.P, ScaleTool->P, Tools->AdjustScaleDist);
+			ray_to_point_params PosRelParams =
+				GetRayToPointRelParam(Ray.P, ScaleTool->P, Tools->AdjustScaleDist);
 			
 			scl_tool_default_params ScaleAxisParams =
 				ModScaleToolDefauldParams(ScaleTool->InitAxisParams, PosRelParams.ScaleFactor);
@@ -1364,8 +1364,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		{
 			translate_tools *TransTool = &Tools->Translate;
 
-			ray_tool_pos_params PosRelParams =
-				GetRayToolPosRelParam(Ray.P, TransTool->P, Tools->AdjustScaleDist);
+			ray_to_point_params PosRelParams =
+				GetRayToPointRelParam(Ray.P, TransTool->P, Tools->AdjustScaleDist);
 
 			trans_tool_axis_params ScaleAxisParams =
 				ModTransToolDefauldParams(TransTool->InitAxisParams, PosRelParams.ScaleFactor);
