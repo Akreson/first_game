@@ -462,9 +462,10 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 // TODO: Optimize!!!
 void
 ApplyScale(model *Model, element_id_buffer *UniqIndeces,
-	model_target_element ElementTarget, v4 ScaleParam)
+	model_target_element ElementTarget, v3 Origin, v4 ScaleParam)
 {
 	v3 ScaleV = ScaleParam.xyz * ScaleParam.w;
+	v3 ScaleOrigin = Origin - Model->Offset;
 
 	switch (ElementTarget)
 	{
@@ -478,6 +479,7 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 
 				v3 NormV = Normalize(V);
 				f32 VDotS = Dot(NormV, ScaleParam.xyz);
+				//VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
 				v3 ScaleFactor = ScaleV * Sign(VDotS);
 
 				V = V + ScaleFactor;
@@ -488,6 +490,7 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 		// NOTE: Must not be used for move plane int Z direction
 		// Or one edge in X direction
 		// TODO: Implement forbidding this behavior?
+		// TODO: Another method of linear scaling?
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
@@ -498,12 +501,15 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 				v3 V = Model->Vertex[VertexIndex];
 
+				V -= ScaleOrigin;
+
 				v3 NormV = Normalize(V);
 				f32 VDotS = Dot(NormV, ScaleParam.xyz);
-				VDotS = VDotS == 0 ? 1.0f : VDotS;
+				VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
 				v3 ScaleFactor = ScaleV * Sign(VDotS);
 
 				V = V + ScaleFactor;
+				V += ScaleOrigin;
 				Model->Vertex[VertexIndex] = V;
 			}
 		} break;
@@ -535,7 +541,7 @@ ApplyTranslate(model *Model, element_id_buffer *UniqIndeces,
 				v3 V = Model->Vertex[VertexIndex];
 
 				V += TransParam;
-				Model->Vertex[Index] = V;
+				Model->Vertex[VertexIndex] = V;
 			}
 
 			Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
@@ -607,6 +613,27 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 	return Result;
 }
 
+internal inline b32
+InitRotToolProcessing(rotate_tools *Tool, ray_params Ray, tools_axis_id InteractAxis)
+{
+	b32 Result = false;
+
+	// NOTE: InteractPlane must be full init before call SetCurrentDirVector
+	Tool->InteractPlane.D = Dot(Tool->InteractPlane.N, Tool->P);
+
+	v3 CurrentVector;
+	if (SetCurrentDirVector(Tool, Ray, &CurrentVector))
+	{
+		Tool->InteractAxis = InteractAxis;
+		Tool->AxisMask.w = 1.0f;
+		Tool->BeginVector = CurrentVector;
+		Tool->PrevVector = CurrentVector;
+		Result = true;
+	}
+
+	return Result;
+}
+
 internal b32
 ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 {
@@ -615,14 +642,6 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 	v3 CurrentVector;
 	if (SetCurrentDirVector(Tool, Ray, &CurrentVector))
 	{
-		// TODO: Move to set _move_ interaction?
-		if (!Tool->EnterActiveState)
-		{
-			Tool->BeginVector = CurrentVector;
-			Tool->PrevVector = CurrentVector;
-			Tool->EnterActiveState = true;
-		}
-
 		if (Tool->PrevVector != CurrentVector)
 		{
 			v3 PerpVector = Cross(Tool->PrevVector, CurrentVector);
@@ -1150,6 +1169,8 @@ GetRayToolPosRelParam(v3 RayP, v3 ToolP, f32 AdjustScaleDist)
 	return Result;
 }
 
+// TODO: Debug Transfarom order error
+// TODO: Remove _EnterActiveState_
 // TODO: Apply transform only when exit move interaction
 // for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
@@ -1211,12 +1232,16 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				Interaction = SetToolAxisIntr(ToolType_Rotate, UI_InteractionType_Select, InteractAxis);
 				if ((InteractAxis != ToolsAxisID_None) && AreEqual(WorldUI->Interaction, Interaction))
 				{
-					RotateTool->InteractAxis = InteractAxis;
-					RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->P);
-					RotateTool->AxisMask.w = 1.0f;
+					if (InitRotToolProcessing(RotateTool, Ray, InteractAxis))
+					{
 
-					Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
-					WorldUI->Interaction = Interaction;
+						/*RotateTool->InteractAxis = InteractAxis;
+						RotateTool->InteractPlane.D = Dot(RotateTool->InteractPlane.N, RotateTool->P);
+						RotateTool->AxisMask.w = 1.0f;
+*/
+						Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
+						WorldUI->Interaction = Interaction;
+					}
 				}
 			}
 			else
@@ -1317,7 +1342,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if (ProcessScaleToolTransform(ScaleTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-						ApplyScale(Model, &Tools->UniqIndeces, TargetElement, ScaleTool->ScaleParam);
+						ApplyScale(Model, &Tools->UniqIndeces, TargetElement, ScaleTool->P,
+							ScaleTool->ScaleParam);
 					}
 				
 					SetDefaultDisplayParams(&ScaleTool->DisplayState, ScaleAxisParams, ScaleTool->InteractAxis);

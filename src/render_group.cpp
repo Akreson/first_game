@@ -352,7 +352,6 @@ struct render_tool_axis_color
 	v3 X, Y, Z;
 };
 
-
 internal inline render_tool_axis_color
 GetRenderAxisColor(v4 AxisMask)
 {
