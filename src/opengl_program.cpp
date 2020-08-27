@@ -62,13 +62,13 @@ CompileTrinModelColorPassProgram(trin_model_color_pass_program *Prog)
 {
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec3 inVertex;
-	layout (location = 1) in vec3 inColor;
+	layout (location = 1) in vec4 inColor;
 	layout (location = 2) in vec2 inTextCoord;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
-	out vec3 Color;
+	out vec4 Color;
 
 	void main()
 	{
@@ -80,11 +80,11 @@ CompileTrinModelColorPassProgram(trin_model_color_pass_program *Prog)
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	in vec3 Color;	
+	in vec4 Color;	
 
 	void main()
 	{
-		FragColor = vec4(Color, 1.0f);
+		FragColor = Color;
 	}
 	)FOO";
 

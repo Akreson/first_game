@@ -88,7 +88,7 @@ PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
 #define PushRenderElement(Group, Type) (Type *)PushRenderElement_(Group, sizeof(Type), RenderEntryType_##Type)
 
 inline render_triangle_vertex
-CreateTrinVertex(v3 V, v2 UV, v3 Color = V3(1.0f))
+CreateTrinVertex(v3 V, v2 UV, v4 Color = V4(1.0f))
 {
 	render_triangle_vertex Result;
 	Result.V = V;
@@ -302,7 +302,23 @@ PushStaticMesh(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale, v3 Co
 }
 
 internal inline void
-PushTrinRect(render_triangle_vertex *Buff, v3 Vec0, v3 Vec1, v3 Vec2, v3 Vec3, v3 Color)
+PushTrinRect(game_render_commands *Commands, plane_rect3 Rect, v4 Color)
+{
+	render_triangle_vertex *Buff =
+		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
+
+	Buff[0] = CreateTrinVertex(Rect.V0, V2(0), Color);
+	Buff[1] = CreateTrinVertex(Rect.V1, V2(0), Color);
+	Buff[2] = CreateTrinVertex(Rect.V2, V2(0), Color);
+	Buff[3] = CreateTrinVertex(Rect.V0, V2(0), Color);
+	Buff[4] = CreateTrinVertex(Rect.V2, V2(0), Color);
+	Buff[5] = CreateTrinVertex(Rect.V3, V2(0), Color);
+
+	Commands->TriangleBufferSize += sizeof(render_triangle_vertex) * 6;
+}
+
+internal inline void
+PushTrinRect(render_triangle_vertex *Buff, v3 Vec0, v3 Vec1, v3 Vec2, v3 Vec3, v4 Color)
 {
 	// TODO: Delete debug code later
 #if 1
@@ -323,7 +339,7 @@ PushTrinRect(render_triangle_vertex *Buff, v3 Vec0, v3 Vec1, v3 Vec2, v3 Vec3, v
 }
 
 internal void
-PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
+PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v4 Color)
 {
 	render_triangle_vertex *Buff =
 		(render_triangle_vertex *)(Commands->TriangleBufferBase + Commands->TriangleBufferSize);
@@ -336,36 +352,56 @@ PushUnalignRectAsTrin(game_render_commands *Commands, unalign_rect3 A, v3 Color)
 	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, Color); // bottom
 #else
 	// NOTE: For debug
-	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, V3(1)); // front
-	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, V3(1, 0, 0)); // back
-	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V0, A.Rect0.V3, A.Rect1.V3, V3(0, 1, 0)); // left
-	PushTrinRect((Buff + 18), A.Rect0.V1, A.Rect1.V1, A.Rect1.V2, A.Rect0.V2, V3(0, 0, 1)); // right
-	PushTrinRect((Buff + 24), A.Rect0.V3, A.Rect0.V2, A.Rect1.V2, A.Rect1.V3, V3(0.5f , 0, 0.5f)); // top
-	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, V3(1, 0.5f, 0)); // bottom
+	PushTrinRect(Buff, A.Rect0.V0, A.Rect0.V1, A.Rect0.V2, A.Rect0.V3, V4(1)); // front
+	PushTrinRect((Buff + 6), A.Rect1.V1, A.Rect1.V0, A.Rect1.V3, A.Rect1.V2, V4(1, 0, 0, 1)); // back
+	PushTrinRect((Buff + 12), A.Rect1.V0, A.Rect0.V0, A.Rect0.V3, A.Rect1.V3, V4(0, 1, 0, 1)); // left
+	PushTrinRect((Buff + 18), A.Rect0.V1, A.Rect1.V1, A.Rect1.V2, A.Rect0.V2, V4(0, 0, 1, 1)); // right
+	PushTrinRect((Buff + 24), A.Rect0.V3, A.Rect0.V2, A.Rect1.V2, A.Rect1.V3, V4(0.5f , 0, 0.5f, 1)); // top
+	PushTrinRect((Buff + 30), A.Rect0.V1, A.Rect0.V0, A.Rect1.V0, A.Rect1.V1, V4(1, 0.5f, 0, 1)); // bottom
 #endif
 
 	Commands->TriangleBufferSize += sizeof(render_triangle_vertex) * 36;
 }
 
-struct render_tool_axis_color
+struct render_tool_elem_color
 {
-	v3 X, Y, Z;
+	v4 X, Y, Z;
 };
 
-internal inline render_tool_axis_color
-GetRenderAxisColor(v4 AxisMask)
+internal inline render_tool_elem_color
+GetRenderAxisColor(v4 Mask)
 {
-	render_tool_axis_color Result;
+	render_tool_elem_color Result;
 	v3 ActiveColor = V3(0.86f, 0.65f, 0.2f);
 
-	Result.X = Lerp(V3(0, 0.6f, 0), AxisMask.x, V3(0, 1, 0));
-	Result.X = Lerp(Result.X, AxisMask.x * AxisMask.w, ActiveColor);
+	Result.X.rgb = Lerp(V3(0, 0.6f, 0), Mask.x, V3(0, 1, 0));
+	Result.X.rgb = Lerp(Result.X.rgb, Mask.x * Mask.w, ActiveColor);
 
-	Result.Y = Lerp(V3(0.6f, 0, 0), AxisMask.y, V3(1, 0, 0));
-	Result.Y = Lerp(Result.Y, AxisMask.y * AxisMask.w, ActiveColor);
+	Result.Y.rgb = Lerp(V3(0.6f, 0, 0), Mask.y, V3(1, 0, 0));
+	Result.Y.rgb = Lerp(Result.Y.rgb, Mask.y * Mask.w, ActiveColor);
 
-	Result.Z = Lerp(V3(0, 0, 0.6f), AxisMask.z, V3(0, 0, 1));
-	Result.Z = Lerp(Result.Z, AxisMask.z * AxisMask.w, ActiveColor);
+	Result.Z.rgb = Lerp(V3(0, 0, 0.6f), Mask.z, V3(0, 0, 1));
+	Result.Z.rgb = Lerp(Result.Z.rgb, Mask.z * Mask.w, ActiveColor);
+
+	Result.X.a = Result.Y.a = Result.Z.a = 1.0f;
+
+	return Result;
+}
+
+internal inline render_tool_elem_color
+GetRenderAxisPlaneColor(v4 Mask)
+{
+	render_tool_elem_color Result;
+
+	v3 ActiveColor = V3(0.86f, 0.65f, 0.2f);
+	
+	Result.X.a = Lerp(0.2f, Mask.x, 0.5f);
+	Result.Y.a = Lerp(0.2f, Mask.y, 0.5f);
+	Result.Z.a = Lerp(0.2f, Mask.z, 0.5f);
+
+	Result.X.rgb = Lerp(V3(0, 0.8f, 0), Mask.x * Mask.w, ActiveColor);
+	Result.Y.rgb = Lerp(V3(0.8f, 0, 0), Mask.y * Mask.w, ActiveColor);
+	Result.Z.rgb = Lerp(V3(0, 0, 0.8f), Mask.z * Mask.w, ActiveColor);
 
 	return Result;
 }
@@ -375,7 +411,7 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	scl_tool_display_params AxisParams, v4 AxisMask)
 {
 	game_render_commands *Commands = Group->Commands;
-	render_tool_axis_color AxisColor = GetRenderAxisColor(AxisMask);
+	render_tool_elem_color AxisColor = GetRenderAxisColor(AxisMask);
 
 	f32 ArrowZLen = AxisParams.ArrowHalfSize * 2.0f;
 	v3 ArrowHalfDim = V3(AxisParams.ArrowHalfSize);
@@ -415,12 +451,26 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	EndPushTrinModel(Group);
 }
 
+internal inline plane_rect3
+CreatePlaneRectFromAxis(v3 P, v3 XAxis, v3 YAxis, v2 Dim)
+{
+	plane_rect3 Result;
+
+	Result.V0 = V3(0);
+	Result.V3 = (YAxis * Dim.y);
+	Result.V1 = (XAxis * Dim.x);
+	Result.V2 = Result.V3 + Result.V1;
+
+	return Result;
+}
+
 void
-PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 Axis, v4 AxisMask,
-	v3 Pos, f32 Scale, renderer_mesh ArrowMesh)
+PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 Axis,
+	v4 AxisMask, v4 PlaneMask, v3 Pos, f32 Scale, renderer_mesh ArrowMesh)
 {
 	game_render_commands *Commands = Group->Commands;
-	render_tool_axis_color AxisColor = GetRenderAxisColor(AxisMask);
+	render_tool_elem_color AxisColor = GetRenderAxisColor(AxisMask);
+	render_tool_elem_color PalneColor = GetRenderAxisPlaneColor(PlaneMask);
 
 	v3 XEdgeCenter = Axis.X * AxisParams.Axis.EdgeCenter;
 	v3 YEdgeCenter = Axis.Y * AxisParams.Axis.EdgeCenter;
@@ -431,11 +481,20 @@ PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 A
 	unalign_rect3 YEdge = CreateRect(Axis.Y * AxisParams.Axis.EdgeCenter, Axis.Z, Axis.X, Axis.Y, EdgeHalfDim);
 	unalign_rect3 ZEdge = CreateRect(Axis.Z * AxisParams.Axis.EdgeCenter, Axis.X, Axis.Y, Axis.Z, EdgeHalfDim);
 
+	v2 PlaneDim = V2(AxisParams.PlaneRelDim);
+	plane_rect3 XPlane = CreatePlaneRectFromAxis(Pos, Axis.Y, Axis.Z, PlaneDim);
+	plane_rect3 YPlane = CreatePlaneRectFromAxis(Pos, Axis.Z, Axis.X, PlaneDim);
+	plane_rect3 ZPlane = CreatePlaneRectFromAxis(Pos, Axis.X, Axis.Y, PlaneDim);
+
 	BeginPushTrinModel(Group, Pos);
 
 	PushUnalignRectAsTrin(Commands, XEdge, AxisColor.X);
 	PushUnalignRectAsTrin(Commands, YEdge, AxisColor.Y);
 	PushUnalignRectAsTrin(Commands, ZEdge, AxisColor.Z);
+
+	PushTrinRect(Commands, XPlane, PalneColor.X);
+	PushTrinRect(Commands, YPlane, PalneColor.Y);
+	PushTrinRect(Commands, ZPlane, PalneColor.Z);
 
 	EndPushTrinModel(Group);
 
@@ -443,9 +502,9 @@ PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 A
 	v3 YArrowCenter = Pos + (Axis.Y * AxisParams.Axis.Len);
 	v3 ZArrowCenter = Pos + (Axis.Z * AxisParams.Axis.Len);
 	
-	PushStaticMesh(Group, ArrowMesh, XArrowCenter, Scale, AxisColor.X);
-	PushStaticMesh(Group, ArrowMesh, YArrowCenter, Scale, AxisColor.Y);
-	PushStaticMesh(Group, ArrowMesh, ZArrowCenter, Scale, AxisColor.Z);
+	PushStaticMesh(Group, ArrowMesh, XArrowCenter, Scale, AxisColor.X.rgb);
+	PushStaticMesh(Group, ArrowMesh, YArrowCenter, Scale, AxisColor.Y.rgb);
+	PushStaticMesh(Group, ArrowMesh, ZArrowCenter, Scale, AxisColor.Z.rgb);
 }
 
 void

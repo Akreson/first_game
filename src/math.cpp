@@ -46,6 +46,19 @@ struct unalign_rect3
 	};
 };
 
+struct plane_rect3
+{
+	union
+	{
+		v3 E[4];
+		
+		struct
+		{
+			v3 V0, V1, V2, V3;
+		};
+	};
+};
+
 struct ray_params
 {
 	v3 P;
@@ -89,6 +102,16 @@ CreateRay(v3 P, v3 Dir)
 	return Result;
 }
 
+inline plane_params
+CreatePlane(v3 N, f32 D)
+{
+	plane_params Result;
+	Result.N = N;
+	Result.D = D;
+
+	return Result;
+}
+
 // TODO: Improve for float
 inline f32
 Abs(f32 A)
@@ -108,6 +131,13 @@ inline f32
 Square(f32 A)
 {
 	f32 Result = A * A;
+	return Result;
+}
+
+inline f32
+Lerp(f32 A, f32 t, f32 B)
+{
+	f32 Result = (1.0f - t)*A + B * t;
 	return Result;
 }
 

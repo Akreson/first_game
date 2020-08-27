@@ -324,9 +324,9 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 3));
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 3));
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 6));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 7));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

@@ -118,7 +118,7 @@ struct render_entry_static_mesh
 struct render_triangle_vertex
 {
 	v3 V;
-	v3 Color;
+	v4 Color;
 	v2 UV;
 };
 

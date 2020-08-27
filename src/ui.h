@@ -208,6 +208,7 @@ struct trans_tool_axis_params
 {
 	tools_axis_params Axis;
 
+	f32 PlaneRelDim;
 	f32 EdgeXYHalfSize;
 	f32 ArrowRadius;
 };
@@ -217,6 +218,8 @@ struct translate_tools
 	m3x3 Axis;
 	v3 P;
 	v4 AxisMask;
+	v4 PlaneMask;
+
 	v3 TransParam;
 
 	f32 BeginP;
@@ -225,6 +228,7 @@ struct translate_tools
 	trans_tool_axis_params InitAxisParams;
 
 	tools_axis_id InteractAxis;
+	b32 IsPlaneIntr;
 	b32 EnterActiveState;
 };
 

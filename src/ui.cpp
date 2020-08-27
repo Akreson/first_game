@@ -748,10 +748,7 @@ internal inline b32
 IsRotateToolPerpAxisIntreract(v3 ToolCenterP, f32 Radius, ray_params Ray, v3 Axis)
 {
 	b32 Result = false;
-
-	plane_params Plane = {};
-	Plane.N = Axis;
-	Plane.D = Dot(Axis, ToolCenterP);
+	plane_params Plane = CreatePlane(Axis, Dot(Axis, ToolCenterP));
 
 	f32 ADotR = Dot(Axis, Ray.Dir);
 	f32 tRay = RayPlaneIntersect(Ray, Plane, ADotR);
@@ -897,11 +894,9 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	m3x3 DefaultAxis = Identity3x3();
 	DefaultAxis.Z *= ZSignMod;
 
-	f32 ArrowIntrScaleFactor = 0.02f;
-	f32 EdgeIntrScaleFactor = 0.02f;
 	f32 ModEdgeXYHalfSize = AxisParams.EdgeXYHalfSize + TOOL_EDGE_INTR_SCALE_FALCTOR;
-
 	v3 ArrowDim = V3(AxisParams.ArrowHalfSize + TOOL_ARROW_INTR_SCALE_FALCTOR);
+
 	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize, ModEdgeXYHalfSize);
 	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*AxisParams.Axis.Len);
 	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
@@ -976,30 +971,37 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 {
 	b32 Result = false;
 
-	u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
-	v3 TransAxis = Tool->Axis.Row[IntrAxisID];
-	ray_params AxisRay = CreateRay(Tool->P, TransAxis);
-
-	f32 CurrentP = 0;
-	if (ClosestPBeetwenRay(Ray, AxisRay, 0, &CurrentP))
+	if (!Tool->IsPlaneIntr)
 	{
-		// TODO: Move to set _move_ interaction?
-		if (!Tool->EnterActiveState)
-		{
-			Tool->BeginP = CurrentP;
-			Tool->PrevP = CurrentP;
-			Tool->EnterActiveState = true;
-		}
+		u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
+		v3 TransAxis = Tool->Axis.Row[IntrAxisID];
+		ray_params AxisRay = CreateRay(Tool->P, TransAxis);
 
-		if (Tool->PrevP != CurrentP)
+		f32 CurrentP = 0;
+		if (ClosestPBeetwenRay(Ray, AxisRay, 0, &CurrentP))
 		{
-			f32 TransFactor = (CurrentP - Tool->PrevP);
+			// TODO: Move to set _move_ interaction?
+			if (!Tool->EnterActiveState)
+			{
+				Tool->BeginP = CurrentP;
+				Tool->PrevP = CurrentP;
+				Tool->EnterActiveState = true;
+			}
 
-			Tool->TransParam = TransAxis * TransFactor;
-			Tool->P += Tool->TransParam;
-			Tool->PrevP = CurrentP - TransFactor;
-			Result = true;
+			if (Tool->PrevP != CurrentP)
+			{
+				f32 TransFactor = (CurrentP - Tool->PrevP);
+
+				Tool->TransParam = TransAxis * TransFactor;
+				Tool->P += Tool->TransParam;
+				Tool->PrevP = CurrentP - TransFactor;
+				Result = true;
+			}
 		}
+	}
+	else
+	{
+
 	}
 
 	return Result;
@@ -1015,12 +1017,13 @@ ModTransToolDefauldParams(trans_tool_axis_params Params, f32 Scale)
 	Result.Axis.EdgeLenHalfSize = Params.Axis.EdgeLenHalfSize * Scale;
 	Result.EdgeXYHalfSize = Params.EdgeXYHalfSize * Scale;
 	Result.ArrowRadius = Params.ArrowRadius * Scale;
+	Result.PlaneRelDim = Params.PlaneRelDim * Scale;
 
 	return Result;
 }
 
 internal inline tools_axis_id
-RayTranslateToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
+RayTransToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 	m3x3 Axis, v3 AxisOffset, f32 ZSignMod)
 {
 	tools_axis_id Result = ToolsAxisID_None;
@@ -1153,6 +1156,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
 			InitAxisParams->EdgeXYHalfSize = 0.004f;
 			InitAxisParams->ArrowRadius = TRANSLATE_TOOL_ARROW_R;
+			InitAxisParams->PlaneRelDim = TRANSLATE_TOOL_SIZE * 0.18f;
 		} break;
 
 		case ToolType_Scale:
@@ -1175,6 +1179,66 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena
 	}
 
 	Tools->IsInit = true;
+}
+
+// TODO: Add sign mod to Z axis
+internal tools_axis_id
+RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams,
+	m3x3 Axis, v3 Pos, f32 ZSignMod)
+{
+	tools_axis_id Result = ToolsAxisID_None;
+
+	plane_params XPlane = CreatePlane(Axis.X, Dot(Axis.X, Pos));
+	plane_params YPlane = CreatePlane(Axis.Y, Dot(Axis.Y, Pos));
+	plane_params ZPlane = CreatePlane(Axis.Z, Dot(Axis.Z, Pos));
+
+	f32 XDotD = Dot(XPlane.N, Ray.Dir);
+	f32 YDotD = Dot(YPlane.N, Ray.Dir);
+	f32 ZDotD = Dot(ZPlane.N, Ray.Dir);
+
+	f32 tX = RayPlaneIntersect(Ray, XPlane, XDotD);
+	f32 tY = RayPlaneIntersect(Ray, YPlane, YDotD);
+	f32 tZ = RayPlaneIntersect(Ray, ZPlane, ZDotD);
+
+	f32 PlaneDim = ScaleAxisParams.PlaneRelDim;
+	if (tX >= 0)
+	{
+		v3 XPoint = PointOnRay(Ray, tX);
+		f32 YLen = Dot(XPoint, Axis.Y);
+		f32 ZLen = Dot(XPoint, Axis.Z);
+		
+		if (((YLen > 0) && (ZLen > 0)) &&
+		    ((YLen <= PlaneDim) && (ZLen <= PlaneDim)))
+		{
+			Result = ToolsAxisID_X;
+		}
+	}
+	if (!Result && tY >= 0)
+	{
+		v3 YPoint = PointOnRay(Ray, tY);
+		f32 XLen = Dot(YPoint, Axis.X);
+		f32 ZLen = Dot(YPoint, Axis.Z);
+
+		if (((XLen > 0) && (ZLen > 0)) &&
+			((XLen <= PlaneDim) && (ZLen <= PlaneDim)))
+		{
+			Result = ToolsAxisID_Y;
+		}
+	}
+	if (!Result && tZ >= 0)
+	{
+		v3 ZPoint = PointOnRay(Ray, tZ);
+		f32 XLen = Dot(ZPoint, Axis.X);
+		f32 YLen = Dot(ZPoint, Axis.Y);
+
+		if (((XLen > 0) && (YLen > 0)) &&
+			((XLen <= PlaneDim) && (YLen <= PlaneDim)))
+		{
+			Result = ToolsAxisID_Z;
+		}
+	}
+
+	return Result;
 }
 
 // TODO: Apply transform only when exit move interaction
@@ -1374,6 +1438,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			if (TransTool->InteractAxis == ToolsAxisID_None)
 			{
 				TransTool->AxisMask = {};
+				TransTool->PlaneMask = {};
 
 				if (IsDown(Input->Ctrl))
 				{
@@ -1387,10 +1452,19 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				f32 ZSignMod = 1.0f; //Sign(Dot(Axis.Z, RayPCenterP));
 				//Axis.Z *= ZSignMod;
 
-				tools_axis_id InteractAxis = RayTranslateToolAxisTest(Ray, ScaleAxisParams, Axis, TransTool->P, ZSignMod);
+				tools_axis_id InteractAxis = RayTransToolAxisPlaneTest(Ray, ScaleAxisParams, Axis, TransTool->P, ZSignMod);
 				if (InteractAxis)
 				{
-					TransTool->AxisMask.E[(u32)InteractAxis - 1] = 1.0f;
+					TransTool->IsPlaneIntr = true;
+					TransTool->PlaneMask.E[(u32)InteractAxis - 1] = 1.0f;
+				}
+				else
+				{
+					InteractAxis = RayTransToolAxisTest(Ray, ScaleAxisParams, Axis, TransTool->P, ZSignMod);
+					if (InteractAxis)
+					{
+						TransTool->AxisMask.E[(u32)InteractAxis - 1] = 1.0f;
+					}
 				}
 
 				Interaction = SetToolAxisIntr(ToolType_Translate, UI_InteractionType_Select, InteractAxis);
@@ -1398,6 +1472,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				{
 					TransTool->Axis = Axis;
 					TransTool->AxisMask.w = 1.0f;
+					TransTool->PlaneMask.w = 1.0f;
 					TransTool->InteractAxis = InteractAxis;
 
 					Interaction.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Move);
@@ -1423,10 +1498,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					TransTool->PrevP = 0;
 					TransTool->InteractAxis = ToolsAxisID_None;
 					TransTool->EnterActiveState = false;
+					TransTool->IsPlaneIntr = false;
 				}
 			}
 
-			PushTranslateTool(RenderGroup, ScaleAxisParams, Axis, TransTool->AxisMask,
+			PushTranslateTool(RenderGroup, ScaleAxisParams, Axis, TransTool->AxisMask, TransTool->PlaneMask,
 				TransTool->P, PosRelParams.ScaleFactor, Editor->StaticMesh[BuiltInMesh_TranslateArrow].Mesh);
 		} break;
 	}

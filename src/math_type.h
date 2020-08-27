@@ -80,6 +80,12 @@ union v4
 		v3 xyz;
 		f32 _Ignored0;
 	};
+
+	struct
+	{
+		v3 rgb;
+		f32 _Ignored1;
+	};
 };
 
 // NOTE: row-major
