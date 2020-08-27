@@ -159,6 +159,20 @@ Clamp(f32 Min, f32 Value, f32 Max)
 }
 
 inline f32
+Min(f32 A, f32 B)
+{
+	f32 Result = A < B ? A : B;
+	return Result;
+}
+
+inline f32
+Max(f32 A, f32 B)
+{
+	f32 Result = A > B ? A : B;
+	return Result;
+}
+
+inline f32
 Clamp01(f32 Value)
 {
 	f32 Result = Clamp(0, Value, 1.0f);

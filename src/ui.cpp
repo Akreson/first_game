@@ -970,12 +970,12 @@ internal b32
 ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 {
 	b32 Result = false;
+	u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
+	v3 IntrAxis = Tool->Axis.Row[IntrAxisID];
 
 	if (!Tool->IsPlaneIntr)
 	{
-		u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
-		v3 TransAxis = Tool->Axis.Row[IntrAxisID];
-		ray_params AxisRay = CreateRay(Tool->P, TransAxis);
+		ray_params AxisRay = CreateRay(Tool->P, IntrAxis);
 
 		f32 CurrentP = 0;
 		if (ClosestPBeetwenRay(Ray, AxisRay, 0, &CurrentP))
@@ -983,25 +983,49 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 			// TODO: Move to set _move_ interaction?
 			if (!Tool->EnterActiveState)
 			{
-				Tool->BeginP = CurrentP;
-				Tool->PrevP = CurrentP;
+				Tool->Intr.P.Begin = CurrentP;
+				Tool->Intr.P.Prev = CurrentP;
 				Tool->EnterActiveState = true;
 			}
 
-			if (Tool->PrevP != CurrentP)
+			if (Tool->Intr.P.Prev != CurrentP)
 			{
-				f32 TransFactor = (CurrentP - Tool->PrevP);
+				f32 TransFactor = (CurrentP - Tool->Intr.P.Prev);
 
-				Tool->TransParam = TransAxis * TransFactor;
+				Tool->TransParam = IntrAxis * TransFactor;
 				Tool->P += Tool->TransParam;
-				Tool->PrevP = CurrentP - TransFactor;
+				Tool->Intr.P.Prev = CurrentP - TransFactor;
 				Result = true;
 			}
 		}
 	}
 	else
 	{
+		plane_params Plane = CreatePlane(IntrAxis, Dot(IntrAxis, Tool->P));
 
+		f32 NDotD = Dot(Plane.N, Ray.Dir);
+		f32 tPlane = RayPlaneIntersect(Ray, Plane, NDotD);
+		if (tPlane >= 0)
+		{
+			v3 CurrentV = PointOnRay(Ray, tPlane);
+
+			if (!Tool->EnterActiveState)
+			{
+				Tool->Intr.V.Begin = CurrentV;
+				Tool->Intr.V.Prev = CurrentV;
+				Tool->EnterActiveState = true;
+			}
+
+			if (Tool->Intr.V.Prev != CurrentV)
+			{
+				v3 TransV = CurrentV - Tool->Intr.V.Prev;
+
+				Tool->P += TransV;
+				Tool->TransParam = TransV;
+				Tool->Intr.V.Prev = CurrentV;
+				Result = true;
+			}
+		}
 	}
 
 	return Result;
@@ -1188,6 +1212,9 @@ RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams
 {
 	tools_axis_id Result = ToolsAxisID_None;
 
+	//m3x3 DefaultAxis = Identity3x3();
+	//DefaultAxis.Z *= ZSignMod;
+
 	plane_params XPlane = CreatePlane(Axis.X, Dot(Axis.X, Pos));
 	plane_params YPlane = CreatePlane(Axis.Y, Dot(Axis.Y, Pos));
 	plane_params ZPlane = CreatePlane(Axis.Z, Dot(Axis.Z, Pos));
@@ -1196,45 +1223,73 @@ RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams
 	f32 YDotD = Dot(YPlane.N, Ray.Dir);
 	f32 ZDotD = Dot(ZPlane.N, Ray.Dir);
 
-	f32 tX = RayPlaneIntersect(Ray, XPlane, XDotD);
-	f32 tY = RayPlaneIntersect(Ray, YPlane, YDotD);
-	f32 tZ = RayPlaneIntersect(Ray, ZPlane, ZDotD);
+	v3 tP;
+	tP.x = RayPlaneIntersect(Ray, XPlane, XDotD);
+	tP.y = RayPlaneIntersect(Ray, YPlane, YDotD);
+	tP.z = RayPlaneIntersect(Ray, ZPlane, ZDotD);
+
+	f32 tMin[3];
+	tMin[0] = Min(tP.x, Min(tP.y, tP.z));
+	tMin[1] = Max(Min(tP.y, tP.x), Min(tP.z, tP.x));
+	tMin[2] = Max(tP.x, Max(tP.y, tP.z));
 
 	f32 PlaneDim = ScaleAxisParams.PlaneRelDim;
-	if (tX >= 0)
+	for (u32 MinIndex = 0; MinIndex < ArrayCount(tP.E); ++MinIndex)
 	{
-		v3 XPoint = PointOnRay(Ray, tX);
-		f32 YLen = Dot(XPoint, Axis.Y);
-		f32 ZLen = Dot(XPoint, Axis.Z);
-		
-		if (((YLen > 0) && (ZLen > 0)) &&
-		    ((YLen <= PlaneDim) && (ZLen <= PlaneDim)))
-		{
-			Result = ToolsAxisID_X;
-		}
-	}
-	if (!Result && tY >= 0)
-	{
-		v3 YPoint = PointOnRay(Ray, tY);
-		f32 XLen = Dot(YPoint, Axis.X);
-		f32 ZLen = Dot(YPoint, Axis.Z);
+		f32 CurrMin = tMin[MinIndex];
 
-		if (((XLen > 0) && (ZLen > 0)) &&
-			((XLen <= PlaneDim) && (ZLen <= PlaneDim)))
+		if (CurrMin >= 0)
 		{
-			Result = ToolsAxisID_Y;
-		}
-	}
-	if (!Result && tZ >= 0)
-	{
-		v3 ZPoint = PointOnRay(Ray, tZ);
-		f32 XLen = Dot(ZPoint, Axis.X);
-		f32 YLen = Dot(ZPoint, Axis.Y);
+			tools_axis_id ToTest;
+			for (u32 Index = 0; Index < ArrayCount(tP.E); ++Index)
+			{
+				if (tP.E[Index] == CurrMin)
+					ToTest = (tools_axis_id)(Index + 1);
+			}
 
-		if (((XLen > 0) && (YLen > 0)) &&
-			((XLen <= PlaneDim) && (YLen <= PlaneDim)))
-		{
-			Result = ToolsAxisID_Z;
+			switch (ToTest)
+			{
+				case ToolsAxisID_X:
+				{
+					v3 XPoint = PointOnRay(Ray, tP.x) - Pos;
+					f32 YLen = Dot(XPoint, Axis.Y);
+					f32 ZLen = Dot(XPoint, Axis.Z);
+
+					if (((YLen > 0) && (ZLen > 0)) &&
+						((YLen <= PlaneDim) && (ZLen <= PlaneDim)))
+					{
+						Result = ToolsAxisID_X;
+					}
+				} break;
+
+				case ToolsAxisID_Y:
+				{
+					v3 YPoint = PointOnRay(Ray, tP.y) - Pos;
+					f32 XLen = Dot(YPoint, Axis.X);
+					f32 ZLen = Dot(YPoint, Axis.Z);
+
+					if (((XLen > 0) && (ZLen > 0)) &&
+						((XLen <= PlaneDim) && (ZLen <= PlaneDim)))
+					{
+						Result = ToolsAxisID_Y;
+					}
+				} break;
+
+				case ToolsAxisID_Z:
+				{
+					v3 ZPoint = PointOnRay(Ray, tP.z) - Pos;
+					f32 XLen = Dot(ZPoint, Axis.X);
+					f32 YLen = Dot(ZPoint, Axis.Y);
+
+					if (((XLen > 0) && (YLen > 0)) &&
+						((XLen <= PlaneDim) && (YLen <= PlaneDim)))
+					{
+						Result = ToolsAxisID_Z;
+					}
+				} break;
+			}
+
+			if (Result) break;
 		}
 	}
 
@@ -1439,6 +1494,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			{
 				TransTool->AxisMask = {};
 				TransTool->PlaneMask = {};
+				TransTool->IsPlaneIntr = false;
 
 				if (IsDown(Input->Ctrl))
 				{
@@ -1494,11 +1550,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				}
 				else
 				{
-					TransTool->BeginP = 0;
-					TransTool->PrevP = 0;
+					TransTool->Intr = {};
 					TransTool->InteractAxis = ToolsAxisID_None;
 					TransTool->EnterActiveState = false;
-					TransTool->IsPlaneIntr = false;
 				}
 			}
 

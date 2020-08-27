@@ -222,14 +222,27 @@ struct translate_tools
 
 	v3 TransParam;
 
-	f32 BeginP;
-	f32 PrevP;
-
 	trans_tool_axis_params InitAxisParams;
 
 	tools_axis_id InteractAxis;
 	b32 IsPlaneIntr;
 	b32 EnterActiveState;
+
+	union
+	{
+		struct
+		{
+			v3 Begin;
+			v3 Prev;
+		} V;
+
+		struct
+		{
+			f32 Begin;
+			f32 Prev;
+		} P;
+
+	} Intr;
 };
 
 struct tools
