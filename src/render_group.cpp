@@ -169,6 +169,8 @@ GetEdgeFaceParams(face_render_params FaceParam)
 	__m128i Mask03 = _mm_set1_epi32(MaskMatchVertex_03);
 	__m128i Mask23 = _mm_set1_epi32(MaskMatchVertex_23);
 
+	// TODO: Remove condition
+
 	Result.Active01 = IsHaveMatch(Active, Mask01) ? true : false;
 	Result.Active12 = IsHaveMatch(Active, Mask12) ? true : false;
 	Result.Active03 = IsHaveMatch(Active, Mask03) ? true : false;
@@ -472,9 +474,9 @@ PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 A
 	render_tool_elem_color AxisColor = GetRenderAxisColor(AxisMask);
 	render_tool_elem_color PalneColor = GetRenderAxisPlaneColor(PlaneMask);
 
-	v3 XEdgeCenter = Axis.X * AxisParams.Axis.EdgeCenter;
+	/*v3 XEdgeCenter = Axis.X * AxisParams.Axis.EdgeCenter;
 	v3 YEdgeCenter = Axis.Y * AxisParams.Axis.EdgeCenter;
-	v3 ZEdgeCenter = Axis.Z * AxisParams.Axis.EdgeCenter;
+	v3 ZEdgeCenter = Axis.Z * AxisParams.Axis.EdgeCenter;*/
 
 	v3 EdgeHalfDim = V3(AxisParams.EdgeXYHalfSize, AxisParams.EdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
 	unalign_rect3 XEdge = CreateRect(Axis.X * AxisParams.Axis.EdgeCenter, -Axis.Z, Axis.Y, Axis.X, EdgeHalfDim);

@@ -73,12 +73,12 @@ ToggleFullscreen(HWND Window)
 		if (GetWindowPlacement(Window, &GlobalWindowPosition) &&
 			GetMonitorInfo(MonitorFromWindow(Window, MONITOR_DEFAULTTOPRIMARY), &MonitorInfo))
 		{
-			SetWindowLong(Window, GWL_STYLE, Style & ~WS_OVERLAPPEDWINDOW);
-			SetWindowPos(Window, HWND_TOP,
+			SetWindowLong(Window, GWL_STYLE, Style & ~(WS_OVERLAPPEDWINDOW));
+			SetWindowPos(Window, NULL,
 				MonitorInfo.rcMonitor.left, MonitorInfo.rcMonitor.top,
 				MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left,
 				MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top,
-				SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+				SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 		}
 	}
 	else

@@ -606,12 +606,15 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	}
 	else
 	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, OpenGL.MainFB.Handle);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, OpenGL.MainFB.Handle);
 
 		glBlitFramebuffer(
 			0, 0, Commands->ScreenDim.x, Commands->ScreenDim.y,
 			0, 0, Commands->ScreenDim.x, Commands->ScreenDim.y,
 			GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
+
 }

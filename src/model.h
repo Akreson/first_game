@@ -22,8 +22,6 @@ struct model_edge
 
 };
 
-// TODO: Expand to u32??? For convenient simd usage?
-// Model vertex count never be bigger than U16_MAX_VALUE?
 struct model_face
 {
 	union

@@ -615,7 +615,7 @@ Identity3x3(void)
 	return Result;
 }
 
-// TODO: Optimize?
+// TODO: Optimize
 inline v4
 Transform(v4 A, m4x4 B)
 {

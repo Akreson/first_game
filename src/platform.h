@@ -93,16 +93,18 @@ GetAlignmentOffsetBack(memory_index Ptr, u32 Alignment)
 }
 
 inline b32
-IsAligned(void *Ptr, u32 Alignment)
+IsPowerOf2(u32 Value)
 {
-	b32 Result = (umm)Ptr & (Alignment - 1);
+	b32 Result = !(Value & (Value - 1));
 	return Result;
 }
 
 inline b32
-IsPowerOf2(u32 Value)
+IsAligned(void *Ptr, u32 Alignment)
 {
-	b32 Result = !(Value & (Value - 1));
+	Assert(IsPowerOf2(Alignment));
+
+	b32 Result = (umm)Ptr & (Alignment - 1);
 	return Result;
 }
 

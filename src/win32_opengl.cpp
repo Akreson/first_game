@@ -12,13 +12,12 @@ Win32SetPixelFormat(HDC WindowDC)
 		int AttribList[] =
 		{
 			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
-			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
 			WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+			//WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+			WGL_DOUBLE_BUFFER_ARB, GL_FALSE,
+			//WGL_SWAP_COPY_ARB, GL_TRUE,
 			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-			WGL_RED_BITS_ARB, 8,
-			WGL_GREEN_BITS_ARB, 8,
-			WGL_BLUE_BITS_ARB, 8,
 			0
 		};
 
@@ -30,12 +29,11 @@ Win32SetPixelFormat(HDC WindowDC)
 	{
 		SuggestedPixelFormat.nSize = sizeof(SuggestedPixelFormat);
 		SuggestedPixelFormat.nVersion = 1;
-		SuggestedPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER | PFD_DRAW_TO_WINDOW;
+		SuggestedPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
 		SuggestedPixelFormat.iPixelType = PFD_TYPE_RGBA;
 		SuggestedPixelFormat.iLayerType = PFD_MAIN_PLANE;
 		SuggestedPixelFormat.cColorBits = 32;
 		SuggestedPixelFormat.cAlphaBits = 8;
-		SuggestedPixelFormat.cDepthBits = 24;
 
 		SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &SuggestedPixelFormat);
 	}
@@ -81,7 +79,6 @@ Win32LoadOpenGLExtenssion(void)
 		{
 			wglCreateContextAttribsARB = (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
 			wglChoosePixelFormatARB = (wgl_choose_pixel_format_arb *)wglGetProcAddress("wglChoosePixelFormatARB");
-			wglSwapIntervalEXT = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
 			wglGetExtensionStringEXT = (wgl_get_extension_string_ext *)wglGetProcAddress("wglGetExtensionStringEXT");
 #if 0
 			if (wglGetExtensionStringEXT)
@@ -208,6 +205,7 @@ Win32InitOpenGL(HDC WindowDC, f32 ScreenWidth, f32 ScreenHeight)
 
 		Win32LoadOpenGLFunction(glDebugMessageCallback);
 
+		wglSwapIntervalEXT = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
 		if (wglSwapIntervalEXT)
 		{
 			wglSwapIntervalEXT(1);

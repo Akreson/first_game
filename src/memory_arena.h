@@ -112,6 +112,7 @@ EndTempMemory(temp_memory TempMem)
 	--Arena->CountOfTempMem;
 }
 
+// TODO: Assert page is it base
 internal inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 {
@@ -195,6 +196,8 @@ FindFreePages(page_memory_arena *Arena, u32 *StartPageIndex, u32 NeededAmount = 
 	return Success;
 }
 
+// TODO: Improve
+// PAGES_PER_ALLOC_STATUS_BLOCK always must be power of 2
 internal inline void
 CalcBlockInfoFromPageIndex(u32 PageIndex, u32 *BlockIndex, u32 *InBlockIndex)
 {
@@ -257,7 +260,7 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 		Block++;
 	}
 
-	u32 PagesTest = 0;
+	u32 FreePagesTest = 0;
 	u32 InitInBlockIndex = StartInBlockIndex;
 	u32 BlockCount = CountOfOverlapedPageBlock(StartInBlockIndex, CountOfPages);
 	for (u32 BlockIndex = Block;
@@ -267,8 +270,8 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 		u32 PageBlock = Arena->AllocStatus[BlockIndex];
 
 		for (u32 InBlockIndex = InitInBlockIndex;
-			(PagesTest < CountOfPages) && (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
-			PagesTest++, InBlockIndex++)
+			(FreePagesTest < CountOfPages) && (InBlockIndex == PAGES_PER_ALLOC_STATUS_BLOCK);
+			FreePagesTest++, InBlockIndex++)
 		{
 			if (!IsBitSet(PageBlock, InBlockIndex))
 			{
@@ -280,7 +283,7 @@ AllocateNextPagesIfItFree(page_memory_arena *Arena, u32 StartPageIndexInPool, u3
 		InitInBlockIndex = 0;
 	}
 
-	if (PagesTest == CountOfPages)
+	if (FreePagesTest == CountOfPages)
 	{
 		SetPagesStatus(Arena, LastPageInPool + 1, PageStatus_Used, CountOfPages);
 	}

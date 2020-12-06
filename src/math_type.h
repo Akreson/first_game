@@ -114,14 +114,14 @@ union m3x3
 
 	struct
 	{
-		v3 Row0;
-		v3 Row1;
-		v3 Row2;
+		v3 Row[3];
 	};
 
 	struct
 	{
-		v3 Row[3];
+		v3 Row0;
+		v3 Row1;
+		v3 Row2;
 	};
 
 	struct

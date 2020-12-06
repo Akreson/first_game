@@ -586,8 +586,6 @@ RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceRes
 	{
 		b32 HitTest = false;
 		v3 IntersetPoint;
-		plane_params Plane0;
-		plane_params Plane1;
 
 		model_face *Face = Model->Faces + FaceIndex;
 		face_vertex Vertex = GetFaceVertex(Model, Face);
@@ -706,7 +704,7 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 		}
 	}
 
-	// TODO: Optimize
+	// TODO: Optimize edge visability test
 	if (Result)
 	{
 		element_ray_result FaceResult;
