@@ -1228,9 +1228,10 @@ RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams
 	tP.y = RayPlaneIntersect(Ray, YPlane, YDotD);
 	tP.z = RayPlaneIntersect(Ray, ZPlane, ZDotD);
 
+	// NOTE: Unrolling bubble sort
 	f32 tMin[3];
 	tMin[0] = Min(tP.x, Min(tP.y, tP.z));
-	tMin[1] = Max(Min(tP.y, tP.x), Min(tP.z, tP.x));
+	tMin[1] = Min(Min(Max(tP.x, tP.y), Max(tP.x, tP.z)), Max(tP.y, tP.z));
 	tMin[2] = Max(tP.x, Max(tP.y, tP.z));
 
 	f32 PlaneDim = ScaleAxisParams.PlaneRelDim;

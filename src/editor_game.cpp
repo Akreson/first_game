@@ -133,6 +133,7 @@ SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
 
 			select_buffer_face_edges_match MatchResult =
 				IsInSelectedBuffer(&WorldUI->Selected, CompFace);
+
 			if (MatchResult.Count)
 			{
 				for (u32 CheckIndex = 0;
