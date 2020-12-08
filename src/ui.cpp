@@ -427,6 +427,8 @@ ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
 	return Result;
 }
 
+
+// TODO: Pass struct ptr to _Apply_ functions
 // TODO: Optimize
 // NOTE: Transform happens in model space
 void
@@ -472,6 +474,8 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 }
 
 // TODO: Optimize!!!
+// TODO: See if applying scale matrix durring ModelTargetElement_Model interaction
+// fix bug
 void
 ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 Origin, v4 ScaleParam)
@@ -898,15 +902,15 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	v3 ArrowDim = V3(AxisParams.ArrowHalfSize + TOOL_ARROW_INTR_SCALE_FALCTOR);
 
 	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize, ModEdgeXYHalfSize);
-	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*AxisParams.Axis.Len);
-	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
-
 	v3 YEdgeHalfDim = V3(ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize);
-	rect3 YArrowAABB = CreateRect(ArrowDim, DefaultAxis.Y*AxisParams.Axis.Len);
-	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
-
 	v3 ZEdgeHalfDim = V3(ModEdgeXYHalfSize, ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
+
+	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*AxisParams.Axis.Len);
+	rect3 YArrowAABB = CreateRect(ArrowDim, DefaultAxis.Y*AxisParams.Axis.Len);
 	rect3 ZArrowAABB = CreateRect(ArrowDim, DefaultAxis.Z*AxisParams.Axis.Len);
+	
+	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
+	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
 	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
 
 	b32 IsHitXArrow = RayAABBIntersect(InvRay, XArrowAABB);
@@ -949,6 +953,7 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 
 		tools_axis_params *ActiveAxis = Tool->DisplayState.Axis + IntrAxisID;
 		ActiveAxis->Len = CurrentP;
+		// TODO: Redundant?
 		ActiveAxis->EdgeCenter = CurrentP * 0.5f;
 		ActiveAxis->EdgeLenHalfSize = ActiveAxis->EdgeCenter;
 
@@ -970,6 +975,7 @@ internal b32
 ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 {
 	b32 Result = false;
+
 	u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
 	v3 IntrAxis = Tool->Axis.Row[IntrAxisID];
 
@@ -1480,6 +1486,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 			PushScaleTool(RenderGroup, ScaleTool->P, Axis, ScaleTool->DisplayState, ScaleTool->AxisMask);
 		} break;
+
 		case ToolType_Translate:
 		{
 			translate_tools *TransTool = &Tools->Translate;
