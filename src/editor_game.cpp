@@ -301,10 +301,10 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	WorldUI->MouseRay = CreateRay(CameraOt, Unproject(&RenderGroup, WorldUI->MouseP));
 
 	for (u32 ModelIndex = 0;
-		ModelIndex < Editor->ModelsCount;
+		ModelIndex < Editor->WorkModelsCount;
 		++ModelIndex)
 	{
-		model *Model = Editor->Models + ModelIndex;
+		work_model *Model = Editor->WorkModels + ModelIndex;
 		ui_interaction SelectInteraction = SetModelSelectInteraction(ModelIndex);
 		b32 IsHot = AreEqual(SelectInteraction, WorldUI->HotInteraction);
 		b32 IsActive = IsActiveModel(WorldUI, ModelIndex);
@@ -314,18 +314,18 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, ModelHiLi);
 		
 		for (u32 FaceIndex = 0;
-			FaceIndex < Model->FaceCount;
+			FaceIndex < Model->Data.FaceCount;
 			++FaceIndex)
 		{
-			model_face Face = Model->Faces[FaceIndex];
+			model_face Face = Model->Data.Faces[FaceIndex];
 			face_render_params FaceParam = {};
 			
 			if (IsActive)
 			{	
-				FaceParam = SetFaceRenderParams(Editor, Model, FaceIndex);
+				FaceParam = SetFaceRenderParams(Editor, &Model->Data, FaceIndex);
 			}
 
-			PushFace(&RenderGroup, Model->Vertex, Face, FaceParam);
+			PushFace(&RenderGroup, Model->Data.Vertex, Face, FaceParam);
 		}
 
 		EndPushModel(&RenderGroup);

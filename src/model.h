@@ -63,13 +63,22 @@ struct model
 	v3 *Vertex;
 	model_face *Faces;
 	model_edge *Edges;
+
+	u32 VertexCount;
+	u32 FaceCount;
+	u32 EdgeCount;
+};
+
+struct work_model
+{
+	model Data;
+
+	model *Source;
+
+	m3x3 Axis;
 	v4 Color;
 	rect3 AABB;
-	m3x3 Axis;
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
-	u32 FaceCount;
-	u32 VertexCount;
-	u32 EdgeCount;
 };
 
 struct element_ray_result

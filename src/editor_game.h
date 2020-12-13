@@ -69,8 +69,11 @@ struct model_ray_sort
 
 struct game_editor_state
 {
-	model Models[32];
-	u16 ModelsCount;
+	model SourceModels[32];
+	u16 SourceModelsCount;
+
+	work_model WorkModels[32];
+	u16 WorkModelsCount;
 
 	static_mesh StaticMesh[16];
 	u16 StaticMeshCount;

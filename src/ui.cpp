@@ -144,11 +144,11 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 	}
 }
 
+// TODO: return chek if ptr to _model_ struct is supply?
 void
-AddToSelectedBuffer(element_id_buffer *Selected,
-	model *Model, u32 ElementID, u32 ITarget, b32 ShiftDown)
+AddToSelectedBuffer(element_id_buffer *Selected, u32 ElementID, u32 ITarget, b32 ShiftDown)
 {
-	if (Model && ShiftDown && Selected->Count)
+	if (ShiftDown && Selected->Count)
 	{
 		switch (ITarget)
 		{
@@ -228,7 +228,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 		case ModelTargetElement_None:
 		{
 			*IModel = {};
-			if (RayModelsIntersect(&Editor->MainArena, Editor->Models, Editor->ModelsCount,
+			if (RayModelsIntersect(&Editor->MainArena, Editor->WorkModels, Editor->WorkModelsCount,
 				WorldUI->MouseRay, &IModel->ID, &IModel->Face))
 			{
 				Interaction = SetModelSelectInteraction(IModel->ID, 0, 0, IModel->Target);
@@ -237,7 +237,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 				{
 					if (IsDown(Input->Ctrl))
 					{
-						model *Model = Editor->Models + WorldUI->IModel.ID;
+						work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
 						Editor->Camera.Pos = Model->Offset;
 					}
 					else
@@ -257,7 +257,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 		case ModelTargetElement_Face:
 		{
-			model *Model = Editor->Models + WorldUI->IModel.ID;
+			work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
 			IModel->Face = {};
 
 			if (RayAABBIntersect(WorldUI->MouseRay, Model->AABB, Model->Offset))
@@ -268,8 +268,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
-						AddToSelectedBuffer(&WorldUI->Selected,	Model,
-							IModel->Face.ID, IModel->Target, IsDown(Input->Shift));
+						AddToSelectedBuffer(&WorldUI->Selected,	IModel->Face.ID, IModel->Target, IsDown(Input->Shift));
 					}
 				}
 			}
@@ -277,7 +276,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 		case ModelTargetElement_Edge:
 		{
-			model *Model = Editor->Models + WorldUI->IModel.ID;
+			work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
 			IModel->Edge = {};
 			
 			ray_to_point_params PosRelParams =
@@ -292,8 +291,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
-						AddToSelectedBuffer(&WorldUI->Selected, Model,
-							IModel->Edge.ID, IModel->Target, IsDown(Input->Shift));
+						AddToSelectedBuffer(&WorldUI->Selected,	IModel->Edge.ID, IModel->Target, IsDown(Input->Shift));
 					}
 				}
 
@@ -306,7 +304,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 // TODO: Delete or change implementation
 v3
-ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
+ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 	element_id_buffer *Selected, u32 ElementTarget)
 {
 	v3 Result = {};
@@ -328,7 +326,7 @@ ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 FaceIndex = Selected->Elements[Index];
-				model_face *Face = Model->Faces + FaceIndex;
+				model_face *Face = Model->Data.Faces + FaceIndex;
 
 				for (u32 InFaceIndex = 0;
 					InFaceIndex < ArrayCount(Face->VertexID);
@@ -365,7 +363,7 @@ ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 V = Model->Vertex[VertexIndex] + ModelOffset;
+				v3 V = Model->Data.Vertex[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
@@ -379,7 +377,7 @@ ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 EdgeIndex = Selected->Elements[Index];
-				model_edge *Edge = Model->Edges + EdgeIndex;
+				model_edge *Edge = Model->Data.Edges + EdgeIndex;
 
 				for (u32 InEdgeIndex = 0;
 					InEdgeIndex < ArrayCount(Edge->VertexID);
@@ -416,7 +414,7 @@ ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 V = Model->Vertex[VertexIndex] + ModelOffset;
+				v3 V = Model->Data.Vertex[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
@@ -432,7 +430,7 @@ ComputeToolPos(model *Model, element_id_buffer *UniqIndeces,
 // TODO: Optimize
 // NOTE: Transform happens in model space
 void
-ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
+ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Transform)
 {
 	v3 ModelSpaleRotOrigin = RotationOrigin - Model->Offset;
@@ -442,12 +440,12 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Model:
 		{
 			for (u32 Index = 0;
-				Index < Model->VertexCount;
+				Index < Model->Data.VertexCount;
 				++Index)
 			{
-				v3 V = Model->Vertex[Index];
+				v3 V = Model->Data.Vertex[Index];
 				V = V * Transform;
-				Model->Vertex[Index] = V;
+				Model->Data.Vertex[Index] = V;
 			}
 		} break;
 		
@@ -459,25 +457,25 @@ ApplyRotation(model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Vertex[VertexIndex];
+				v3 V = Model->Data.Vertex[VertexIndex];
 				
 				V -= ModelSpaleRotOrigin;
 				V = V * Transform;
 				V += ModelSpaleRotOrigin;
 
-				Model->Vertex[VertexIndex] = V;
+				Model->Data.Vertex[VertexIndex] = V;
 			}
 		} break;
 	}
 
-	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
 }
 
 // TODO: Optimize!!!
 // TODO: See if applying scale matrix durring ModelTargetElement_Model interaction
 // fix bug
 void
-ApplyScale(model *Model, element_id_buffer *UniqIndeces,
+ApplyScale(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 Origin, v4 ScaleParam)
 {
 	v3 ScaleV = ScaleParam.xyz * ScaleParam.w;
@@ -488,10 +486,10 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Model:
 		{
 			for (u32 Index = 0;
-				Index < Model->VertexCount;
+				Index < Model->Data.VertexCount;
 				++Index)
 			{
-				v3 V = Model->Vertex[Index];
+				v3 V = Model->Data.Vertex[Index];
 
 				v3 NormV = Normalize(V);
 				f32 VDotS = Dot(NormV, ScaleParam.xyz);
@@ -499,7 +497,7 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 				v3 ScaleFactor = ScaleV * Sign(VDotS);
 
 				V = V + ScaleFactor;
-				Model->Vertex[Index] = V;
+				Model->Data.Vertex[Index] = V;
 			}
 		} break;
 
@@ -515,7 +513,7 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Vertex[VertexIndex];
+				v3 V = Model->Data.Vertex[VertexIndex];
 
 				V -= ScaleOrigin;
 
@@ -526,17 +524,17 @@ ApplyScale(model *Model, element_id_buffer *UniqIndeces,
 
 				V = V + ScaleFactor;
 				V += ScaleOrigin;
-				Model->Vertex[VertexIndex] = V;
+				Model->Data.Vertex[VertexIndex] = V;
 			}
 		} break;
 	}
 
-	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
 }
 
 // TODO: Optimize
 void
-ApplyTranslate(model *Model, element_id_buffer *UniqIndeces,
+ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 TransParam)
 {
 	switch (ElementTarget)
@@ -554,13 +552,13 @@ ApplyTranslate(model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Vertex[VertexIndex];
+				v3 V = Model->Data.Vertex[VertexIndex];
 
 				V += TransParam;
-				Model->Vertex[VertexIndex] = V;
+				Model->Data.Vertex[VertexIndex] = V;
 			}
 
-			Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+			Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
 		} break;
 	}
 }
@@ -1097,7 +1095,7 @@ RayTransToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 }
 
 m3x3
-SetAxisForTool(model *Model, element_id_buffer *Selected, u32 ElementTarget)
+SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget)
 {
 	m3x3 Result = {};
 
@@ -1116,10 +1114,10 @@ SetAxisForTool(model *Model, element_id_buffer *Selected, u32 ElementTarget)
 		{
 			case ModelTargetElement_Edge:
 			{
-				model_edge *Edge = Model->Edges + ElementID;
+				model_edge *Edge = Model->Data.Edges + ElementID;
 				edge_faces_norm RelatedNorm = GetEdgeFacesRelatedNormals(Model, Edge);
-				v3 V0 = Model->Vertex[Edge->V0];
-				v3 V1 = Model->Vertex[Edge->V1];
+				v3 V0 = Model->Data.Vertex[Edge->V0];
+				v3 V1 = Model->Data.Vertex[Edge->V1];
 
 				Result.Z = Normalize(V1 - V0);
 				Result.Y = NLerp(RelatedNorm.N0, 0.5f, RelatedNorm.N1);
@@ -1128,7 +1126,7 @@ SetAxisForTool(model *Model, element_id_buffer *Selected, u32 ElementTarget)
 
 			case ModelTargetElement_Face:
 			{
-				model_face *Face = Model->Faces + ElementID;
+				model_face *Face = Model->Data.Faces + ElementID;
 				face_vertex Vertex = GetFaceVertex(Model, Face);
 
 				v3 OriginZ = V3(0, 0, 1);
@@ -1153,11 +1151,10 @@ SetAxisForTool(model *Model, element_id_buffer *Selected, u32 ElementTarget)
 
 // TODO: Add more tools!!!
 void
-InitTools(editor_world_ui *WorldUI, tools *Tools, model *ModelsArr, memory_arena *TranArena)
+InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, memory_arena *TranArena)
 {
 	element_id_buffer *Selected = &WorldUI->Selected;
 	interact_model *IModel = &WorldUI->IModel;
-	model *Model = ModelsArr + IModel->ID;
 
 	// TODO: Define pos. as common
 	tool_type ToolType = (tool_type)Tools->Type;
@@ -1311,13 +1308,14 @@ internal void inline
 UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render_group *RenderGroup)
 {
 	ui_interaction Interaction = {};
+
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	tools *Tools = &WorldUI->Tools;
-	model *Model = Editor->Models + WorldUI->IModel.ID;
+	work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
 
 	if (!Tools->IsInit)
 	{
-		InitTools(WorldUI, Tools, Editor->Models, &Editor->TranArena);
+		InitTools(WorldUI, Tools, Model, &Editor->TranArena);
 	}
 
 	ray_params Ray = WorldUI->MouseRay;

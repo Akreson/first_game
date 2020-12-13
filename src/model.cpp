@@ -149,16 +149,29 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	return Result;
 }
 
+//inline face_vertex
+//GetFaceVertex(model *Model, model_face *Face)
+//{
+//	face_vertex Result;
+//
+//	Result.V0 = Model->Vertex[Face->V0];
+//	Result.V1 = Model->Vertex[Face->V1];
+//	Result.V2 = Model->Vertex[Face->V2];
+//	Result.V3 = Model->Vertex[Face->V3];
+//
+//	return Result;
+//}
+
 inline face_vertex
-GetFaceVertex(model *Model, model_face *Face)
+GetFaceVertex(work_model *Model, model_face *Face)
 {
 	face_vertex Result;
 
 	v3 ModelOffset = Model->Offset;
-	Result.V0 = Model->Vertex[Face->V0] + ModelOffset;
-	Result.V1 = Model->Vertex[Face->V1] + ModelOffset;
-	Result.V2 = Model->Vertex[Face->V2] + ModelOffset;
-	Result.V3 = Model->Vertex[Face->V3] + ModelOffset;
+	Result.V0 = Model->Data.Vertex[Face->V0] + ModelOffset;
+	Result.V1 = Model->Data.Vertex[Face->V1] + ModelOffset;
+	Result.V2 = Model->Data.Vertex[Face->V2] + ModelOffset;
+	Result.V3 = Model->Data.Vertex[Face->V3] + ModelOffset;
 
 	return Result;
 }
@@ -180,7 +193,7 @@ GetFaceNormals(face_vertex Vertex)
 }
 
 inline face_normals
-GetFaceNormals(model *Model, model_face *Face)
+GetFaceNormals(work_model *Model, model_face *Face)
 {
 	face_normals Result;
 
@@ -200,7 +213,7 @@ GetPlaneAvgNormal(face_vertex Vertex)
 }
 
 inline v3
-GetPlaneAvgNormal(model *Model, model_face *Face)
+GetPlaneAvgNormal(work_model *Model, model_face *Face)
 {
 	v3 Result;
 	
@@ -226,11 +239,11 @@ GetFacePlane(face_vertex Vertex)
 }
 
 internal inline face_plane
-GetFacePlane(model *Model, u32 FaceIndex)
+GetFacePlane(work_model *Model, u32 FaceIndex)
 {
 	face_plane Result;
 
-	model_face *Face = Model->Faces + FaceIndex;
+	model_face *Face = Model->Data.Faces + FaceIndex;
 	face_vertex Vertex = GetFaceVertex(Model, Face);
 
 	Result = GetFacePlane(Vertex);
@@ -238,11 +251,11 @@ GetFacePlane(model *Model, u32 FaceIndex)
 }
 
 edge_faces_norm
-GetEdgeFacesRelatedNormals(model *Model, model_edge *Edge)
+GetEdgeFacesRelatedNormals(work_model *Model, model_edge *Edge)
 {
 	edge_faces_norm Result;
-	model_face *Face0 = Model->Faces + Edge->Face0;
-	model_face *Face1 = Model->Faces + Edge->Face1;
+	model_face *Face0 = Model->Data.Faces + Edge->Face0;
+	model_face *Face1 = Model->Data.Faces + Edge->Face1;
 
 	face_plane Plane0 = GetFacePlane(Model, Edge->Face0);
 	face_plane Plane1 = GetFacePlane(Model, Edge->Face1);
@@ -410,23 +423,47 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 }
 
 inline model *
-AddModel(game_editor_state *Editor, v4 Color, v3 Offset)
+AddModel(game_editor_state *Editor)
 {
-	model *Model = Editor->Models + Editor->ModelsCount++;
-	Assert(Editor->ModelsCount < ArrayCount(Editor->Models));
-	Model->Color = Color;
-	Model->Offset = Offset;
-	Model->Axis = Identity3x3();
+	model *Model = Editor->SourceModels + Editor->SourceModelsCount++;
+	Assert(Editor->SourceModelsCount < ArrayCount(Editor->SourceModels));
 
 	return Model;
 }
 
-void
+inline work_model *
+InitWorkModel(game_editor_state *Editor, model *SourceModel, v4 Color, v3 Offset)
+{
+	page_memory_arena *Arena = &Editor->PageArena;
+	
+	work_model *Model = Editor->WorkModels + Editor->WorkModelsCount++;
+	Assert(Editor->SourceModelsCount < ArrayCount(Editor->SourceModels));
+	
+	Model->Color = Color;
+	Model->Offset = Offset;
+	Model->Axis = Identity3x3();
+	Model->Source = SourceModel;
+	Model->Data.VertexCount = SourceModel->VertexCount;
+	Model->Data.FaceCount = SourceModel->FaceCount;
+	Model->Data.EdgeCount = SourceModel->EdgeCount;
+
+	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertex, SourceModel->Vertex);
+	PagePushArray(Arena, model_face, SourceModel->FaceCount, Model->Data.Faces, SourceModel->Faces);
+	PagePushArray(Arena, model_edge, SourceModel->EdgeCount, Model->Data.Edges, SourceModel->Edges);
+
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
+
+	return Model;
+}
+
+work_model *
 AddCubeModel(game_editor_state *Editor, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
 {
-	model *Model = AddModel(Editor, Color, Offset);
-	GeneratingCube(&Editor->PageArena, Model);
-	Model->AABB = ComputeMeshAABB(Model->Vertex, Model->VertexCount);
+	model *SourceModel = AddModel(Editor);
+	GeneratingCube(&Editor->PageArena, SourceModel);
+
+	work_model *Model = InitWorkModel(Editor, SourceModel, Color, Offset);
+	return Model;
 }
 
 inline void
@@ -574,20 +611,20 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 }
 
 b32
-RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceResult)
+RayModelFacesIntersect(work_model *Model, ray_params Ray, element_ray_result *FaceResult)
 {
 	b32 Result = false;
 	f32 ClosestHitDistSq = FLOAT_MAX;
 
 	v3 ModelOffset = Model->Offset;
 	for (u32 FaceIndex = 0;
-		FaceIndex < Model->FaceCount;
+		FaceIndex < Model->Data.FaceCount;
 		++FaceIndex)
 	{
 		b32 HitTest = false;
 		v3 IntersetPoint;
 
-		model_face *Face = Model->Faces + FaceIndex;
+		model_face *Face = Model->Data.Faces + FaceIndex;
 		face_vertex Vertex = GetFaceVertex(Model, Face);
 
 		face_plane Plane = GetFacePlane(Vertex);
@@ -636,7 +673,7 @@ RayModelFacesIntersect(model *Model, ray_params Ray, element_ray_result *FaceRes
 // Check if precompute and then check face visibility
 // give benefit
 b32
-RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
+RayModelEdgesIntersect(work_model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {
 	b32 Result = false;
 	v3 ResultPointOnEdge;
@@ -646,10 +683,10 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 	// NOTE: 0 - edge ray, 1 - mouse ray
 	v3 ModelOffset = Model->Offset;
 	for (u32 EdgeIndex = 0;
-		EdgeIndex < Model->EdgeCount;
+		EdgeIndex < Model->Data.EdgeCount;
 		++EdgeIndex)
 	{
-		model_edge Edge = Model->Edges[EdgeIndex];
+		model_edge Edge = Model->Data.Edges[EdgeIndex];
 
 		face_plane Plane0 = GetFacePlane(Model, Edge.Face0);
 		face_plane Plane1 = GetFacePlane(Model, Edge.Face1);
@@ -663,8 +700,8 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
 			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
 		{
-			v3 SegmentStart = Model->Vertex[Edge.V0] + ModelOffset;
-			v3 SegmentEnd = Model->Vertex[Edge.V1] + ModelOffset;
+			v3 SegmentStart = Model->Data.Vertex[Edge.V0] + ModelOffset;
+			v3 SegmentEnd = Model->Data.Vertex[Edge.V1] + ModelOffset;
 			v3 SegmentDirV = SegmentEnd - SegmentStart;
 
 			f32 IntrRadiusSq = Square(IntrRadius);
@@ -710,7 +747,7 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 		element_ray_result FaceResult;
 		if (RayModelFacesIntersect(Model, Ray, &FaceResult))
 		{
-			model_edge Edge = Model->Edges[ClosestIndex];
+			model_edge Edge = Model->Data.Edges[ClosestIndex];
 			if ((FaceResult.ID != Edge.Face0) && (FaceResult.ID != Edge.Face1))
 			{
 				f32 LengthToFacePSq = LengthSq(FaceResult.P - Ray.P);
@@ -731,7 +768,7 @@ RayModelEdgesIntersect(model *Model, ray_params Ray, element_ray_result *EdgeRes
 }
 
 b32
-RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_params Ray, u32 *ModelID,
+RayModelsIntersect(memory_arena *Arena, work_model *Models, u32 ModelCount, ray_params Ray, u32 *ModelID,
 	element_ray_result *Face)
 {
 	b32 Result = false;
@@ -746,7 +783,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 		ModelIndex < ModelCount;
 		++ModelIndex)
 	{
-		model *Model = Models + ModelIndex;
+		work_model *Model = Models + ModelIndex;
 
 		b32 HitTest = RayAABBIntersect(Ray, Model->AABB, Model->Offset);
 
@@ -796,7 +833,7 @@ RayModelsIntersect(memory_arena *Arena, model *Models, u32 ModelCount, ray_param
 			++SortIndex)
 		{
 			u32 ModelIndex = ModelsSortArray[SortIndex].Index;
-			model *Model = Models + ModelIndex;
+			work_model *Model = Models + ModelIndex;
 
 			if (RayModelFacesIntersect(Model, Ray, Face))
 			{
