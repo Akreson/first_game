@@ -478,6 +478,9 @@ void
 ApplyScale(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 Origin, v4 ScaleParam)
 {
+	model *SourceModel = Model->Source;
+	v3 *SourceVertex = SourceModel->Vertex;
+
 	v3 ScaleV = ScaleParam.xyz * ScaleParam.w;
 	v3 ScaleOrigin = Origin - Model->Offset;
 
@@ -485,28 +488,30 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces,
 	{
 		case ModelTargetElement_Model:
 		{
-			for (u32 Index = 0;
-				Index < Model->Data.VertexCount;
-				++Index)
-			{
-				v3 V = Model->Data.Vertex[Index];
+			//for (u32 Index = 0;
+			//	Index < Model->Data.VertexCount;
+			//	++Index)
+			//{
+			//	v3 V = Model->Data.Vertex[Index];
 
-				v3 NormV = Normalize(V);
-				f32 VDotS = Dot(NormV, ScaleParam.xyz);
-				//VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
-				v3 ScaleFactor = ScaleV * Sign(VDotS);
+			//	v3 NormV = Normalize(V);
+			//	f32 VDotS = Dot(NormV, ScaleParam.xyz);
+			//	//VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
+			//	v3 ScaleFactor = ScaleV * Sign(VDotS);
 
-				V = V + ScaleFactor;
-				Model->Data.Vertex[Index] = V;
-			}
+			//	V = V + ScaleFactor;
+			//	Model->Data.Vertex[Index] = V;
+			//}
+
+			
 		} break;
 
 		// NOTE: Must not be used for move plane int Z direction
 		// Or one edge in X direction
 		// TODO: Implement forbidding this behavior?
 		// TODO: Another method of linear scaling?
-		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
+		case ModelTargetElement_Edge:
 		{
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
@@ -547,15 +552,19 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
+			model *SourceModel = Model->Source;
+			v3 *SourceVertex = SourceModel->Vertex;
+
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
 			{
+				// TODO: Test with scale -------- !!!
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Data.Vertex[VertexIndex];
+				v3 V = SourceVertex[VertexIndex];
 
 				V += TransParam;
-				Model->Data.Vertex[VertexIndex] = V;
+				Model->Data.Vertex[VertexIndex] = SourceVertex[VertexIndex] = V;
 			}
 
 			Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
@@ -671,7 +680,7 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 			if (AngleBetween != 0)
 			{
 				m4x4 Rotate = GetRotateMatrixFromAxisID(AngleBetween, Tool->InteractAxis);
-				m4x4 CurrentRotateAxis = Row3x3(Axis.X, Axis.Y, Axis.Z);
+				m4x4 CurrentRotateAxis = ToM4x4(Axis);
 				m4x4 ResultAxis = Rotate * CurrentRotateAxis;
 
 				m4x4 InvCurrentAxis = Transpose(CurrentRotateAxis);
@@ -1036,7 +1045,7 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 }
 
 internal inline trans_tool_axis_params
-ModTransToolDefauldParams(trans_tool_axis_params Params, f32 Scale)
+ModTransToolDefaultParams(trans_tool_axis_params Params, f32 Scale)
 {
 	trans_tool_axis_params Result;
 
@@ -1493,7 +1502,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				GetRayToPointRelParam(Ray.P, TransTool->P, Tools->AdjustScaleDist);
 
 			trans_tool_axis_params ScaleAxisParams =
-				ModTransToolDefauldParams(TransTool->InitAxisParams, PosRelParams.ScaleFactor);
+				ModTransToolDefaultParams(TransTool->InitAxisParams, PosRelParams.ScaleFactor);
 
 			m3x3 Axis;
 			if (TransTool->InteractAxis == ToolsAxisID_None)
@@ -1568,11 +1577,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	}
 
 	WorldUI->NextHotInteraction = Interaction;
-}
-
-inline b32
-IsValid(interact_model IModel)
-{
 }
 
 void

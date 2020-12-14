@@ -76,8 +76,9 @@ struct work_model
 	model *Source;
 
 	m3x3 Axis;
-	v4 Color;
 	rect3 AABB;
+	v4 Color;
+	v3 Scale;
 	v3 Offset; // TODO: Store vertex in origin of model space or already in world space offset?
 };
 

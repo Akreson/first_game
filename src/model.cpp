@@ -442,6 +442,7 @@ InitWorkModel(game_editor_state *Editor, model *SourceModel, v4 Color, v3 Offset
 	Model->Color = Color;
 	Model->Offset = Offset;
 	Model->Axis = Identity3x3();
+	Model->Scale = V3(1.0f);
 	Model->Source = SourceModel;
 	Model->Data.VertexCount = SourceModel->VertexCount;
 	Model->Data.FaceCount = SourceModel->FaceCount;
