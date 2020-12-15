@@ -897,10 +897,23 @@ Transpose(m4x4 A)
 inline m4x4
 ScaleMat(f32 Factor)
 {
-	m4x4 Result = Identity();
+	m4x4 Result = {};
 	Result.E[0][0] = Factor;
 	Result.E[1][1] = Factor;
 	Result.E[2][2] = Factor;
+	Result.E[3][3] = 1.0f;
+
+	return Result;
+}
+
+inline m4x4
+ScaleMat(v3 A)
+{
+	m4x4 Result = {};
+	Result.E[0][0] = A.x;
+	Result.E[1][1] = A.y;
+	Result.E[2][2] = A.z;
+	Result.E[3][3] = 1.0f;
 
 	return Result;
 }

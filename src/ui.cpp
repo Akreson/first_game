@@ -475,16 +475,16 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 // TODO: See if applying scale matrix durring ModelTargetElement_Model interaction
 // fix bug
 void
-ApplyScale(work_model *Model, element_id_buffer *UniqIndeces,
-	model_target_element ElementTarget, v3 Origin, v4 ScaleParam)
+ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
+	model_target_element TargetElement, b32 IsGlobalSpace)
 {
 	model *SourceModel = Model->Source;
 	v3 *SourceVertex = SourceModel->Vertex;
 
-	v3 ScaleV = ScaleParam.xyz * ScaleParam.w;
-	v3 ScaleOrigin = Origin - Model->Offset;
+	v3 ScaleV = Tool->ScaleParam.xyz;
+	v3 ScaleOrigin = Tool->P - Model->Offset;
 
-	switch (ElementTarget)
+	switch (TargetElement)
 	{
 		case ModelTargetElement_Model:
 		{
@@ -503,7 +503,37 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces,
 			//	Model->Data.Vertex[Index] = V;
 			//}
 
+			if (!IsGlobalSpace)
+			{
+				m4x4 InvRot = Transpose(ToM4x4(Model->Axis));
+				ScaleV = Normalize(ScaleV * InvRot);
+			}
 			
+			ScaleV *= Tool->ScaleParam.w;
+			Model->Scale += ScaleV;
+			m4x4 Scale = ScaleMat(Model->Scale);
+			// TODO: Set transform order in right way
+
+			m4x4 Transform;
+			if (!IsGlobalSpace)
+			{
+				Transform = Scale * ToM4x4(Model->Axis);
+			}
+			else
+			{
+				Transform = ToM4x4(Model->Axis) * Scale;
+			}
+
+			for (u32 Index = 0;
+				Index < Model->Data.VertexCount;
+				++Index)
+			{
+				v3 SourceV = SourceVertex[Index];
+
+				Model->Data.Vertex[Index] = SourceV * Transform;
+			}
+
+
 		} break;
 
 		// NOTE: Must not be used for move plane int Z direction
@@ -523,7 +553,7 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces,
 				V -= ScaleOrigin;
 
 				v3 NormV = Normalize(V);
-				f32 VDotS = Dot(NormV, ScaleParam.xyz);
+				f32 VDotS = Dot(NormV, Tool->ScaleParam.xyz);
 				VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
 				v3 ScaleFactor = ScaleV * Sign(VDotS);
 
@@ -681,15 +711,15 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 			{
 				m4x4 Rotate = GetRotateMatrixFromAxisID(AngleBetween, Tool->InteractAxis);
 				m4x4 CurrentRotateAxis = ToM4x4(Axis);
-				m4x4 ResultAxis = Rotate * CurrentRotateAxis;
-
 				m4x4 InvCurrentAxis = Transpose(CurrentRotateAxis);
+
+				m4x4 ResultAxis = Rotate * CurrentRotateAxis;
 				m4x4 ResultTransform = InvCurrentAxis * ResultAxis;
 
 				m4x4 ToolCurrentAxis;
 				if (Tool->DefaultAxisSet)
 				{
-					ToolCurrentAxis = Row3x3(Tool->Axis.X, Tool->Axis.Y, Tool->Axis.Z);
+					ToolCurrentAxis = ToM4x4(Tool->Axis);
 					ToolCurrentAxis = ToolCurrentAxis * Rotate;
 				}
 				else
@@ -698,10 +728,10 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 				}
 
 				Tool->Transform = ResultTransform;
+				Tool->PrevVector = CurrentVector;
 				Tool->Axis.X = GetRow(ToolCurrentAxis, 0);
 				Tool->Axis.Y = GetRow(ToolCurrentAxis, 1);
 				Tool->Axis.Z = GetRow(ToolCurrentAxis, 2);
-				Tool->PrevVector = CurrentVector;
 				
 				Assert(!isnan(Tool->Axis.X.x) && !isnan(Tool->Axis.X.y) && !isnan(Tool->Axis.X.z));
 				Assert(!isnan(Tool->Axis.Y.x) && !isnan(Tool->Axis.Y.y) && !isnan(Tool->Axis.Y.z));
@@ -936,8 +966,6 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	return Result;
 }
 
-// TODO: Collate Scale and Trans tool processing
-
 internal b32
 ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 {
@@ -1103,6 +1131,7 @@ RayTransToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 	return Result;
 }
 
+// TODO: Keep axis in axis aligned view?
 m3x3
 SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget)
 {
@@ -1321,6 +1350,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	tools *Tools = &WorldUI->Tools;
 	work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
+	b32 IsGlobalSpace = IsDown(Input->Ctrl);
 
 	if (!Tools->IsInit)
 	{
@@ -1341,7 +1371,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			RotateTool->FromPosToRayP = Normalize(PosRelParams.ToolToRayV, PosRelParams.LenV);
 
 			m3x3 Axis;
-			if (IsDown(Input->Ctrl))
+			if (IsGlobalSpace)
 			{
 				Axis = Identity3x3();
 				RotateTool->DefaultAxisSet = true;
@@ -1434,7 +1464,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			{
 				ScaleTool->AxisMask = {};
 
-				if (IsDown(Input->Ctrl))
+				if (IsGlobalSpace)
 				{
 					Axis = Identity3x3();
 				}
@@ -1475,8 +1505,12 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if (ProcessScaleToolTransform(ScaleTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-						ApplyScale(Model, &Tools->UniqIndeces, TargetElement, ScaleTool->P,
-							ScaleTool->ScaleParam);
+
+						/*if (IsDown(Input->Ctrl))
+						{
+						}*/
+
+						ApplyScale(Model, &Tools->UniqIndeces, ScaleTool, TargetElement, IsGlobalSpace);
 					}
 				
 					SetDefaultDisplayParams(&ScaleTool->DisplayState, ScaleAxisParams, ScaleTool->InteractAxis);
@@ -1511,7 +1545,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				TransTool->PlaneMask = {};
 				TransTool->IsPlaneIntr = false;
 
-				if (IsDown(Input->Ctrl))
+				if (IsGlobalSpace)
 				{
 					Axis = Identity3x3();
 				}
