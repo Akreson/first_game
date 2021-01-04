@@ -470,6 +470,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
 }
 
+#define SCALE_SPEED 0.4f
 // TODO: Optimize!!!
 void
 ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
@@ -480,6 +481,7 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 
 	v3 ScaleV = Tool->ScaleParam.xyz;
 	v3 ScaleOrigin = Tool->P - Model->Offset;
+	Tool->ScaleParam.w *= SCALE_SPEED;
 
 	switch (TargetElement)
 	{
