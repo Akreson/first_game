@@ -442,11 +442,12 @@ InitWorkModel(game_editor_state *Editor, model *SourceModel, v4 Color, v3 Offset
 	Model->Color = Color;
 	Model->Offset = Offset;
 	Model->Axis = Identity3x3();
-	Model->Scale = V3(1.0f);
+	Model->ScaleMat = Identity();
 	Model->Source = SourceModel;
 	Model->Data.VertexCount = SourceModel->VertexCount;
 	Model->Data.FaceCount = SourceModel->FaceCount;
 	Model->Data.EdgeCount = SourceModel->EdgeCount;
+
 
 	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertex, SourceModel->Vertex);
 	PagePushArray(Arena, model_face, SourceModel->FaceCount, Model->Data.Faces, SourceModel->Faces);

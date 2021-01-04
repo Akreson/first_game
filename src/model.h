@@ -44,19 +44,6 @@ struct model_face
 	};
 };
 
-struct face_plane
-{
-	union
-	{
-		plane_params Plane[2];
-		struct
-		{
-			plane_params P0;
-			plane_params P1;
-		};
-	};
-};
-
 // NOTE: Triangle specifed in conter-clokwise order
 struct model
 {
@@ -74,6 +61,9 @@ struct work_model
 	model Data;
 
 	model *Source;
+
+	// TODO: Use m3x3?
+	m4x4 ScaleMat;
 
 	m3x3 Axis;
 	rect3 AABB;
@@ -123,6 +113,19 @@ struct face_vertex
 struct face_normals
 {
 	v3 N0, N1;
+};
+
+struct face_plane
+{
+	union
+	{
+		plane_params Plane[2];
+		struct
+		{
+			plane_params P0;
+			plane_params P1;
+		};
+	};
 };
 
 struct edge_faces_norm

@@ -268,7 +268,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
-						AddToSelectedBuffer(&WorldUI->Selected,	IModel->Face.ID, IModel->Target, IsDown(Input->Shift));
+						AddToSelectedBuffer(&WorldUI->Selected, IModel->Face.ID, IModel->Target, IsDown(Input->Shift));
 					}
 				}
 			}
@@ -278,7 +278,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 		{
 			work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
 			IModel->Edge = {};
-			
+
 			ray_to_point_params PosRelParams =
 				GetRayToPointRelParam(WorldUI->MouseRay.P, Model->Offset, WorldUI->Tools.AdjustScaleDist);
 
@@ -291,7 +291,7 @@ UpdateModelInteractionElement(game_editor_state *Editor, game_input *Input, rend
 
 					if (AreEqual(Interaction, WorldUI->ToExecute))
 					{
-						AddToSelectedBuffer(&WorldUI->Selected,	IModel->Edge.ID, IModel->Target, IsDown(Input->Shift));
+						AddToSelectedBuffer(&WorldUI->Selected, IModel->Edge.ID, IModel->Target, IsDown(Input->Shift));
 					}
 				}
 
@@ -348,7 +348,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 							}
 						}
 					}
-					
+
 					if (IsAddToUniqBuff)
 					{
 						UniqIndeces->Elements[UniqIndeces->Count++] = VertexIndex;
@@ -431,7 +431,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 // NOTE: Transform happens in model space
 void
 ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
-	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Transform)
+	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Rotation)
 {
 	v3 ModelSpaleRotOrigin = RotationOrigin - Model->Offset;
 
@@ -444,24 +444,26 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				v3 V = Model->Data.Vertex[Index];
-				V = V * Transform;
+				V = V * Rotation;
 				Model->Data.Vertex[Index] = V;
 			}
 		} break;
-		
+
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
+			m4x4 T = TranslateMat(-ModelSpaleRotOrigin) * Rotation * TranslateMat(ModelSpaleRotOrigin);
+
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 				v3 V = Model->Data.Vertex[VertexIndex];
-				
-				V -= ModelSpaleRotOrigin;
-				V = V * Transform;
-				V += ModelSpaleRotOrigin;
+
+				//V -= ModelSpaleRotOrigin;
+				V = V * T;
+				//V += ModelSpaleRotOrigin;
 
 				Model->Data.Vertex[VertexIndex] = V;
 			}
@@ -488,41 +490,27 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 	{
 		case ModelTargetElement_Model:
 		{
-			//for (u32 Index = 0;
-			//	Index < Model->Data.VertexCount;
-			//	++Index)
-			//{
-			//	v3 V = Model->Data.Vertex[Index];
+			m4x4 MAxis = ToM4x4(Model->Axis);
+			m4x4 InvRot = Transpose(MAxis);
 
-			//	v3 NormV = Normalize(V);
-			//	f32 VDotS = Dot(NormV, ScaleParam.xyz);
-			//	//VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
-			//	v3 ScaleFactor = ScaleV * Sign(VDotS);
-
-			//	V = V + ScaleFactor;
-			//	Model->Data.Vertex[Index] = V;
-			//}
-
+			m4x4 ApplyScale;
 			if (!IsGlobalSpace)
 			{
-				m4x4 InvRot = Transpose(ToM4x4(Model->Axis));
 				ScaleV = Normalize(ScaleV * InvRot);
-			}
-			
-			ScaleV *= Tool->ScaleParam.w;
-			Model->Scale += ScaleV;
-			m4x4 Scale = ScaleMat(Model->Scale);
-			// TODO: Set transform order in right way
-
-			m4x4 Transform;
-			if (!IsGlobalSpace)
-			{
-				Transform = Scale * ToM4x4(Model->Axis);
+				ScaleV *= Tool->ScaleParam.w;
+				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
 			}
 			else
 			{
-				Transform = ToM4x4(Model->Axis) * Scale;
+				ScaleV *= Tool->ScaleParam.w;
+
+				// TODO: Compute in temp matrix?
+				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
+				ApplyScale = MAxis * ApplyScale * InvRot;
 			}
+
+			Model->ScaleMat = Model->ScaleMat * ApplyScale;
+			m4x4 Transform = Model->ScaleMat * MAxis;
 
 			for (u32 Index = 0;
 				Index < Model->Data.VertexCount;
@@ -532,11 +520,9 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 
 				Model->Data.Vertex[Index] = SourceV * Transform;
 			}
-
-
 		} break;
 
-		// NOTE: Must not be used for move plane int Z direction
+		// NOTE: Must not be used for move plane in Z direction
 		// Or one edge in X direction
 		// TODO: Implement forbidding this behavior?
 		// TODO: Another method of linear scaling?
@@ -630,7 +616,7 @@ internal inline b32
 SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 {
 	b32 Result = false;
-	
+
 	f32 RPosDotPlaneN = Dot(Tool->FromPosToRayP, Tool->InteractPlane.N);
 
 	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
@@ -732,7 +718,7 @@ ProcessRotateToolTransform(rotate_tools *Tool, ray_params Ray, m3x3 Axis)
 				Tool->Axis.X = GetRow(ToolCurrentAxis, 0);
 				Tool->Axis.Y = GetRow(ToolCurrentAxis, 1);
 				Tool->Axis.Z = GetRow(ToolCurrentAxis, 2);
-				
+
 				Assert(!isnan(Tool->Axis.X.x) && !isnan(Tool->Axis.X.y) && !isnan(Tool->Axis.X.z));
 				Assert(!isnan(Tool->Axis.Y.x) && !isnan(Tool->Axis.Y.y) && !isnan(Tool->Axis.Y.z));
 				Assert(!isnan(Tool->Axis.Z.x) && !isnan(Tool->Axis.Z.y) && !isnan(Tool->Axis.Z.z));
@@ -931,7 +917,7 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	v4 InvRayD = V4(Ray.Dir, 0) * InvAxis;
 	v4 InvRayP = V4(Ray.P, 1.0f) * InvAxis;
 	ray_params InvRay = CreateRay(InvRayP.xyz, InvRayD.xyz);
-	
+
 	m3x3 DefaultAxis = Identity3x3();
 	DefaultAxis.Z *= ZSignMod;
 
@@ -945,7 +931,7 @@ RayScaleToolAxisTest(ray_params Ray, scl_tool_default_params AxisParams,
 	rect3 XArrowAABB = CreateRect(ArrowDim, DefaultAxis.X*AxisParams.Axis.Len);
 	rect3 YArrowAABB = CreateRect(ArrowDim, DefaultAxis.Y*AxisParams.Axis.Len);
 	rect3 ZArrowAABB = CreateRect(ArrowDim, DefaultAxis.Z*AxisParams.Axis.Len);
-	
+
 	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
 	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
 	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
@@ -1110,7 +1096,7 @@ RayTransToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 	v3 XEdgeHalfDim = V3(AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize, ModEdgeXYHalfSize);
 	v3 YEdgeHalfDim = V3(ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize, ModEdgeXYHalfSize);
 	v3 ZEdgeHalfDim = V3(ModEdgeXYHalfSize, ModEdgeXYHalfSize, AxisParams.Axis.EdgeLenHalfSize);
-	
+
 	rect3 XEdgeAABB = CreateRect(XEdgeHalfDim, DefaultAxis.X*AxisParams.Axis.EdgeCenter);
 	rect3 YEdgeAABB = CreateRect(YEdgeHalfDim, DefaultAxis.Y*AxisParams.Axis.EdgeCenter);
 	rect3 ZEdgeAABB = CreateRect(ZEdgeHalfDim, DefaultAxis.Z*AxisParams.Axis.EdgeCenter);
@@ -1214,7 +1200,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, memory_aren
 			*Trans = {};
 
 			Trans->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-			
+
 			trans_tool_axis_params *InitAxisParams = &Trans->InitAxisParams;
 			InitAxisParams->Axis.Len = TRANSLATE_TOOL_SIZE;
 			InitAxisParams->Axis.EdgeLenHalfSize = (TRANSLATE_TOOL_SIZE * 0.85f) * 0.5f;
@@ -1228,9 +1214,9 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, memory_aren
 		{
 			scale_tools *Scale = &Tools->Scale;
 			*Scale = {};
-			
+
 			Scale->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-			
+
 			scl_tool_default_params *InitAxisParams = &Scale->InitAxisParams;
 			InitAxisParams->Axis.Len = SCALE_TOOL_SIZE;
 			InitAxisParams->Axis.EdgeLenHalfSize = (SCALE_TOOL_SIZE * 0.85f) * 0.5f;
@@ -1386,7 +1372,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				Axis = RotateTool->Axis;
 				RotateTool->DefaultAxisSet = false;
 			}
-			
+
 			RotateTool->PerpInfo = SetRotToolPerpInfo(Axis, RotateTool->PerpThreshold, RotateTool->FromPosToRayP);
 
 			if (RotateTool->InteractAxis == ToolsAxisID_None)
@@ -1455,10 +1441,10 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 			ray_to_point_params PosRelParams =
 				GetRayToPointRelParam(Ray.P, ScaleTool->P, Tools->AdjustScaleDist);
-			
+
 			scl_tool_default_params ScaleAxisParams =
 				ModScaleToolDefauldParams(ScaleTool->InitAxisParams, PosRelParams.ScaleFactor);
-			
+
 			m3x3 Axis;
 			if (ScaleTool->InteractAxis == ToolsAxisID_None)
 			{
@@ -1512,7 +1498,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 						ApplyScale(Model, &Tools->UniqIndeces, ScaleTool, TargetElement, IsGlobalSpace);
 					}
-				
+
 					SetDefaultDisplayParams(&ScaleTool->DisplayState, ScaleAxisParams, ScaleTool->InteractAxis);
 				}
 				else
@@ -1619,8 +1605,8 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 
 	ProcessWorldUIInput(WorldUI, Input);
-	
-	if (IsITargetEq(WorldUI->ITarget, Model) &&	WorldUI->UpdateModelInteraction)
+
+	if (IsITargetEq(WorldUI->ITarget, Model) && WorldUI->UpdateModelInteraction)
 	{
 		UpdateModelInteractionElement(Editor, Input, RenderGroup);
 	}

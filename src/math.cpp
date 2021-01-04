@@ -360,6 +360,13 @@ operator*(v3 A, v3 B)
 	return Result;
 }
 
+inline v3&
+operator*=(v3 &A, v3 B)
+{
+	A = A * B;
+	return A;
+}
+
 inline v3
 operator/(v3 A, v3 B)
 {
@@ -689,12 +696,12 @@ operator*(v4 A, m4x4 B)
 	return Result;
 }
 
+// TODO: Optimize
 inline m4x4
 operator*(m4x4 A, m4x4 B)
 {
 	m4x4 Result = {};
 
-	// TODO: Optimize
 	for (u32 r = 0; r <= 3; ++r)
 	{
 		for (u32 c = 0; c <= 3; ++c)
@@ -703,6 +710,23 @@ operator*(m4x4 A, m4x4 B)
 			{
 				Result.E[r][c] += A.E[r][i] * B.E[i][c];
 			}
+		}
+	}
+
+	return Result;
+}
+
+// TODO: Optimize
+inline m4x4
+operator+(m4x4 A, m4x4 B)
+{
+	m4x4 Result = {};
+
+	for (u32 r = 0; r <= 3; ++r)
+	{
+		for (u32 c = 0; c <= 3; ++c)
+		{
+			Result.E[r][c] = A.E[r][c] + B.E[r][c];
 		}
 	}
 
@@ -890,6 +914,15 @@ Transpose(m4x4 A)
 			Result.E[y][i] = A.E[i][y];
 		}
 	}
+
+	return Result;
+}
+
+inline m4x4
+TranslateMat(v3 Offset)
+{
+	m4x4 Result = Identity();
+	Result.Row3.xyz = Offset;
 
 	return Result;
 }
