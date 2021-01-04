@@ -366,7 +366,7 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 }
 
 void
-GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
+GeneratingCube(page_memory_arena *Arena, model_data *Model, f32 HalfDim = 0.5f)
 {
 	v3 Vertex[8];
 	Vertex[0] = V3(-HalfDim, -HalfDim, HalfDim);
@@ -422,17 +422,14 @@ GeneratingCube(page_memory_arena *Arena, model *Model, f32 HalfDim = 0.5f)
 	Model->EdgeCount = ArrayCount(Edges);
 }
 
-inline model *
-AddModel(game_editor_state *Editor)
+void
+InitTransfromCache()
 {
-	model *Model = Editor->SourceModels + Editor->SourceModelsCount++;
-	Assert(Editor->SourceModelsCount < ArrayCount(Editor->SourceModels));
 
-	return Model;
 }
 
 inline work_model *
-InitWorkModel(game_editor_state *Editor, model *SourceModel, v4 Color, v3 Offset)
+InitWorkModel(game_editor_state *Editor, model_data *SourceModel, v4 Color, v3 Offset)
 {
 	page_memory_arena *Arena = &Editor->PageArena;
 	
@@ -448,6 +445,7 @@ InitWorkModel(game_editor_state *Editor, model *SourceModel, v4 Color, v3 Offset
 	Model->Data.FaceCount = SourceModel->FaceCount;
 	Model->Data.EdgeCount = SourceModel->EdgeCount;
 
+	// TODO: Init transform cache
 
 	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertex, SourceModel->Vertex);
 	PagePushArray(Arena, model_face, SourceModel->FaceCount, Model->Data.Faces, SourceModel->Faces);
@@ -458,10 +456,19 @@ InitWorkModel(game_editor_state *Editor, model *SourceModel, v4 Color, v3 Offset
 	return Model;
 }
 
+inline model_data *
+AddModel(game_editor_state *Editor)
+{
+	model_data *Model = Editor->SourceModels + Editor->SourceModelsCount++;
+	Assert(Editor->SourceModelsCount < ArrayCount(Editor->SourceModels));
+
+	return Model;
+}
+
 work_model *
 AddCubeModel(game_editor_state *Editor, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
 {
-	model *SourceModel = AddModel(Editor);
+	model_data *SourceModel = AddModel(Editor);
 	GeneratingCube(&Editor->PageArena, SourceModel);
 
 	work_model *Model = InitWorkModel(Editor, SourceModel, Color, Offset);

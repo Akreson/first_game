@@ -88,7 +88,7 @@ IsInSelectedBuffer(element_id_buffer *Selected, model_face *Face)
 
 // TODO: Debug _IsInSelectedBuffer_ part
 internal face_render_params
-SetFaceRenderParams(game_editor_state *Editor, model *Model, u32 FaceIndex)
+SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 {
 	face_render_params Result = {};
 	editor_world_ui *WorldUI = &Editor->WorldUI;

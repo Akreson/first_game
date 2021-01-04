@@ -45,7 +45,7 @@ struct model_face
 };
 
 // NOTE: Triangle specifed in conter-clokwise order
-struct model
+struct model_data
 {
 	v3 *Vertex;
 	model_face *Faces;
@@ -56,11 +56,26 @@ struct model
 	u32 EdgeCount;
 };
 
+// TODO: Separate?
+// TODO: Choose how to store rotation (for now m4x4)
+struct vertex_transform_cache
+{
+	m4x4 R;
+	v3 T;
+};
+
+struct model_transform_cache
+{
+	model_data Data;
+	vertex_transform_cache Trans;
+};
+
 struct work_model
 {
-	model Data;
+	model_data Data;
 
-	model *Source;
+	model_data *Source;
+	model_transform_cache *Cache;
 
 	// TODO: Use m3x3?
 	m4x4 ScaleMat;

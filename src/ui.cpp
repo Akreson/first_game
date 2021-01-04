@@ -428,7 +428,6 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 
 // TODO: Pass struct ptr to _Apply_ functions
 // TODO: Optimize
-// NOTE: Transform happens in model space
 void
 ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Rotation)
@@ -461,9 +460,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 				v3 V = Model->Data.Vertex[VertexIndex];
 
-				//V -= ModelSpaleRotOrigin;
 				V = V * T;
-				//V += ModelSpaleRotOrigin;
 
 				Model->Data.Vertex[VertexIndex] = V;
 			}
@@ -478,7 +475,7 @@ void
 ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 	model_target_element TargetElement, b32 IsGlobalSpace)
 {
-	model *SourceModel = Model->Source;
+	model_data *SourceModel = Model->Source;
 	v3 *SourceVertex = SourceModel->Vertex;
 
 	v3 ScaleV = Tool->ScaleParam.xyz;
@@ -523,7 +520,6 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 		// NOTE: Must not be used for move plane in Z direction
 		// Or one edge in X direction
 		// TODO: Implement forbidding this behavior?
-		// TODO: Another method of linear scaling?
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
 		{
@@ -566,7 +562,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
-			model *SourceModel = Model->Source;
+			model_data *SourceModel = Model->Source;
 			v3 *SourceVertex = SourceModel->Vertex;
 
 			for (u32 Index = 0;
