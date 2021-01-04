@@ -1054,6 +1054,14 @@ RayPlaneIntersect(ray_params Ray, plane_params Plane, f32 DotRayDPlaneN)
 	return tResult;
 }
 
+inline f32
+RayPlaneIntersect(ray_params Ray, plane_params Plane)
+{
+	f32 DotRayDPlaneN = Dot(Ray.Dir, Plane.N);
+	f32 tResult = ((Plane.D - Dot(Plane.N, Ray.P)) / DotRayDPlaneN);
+	return tResult;
+}
+
 b32
 RaySphereIntersect(ray_params Ray, v3 Center, f32 Radius, v3 *ResultP = 0)
 {

@@ -474,8 +474,6 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 }
 
 // TODO: Optimize!!!
-// TODO: See if applying scale matrix durring ModelTargetElement_Model interaction
-// fix bug
 void
 ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 	model_target_element TargetElement, b32 IsGlobalSpace)
@@ -619,8 +617,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 
 	f32 RPosDotPlaneN = Dot(Tool->FromPosToRayP, Tool->InteractPlane.N);
 
-	f32 DotRayPlane = Dot(Ray.Dir, Tool->InteractPlane.N);
-	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane, DotRayPlane);
+	f32 tRay = RayPlaneIntersect(Ray, Tool->InteractPlane);
 
 	v3 CurrentVector;
 	if (Abs(RPosDotPlaneN) <= RTOOLS_AXIS_INTERACT_THRESHOLD)
@@ -777,8 +774,7 @@ IsRotateToolPerpAxisIntreract(v3 ToolCenterP, f32 Radius, ray_params Ray, v3 Axi
 	b32 Result = false;
 	plane_params Plane = CreatePlane(Axis, Dot(Axis, ToolCenterP));
 
-	f32 ADotR = Dot(Axis, Ray.Dir);
-	f32 tRay = RayPlaneIntersect(Ray, Plane, ADotR);
+	f32 tRay = RayPlaneIntersect(Ray, Plane);
 	v3 P = PointOnRay(Ray, tRay);
 
 	f32 RadiusSq = Square(Radius);
@@ -1029,9 +1025,8 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 	else
 	{
 		plane_params Plane = CreatePlane(IntrAxis, Dot(IntrAxis, Tool->P));
+		f32 tPlane = RayPlaneIntersect(Ray, Plane);
 
-		f32 NDotD = Dot(Plane.N, Ray.Dir);
-		f32 tPlane = RayPlaneIntersect(Ray, Plane, NDotD);
 		if (tPlane >= 0)
 		{
 			v3 CurrentV = PointOnRay(Ray, tPlane);
@@ -1246,14 +1241,10 @@ RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams
 	plane_params YPlane = CreatePlane(Axis.Y, Dot(Axis.Y, Pos));
 	plane_params ZPlane = CreatePlane(Axis.Z, Dot(Axis.Z, Pos));
 
-	f32 XDotD = Dot(XPlane.N, Ray.Dir);
-	f32 YDotD = Dot(YPlane.N, Ray.Dir);
-	f32 ZDotD = Dot(ZPlane.N, Ray.Dir);
-
 	v3 tP;
-	tP.x = RayPlaneIntersect(Ray, XPlane, XDotD);
-	tP.y = RayPlaneIntersect(Ray, YPlane, YDotD);
-	tP.z = RayPlaneIntersect(Ray, ZPlane, ZDotD);
+	tP.x = RayPlaneIntersect(Ray, XPlane);
+	tP.y = RayPlaneIntersect(Ray, YPlane);
+	tP.z = RayPlaneIntersect(Ray, ZPlane);
 
 	// NOTE: Unrolling bubble sort
 	f32 tMin[3];
