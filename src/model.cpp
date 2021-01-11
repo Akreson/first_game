@@ -176,6 +176,20 @@ GetFaceVertex(work_model *Model, model_face *Face)
 	return Result;
 }
 
+inline face_vertex
+GetFaceVertex(model_transform_cache *CacheModel, model_face *Face)
+{
+	face_vertex Result;
+
+	Result.V0 = CacheModel->Data.Vertex[Face->V0];
+	Result.V1 = CacheModel->Data.Vertex[Face->V1];
+	Result.V2 = CacheModel->Data.Vertex[Face->V2];
+	Result.V3 = CacheModel->Data.Vertex[Face->V3];
+
+	return Result;
+}
+
+
 inline face_normals
 GetFaceNormals(face_vertex Vertex)
 {

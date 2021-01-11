@@ -766,6 +766,17 @@ ToM4x4(m3x3 A)
 	return Result;
 }
 
+inline m3x3
+ToM3x3(m4x4 A)
+{
+	m3x3 Result = {};
+	Result.Row0 = A.Row0.xyz;
+	Result.Row1 = A.Row1.xyz;
+	Result.Row2 = A.Row2.xyz;
+
+	return Result;
+}
+
 inline m4x4_inv
 OrthographicProjection(f32 Width, f32 Height)
 {

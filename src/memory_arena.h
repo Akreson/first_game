@@ -323,7 +323,7 @@ DeallocatePagePool(page_memory_arena *Arena, u32 PageIndex)
 // NOTE: Allocate and copy memory
 // TODO: Should copy memory??
 void *
-PushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source = 0)
+PagePushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source = 0)
 {
 	u32 PageIndex;
 
