@@ -422,10 +422,37 @@ GeneratingCube(page_memory_arena *Arena, model_data *Model, f32 HalfDim = 0.5f)
 	Model->EdgeCount = ArrayCount(Edges);
 }
 
-void
-InitTransfromCache()
+model_transform_cache *
+InitCachedModel(game_editor_state *Editor, model_data *SourceModel)
 {
+	page_memory_arena *Arena = &Editor->PageArena;
 
+	model_transform_cache *CacheModel = Editor->TransCache + Editor->ModelTransCacheCount++;
+	Assert(Editor->ModelTransCacheCount < ArrayCount(Editor->TransCache));
+
+	CacheModel->Data.VertexCount = SourceModel->VertexCount;
+	CacheModel->Data.FaceCount = SourceModel->FaceCount;
+	CacheModel->Data.EdgeCount = SourceModel->EdgeCount;
+
+	PagePushArray(Arena, v3, SourceModel->VertexCount, CacheModel->Data.Vertex, SourceModel->Vertex);
+	PagePushArray(Arena, model_face, SourceModel->FaceCount, CacheModel->Data.Faces, SourceModel->Faces);
+	PagePushArray(Arena, model_edge, SourceModel->EdgeCount, CacheModel->Data.Edges, SourceModel->Edges);
+
+	PagePushArray(Arena, vertex_transform_cache, CacheModel->Data.VertexCount, CacheModel->Trans, 0);
+
+	m4x4 I = Identity();
+	v3 T = V3(0);
+
+	for (u32 TransIndex = 0;
+		TransIndex < CacheModel->Data.VertexCount;
+		++TransIndex)
+	{
+		vertex_transform_cache *TransCache = CacheModel->Trans + TransIndex;
+		TransCache->R = I;
+		TransCache->T = T;
+	}
+
+	return CacheModel;
 }
 
 inline work_model *
@@ -444,6 +471,7 @@ InitWorkModel(game_editor_state *Editor, model_data *SourceModel, v4 Color, v3 O
 	Model->Data.VertexCount = SourceModel->VertexCount;
 	Model->Data.FaceCount = SourceModel->FaceCount;
 	Model->Data.EdgeCount = SourceModel->EdgeCount;
+	Model->Cache = InitCachedModel(Editor, SourceModel);
 
 	// TODO: Init transform cache
 

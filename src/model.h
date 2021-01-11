@@ -67,7 +67,7 @@ struct vertex_transform_cache
 struct model_transform_cache
 {
 	model_data Data;
-	vertex_transform_cache Trans;
+	vertex_transform_cache *Trans;
 };
 
 struct work_model
