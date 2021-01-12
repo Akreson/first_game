@@ -1145,7 +1145,7 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 			case ModelTargetElement_Face:
 			{
 				model_face *Face = Model->Data.Faces + ElementID;
-				face_vertex Vertex = GetFaceVertex(Model->Cache, Face);
+				face_vertex Vertex = GetFaceVertex(Model, Face);
 
 				v3 OriginZ = V3(0, 0, 1);
 				Result.Z = GetPlaneAvgNormal(Vertex);
@@ -1160,12 +1160,6 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 				Assert((Length(Result.Z) >= 0.98f) && (Length(Result.Z) <= 1.001f));
 				Assert((Length(Result.Y) >= 0.98f) && (Length(Result.Y) <= 1.001f));
 				Assert((Length(Result.X) >= 0.98f) && (Length(Result.X) <= 1.001f));
-
-				m4x4 Rot = ToM4x4(Model->Axis);
-				m4x4 TrasfromResult = ToM4x4(Result);
-				TrasfromResult = TrasfromResult * Rot;
-
-				Result = ToM3x3(TrasfromResult);
 			}
 		}
 	}
