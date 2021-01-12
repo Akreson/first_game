@@ -1584,7 +1584,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				if (AreEqual(WorldUI->Interaction, Interaction))
 				{
-					// TODO: Fix bug with tool position!!!
+					// TODO: Fix bug with wrong tool position on scaled model !!!
 					if (ProcessTransToolTransform(TransTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
