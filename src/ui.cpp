@@ -478,6 +478,7 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 {
 	model_data *SourceModel = Model->Source;
 	v3 *SourceVertex = SourceModel->Vertex;
+	v3 *VerticesCache = Model->Cache->Data.Vertex;
 
 	v3 ScaleV = Tool->ScaleParam.xyz;
 	v3 ScaleOrigin = Tool->P - Model->Offset;
@@ -509,18 +510,16 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 			Model->ScaleMat = Model->ScaleMat * ApplyScale;
 			m4x4 Transform = Model->ScaleMat * MAxis;
 
+			// TODO: Use vertex_transform_cache 
 			for (u32 Index = 0;
 				Index < Model->Data.VertexCount;
 				++Index)
 			{
-				v3 SourceV = SourceVertex[Index];
-
-				Model->Data.Vertex[Index] = SourceV * Transform;
+				v3 VCache = VerticesCache[Index];
+				Model->Data.Vertex[Index] = VCache * Transform;
 			}
 		} break;
 
-		// NOTE: Must not be used for move plane in Z direction
-		// Or one edge in X direction
 		// TODO: Implement forbidding this behavior?
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
@@ -552,13 +551,15 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 // TODO: Optimize
 void
 ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
-	model_target_element ElementTarget, translate_tools *TransTool)
+	translate_tools *TransTool, model_target_element ElementTarget, b32 IsGlobalSpace)
 {
+	v3 TransDir = TransTool->TransParam.xyz;
+
 	switch (ElementTarget)
 	{
 		case ModelTargetElement_Model:
 		{
-			v3 Translate = TransTool->TransParam.xyz * TransTool->TransParam.w;
+			v3 Translate = TransDir * TransTool->TransParam.w;
 			Model->Offset += Translate;
 		} break;
 
@@ -566,22 +567,27 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
-			model_data *SourceModel = Model->Source;
-			model_transform_cache *CacheModel = Model->Cache;
-			v3 *SourceVertex = SourceModel->Vertex;
-			
-			v3 Translate = TransTool->TransParam.xyz * TransTool->TransParam.w; //
+			m4x4 MAxis = ToM4x4(Model->Axis);
+			m4x4 InvRot = Transpose(MAxis);
 
+			model_data *SourceModel = Model->Source;
+			v3 *VerticesCache = Model->Cache->Data.Vertex;
+
+			TransDir = Normalize(TransDir * InvRot);
+			v3 ApplyTranslate = TransDir * TransTool->TransParam.w;
+			
+			m4x4 Transform = Model->ScaleMat * MAxis;
+			// TODO: Use vertex_transform_cache 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
 			{
-				// TODO: Test with scale -------- !!!
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = SourceVertex[VertexIndex];
+				v3 VCache = VerticesCache[VertexIndex];
 
-				V += Translate;
-				Model->Data.Vertex[VertexIndex] = SourceVertex[VertexIndex] = V;
+				VCache += ApplyTranslate;
+				VerticesCache[VertexIndex] = VCache;
+				Model->Data.Vertex[VertexIndex] = VCache * Transform;
 			}
 
 			Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
@@ -1120,6 +1126,7 @@ RayTransToolAxisTest(ray_params Ray, trans_tool_axis_params AxisParams,
 	return Result;
 }
 
+// NOTE: Axis return in global space
 // TODO: Keep axis in axis aligned view?
 m3x3
 SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget)
@@ -1577,10 +1584,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				if (AreEqual(WorldUI->Interaction, Interaction))
 				{
+					// TODO: Fix bug with tool position!!!
 					if (ProcessTransToolTransform(TransTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-						ApplyTranslate(Model, &Tools->UniqIndeces, TargetElement, TransTool);
+						ApplyTranslate(Model, &Tools->UniqIndeces, TransTool, TargetElement, IsGlobalSpace);
 					}
 				}
 				else
