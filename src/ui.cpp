@@ -552,21 +552,25 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 // TODO: Optimize
 void
 ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
-	model_target_element ElementTarget, v3 TransParam)
+	model_target_element ElementTarget, translate_tools *TransTool)
 {
 	switch (ElementTarget)
 	{
 		case ModelTargetElement_Model:
 		{
-			Model->Offset += TransParam;
+			v3 Translate = TransTool->TransParam.xyz * TransTool->TransParam.w;
+			Model->Offset += Translate;
 		} break;
 
+		// TODO: Implement correct translation
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
 			model_data *SourceModel = Model->Source;
 			model_transform_cache *CacheModel = Model->Cache;
 			v3 *SourceVertex = SourceModel->Vertex;
+			
+			v3 Translate = TransTool->TransParam.xyz * TransTool->TransParam.w; //
 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
@@ -576,7 +580,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 				v3 V = SourceVertex[VertexIndex];
 
-				V += TransParam;
+				V += Translate;
 				Model->Data.Vertex[VertexIndex] = SourceVertex[VertexIndex] = V;
 			}
 
@@ -1013,9 +1017,10 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 			if (Tool->Intr.P.Prev != CurrentP)
 			{
 				f32 TransFactor = (CurrentP - Tool->Intr.P.Prev);
-
-				Tool->TransParam = IntrAxis * TransFactor;
-				Tool->P += Tool->TransParam;
+				Tool->TransParam.xyz = IntrAxis;
+				Tool->TransParam.w = TransFactor;
+				
+				Tool->P += Tool->TransParam.xyz * Tool->TransParam.w;
 				Tool->Intr.P.Prev = CurrentP - TransFactor;
 				Result = true;
 			}
@@ -1040,9 +1045,13 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 			if (Tool->Intr.V.Prev != CurrentV)
 			{
 				v3 TransV = CurrentV - Tool->Intr.V.Prev;
+				f32 MoveLen = Length(TransV);
+				v3 MoveDir = Normalize(TransV, MoveLen);
+
+				Tool->TransParam.xyz = MoveDir;
+				Tool->TransParam.w = MoveLen;
 
 				Tool->P += TransV;
-				Tool->TransParam = TransV;
 				Tool->Intr.V.Prev = CurrentV;
 				Result = true;
 			}
@@ -1123,6 +1132,7 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 	}
 	else if (Selected->Count > 1)
 	{
+		// TODO: Extend for local and normal axis display mod
 		Result = Identity3x3();
 	}
 	else if (Selected->Count == 1)
@@ -1570,7 +1580,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if (ProcessTransToolTransform(TransTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-						ApplyTranslate(Model, &Tools->UniqIndeces, TargetElement, TransTool->TransParam);
+						ApplyTranslate(Model, &Tools->UniqIndeces, TargetElement, TransTool);
 					}
 				}
 				else

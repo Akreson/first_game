@@ -220,7 +220,7 @@ struct translate_tools
 	v4 AxisMask;
 	v4 PlaneMask;
 
-	v3 TransParam;
+	v4 TransParam;
 
 	trans_tool_axis_params InitAxisParams;
 

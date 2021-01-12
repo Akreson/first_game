@@ -57,7 +57,8 @@ struct model_data
 };
 
 // TODO: Separate?
-// TODO: Choose how to store rotation (for now m4x4)
+// Choose how to store rotation (for now m4x4)
+// Is need at all?
 struct vertex_transform_cache
 {
 	m4x4 R;
