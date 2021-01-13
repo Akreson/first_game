@@ -492,13 +492,7 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 			m4x4 InvRot = Transpose(MAxis);
 
 			m4x4 ApplyScale;
-			if (!IsGlobalSpace)
-			{
-				ScaleV = Normalize(ScaleV * InvRot);
-				ScaleV *= Tool->ScaleParam.w;
-				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
-			}
-			else
+			if (IsGlobalSpace)
 			{
 				ScaleV *= Tool->ScaleParam.w;
 
@@ -506,11 +500,16 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
 				ApplyScale = MAxis * ApplyScale * InvRot;
 			}
+			else
+			{
+				ScaleV = Normalize(ScaleV * InvRot);
+				ScaleV *= Tool->ScaleParam.w;
+				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
+			}
 
 			Model->ScaleMat = Model->ScaleMat * ApplyScale;
 			m4x4 Transform = Model->ScaleMat * MAxis;
 
-			// TODO: Use vertex_transform_cache 
 			for (u32 Index = 0;
 				Index < Model->Data.VertexCount;
 				++Index)

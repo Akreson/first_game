@@ -622,6 +622,17 @@ Identity3x3(void)
 	return Result;
 }
 
+inline m3x3
+ToM3x3(m4x4 A)
+{
+	m3x3 Result = {};
+	Result.Row0 = A.Row0.xyz;
+	Result.Row1 = A.Row1.xyz;
+	Result.Row2 = A.Row2.xyz;
+
+	return Result;
+}
+
 // TODO: Optimize
 inline v4
 Transform(v4 A, m4x4 B)
@@ -762,17 +773,6 @@ ToM4x4(m3x3 A)
 	Result.Row1.xyz = A.Y;
 	Result.Row2.xyz = A.Z;
 	Result.E[3][3] = 1.0f;
-
-	return Result;
-}
-
-inline m3x3
-ToM3x3(m4x4 A)
-{
-	m3x3 Result = {};
-	Result.Row0 = A.Row0.xyz;
-	Result.Row1 = A.Row1.xyz;
-	Result.Row2 = A.Row2.xyz;
 
 	return Result;
 }
