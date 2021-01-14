@@ -168,10 +168,10 @@ GetFaceVertex(work_model *Model, model_face *Face)
 	face_vertex Result;
 
 	v3 ModelOffset = Model->Offset;
-	Result.V0 = Model->Data.Vertex[Face->V0] + ModelOffset;
-	Result.V1 = Model->Data.Vertex[Face->V1] + ModelOffset;
-	Result.V2 = Model->Data.Vertex[Face->V2] + ModelOffset;
-	Result.V3 = Model->Data.Vertex[Face->V3] + ModelOffset;
+	Result.V0 = Model->Data.Vertices[Face->V0] + ModelOffset;
+	Result.V1 = Model->Data.Vertices[Face->V1] + ModelOffset;
+	Result.V2 = Model->Data.Vertices[Face->V2] + ModelOffset;
+	Result.V3 = Model->Data.Vertices[Face->V3] + ModelOffset;
 
 	return Result;
 }
@@ -181,10 +181,10 @@ GetFaceVertex(model_transform_cache *CacheModel, model_face *Face)
 {
 	face_vertex Result;
 
-	Result.V0 = CacheModel->Data.Vertex[Face->V0];
-	Result.V1 = CacheModel->Data.Vertex[Face->V1];
-	Result.V2 = CacheModel->Data.Vertex[Face->V2];
-	Result.V3 = CacheModel->Data.Vertex[Face->V3];
+	Result.V0 = CacheModel->Data.Vertices[Face->V0];
+	Result.V1 = CacheModel->Data.Vertices[Face->V1];
+	Result.V2 = CacheModel->Data.Vertices[Face->V2];
+	Result.V3 = CacheModel->Data.Vertices[Face->V3];
 
 	return Result;
 }
@@ -427,7 +427,7 @@ GeneratingCube(page_memory_arena *Arena, model_data *Model, f32 HalfDim = 0.5f)
 	MatchEdgeToFace(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 	MatchFaceToEdge(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 
-	PagePushArray(Arena, v3, ArrayCount(Vertex), Model->Vertex, Vertex);
+	PagePushArray(Arena, v3, ArrayCount(Vertex), Model->Vertices, Vertex);
 	PagePushArray(Arena, model_face, ArrayCount(Faces), Model->Faces, Faces);
 	PagePushArray(Arena, model_edge, ArrayCount(Edges), Model->Edges, Edges);
 
@@ -448,7 +448,7 @@ InitCachedModel(game_editor_state *Editor, model_data *SourceModel)
 	CacheModel->Data.FaceCount = SourceModel->FaceCount;
 	CacheModel->Data.EdgeCount = SourceModel->EdgeCount;
 
-	PagePushArray(Arena, v3, SourceModel->VertexCount, CacheModel->Data.Vertex, SourceModel->Vertex);
+	PagePushArray(Arena, v3, SourceModel->VertexCount, CacheModel->Data.Vertices, SourceModel->Vertices);
 	PagePushArray(Arena, model_face, SourceModel->FaceCount, CacheModel->Data.Faces, SourceModel->Faces);
 	PagePushArray(Arena, model_edge, SourceModel->EdgeCount, CacheModel->Data.Edges, SourceModel->Edges);
 
@@ -489,11 +489,11 @@ InitWorkModel(game_editor_state *Editor, model_data *SourceModel, v4 Color, v3 O
 
 	// TODO: Init transform cache
 
-	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertex, SourceModel->Vertex);
+	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertices, SourceModel->Vertices);
 	PagePushArray(Arena, model_face, SourceModel->FaceCount, Model->Data.Faces, SourceModel->Faces);
 	PagePushArray(Arena, model_edge, SourceModel->EdgeCount, Model->Data.Edges, SourceModel->Edges);
 
-	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
 
 	return Model;
 }
@@ -751,8 +751,8 @@ RayModelEdgesIntersect(work_model *Model, ray_params Ray, element_ray_result *Ed
 		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
 			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
 		{
-			v3 SegmentStart = Model->Data.Vertex[Edge.V0] + ModelOffset;
-			v3 SegmentEnd = Model->Data.Vertex[Edge.V1] + ModelOffset;
+			v3 SegmentStart = Model->Data.Vertices[Edge.V0] + ModelOffset;
+			v3 SegmentEnd = Model->Data.Vertices[Edge.V1] + ModelOffset;
 			v3 SegmentDirV = SegmentEnd - SegmentStart;
 
 			f32 IntrRadiusSq = Square(IntrRadius);

@@ -325,7 +325,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 				FaceParam = SetFaceRenderParams(Editor, &Model->Data, FaceIndex);
 			}
 
-			PushFace(&RenderGroup, Model->Data.Vertex, Face, FaceParam);
+			PushFace(&RenderGroup, Model->Data.Vertices, Face, FaceParam);
 		}
 
 		EndPushModel(&RenderGroup);

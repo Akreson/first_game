@@ -47,7 +47,7 @@ struct model_face
 // NOTE: Triangle specifed in conter-clokwise order
 struct model_data
 {
-	v3 *Vertex;
+	v3 *Vertices;
 	model_face *Faces;
 	model_edge *Edges;
 

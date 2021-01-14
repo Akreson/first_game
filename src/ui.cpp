@@ -363,7 +363,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 V = Model->Data.Vertex[VertexIndex] + ModelOffset;
+				v3 V = Model->Data.Vertices[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
@@ -414,7 +414,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 V = Model->Data.Vertex[VertexIndex] + ModelOffset;
+				v3 V = Model->Data.Vertices[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
@@ -442,9 +442,9 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				Index < Model->Data.VertexCount;
 				++Index)
 			{
-				v3 V = Model->Data.Vertex[Index];
+				v3 V = Model->Data.Vertices[Index];
 				V = V * Rotation;
-				Model->Data.Vertex[Index] = V;
+				Model->Data.Vertices[Index] = V;
 			}
 		} break;
 
@@ -458,16 +458,16 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Data.Vertex[VertexIndex];
+				v3 V = Model->Data.Vertices[VertexIndex];
 
 				V = V * T;
 
-				Model->Data.Vertex[VertexIndex] = V;
+				Model->Data.Vertices[VertexIndex] = V;
 			}
 		} break;
 	}
 
-	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
 }
 
 #define SCALE_SPEED 0.4f
@@ -477,8 +477,8 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 	model_target_element TargetElement, b32 IsGlobalSpace)
 {
 	model_data *SourceModel = Model->Source;
-	v3 *SourceVertex = SourceModel->Vertex;
-	v3 *VerticesCache = Model->Cache->Data.Vertex;
+	v3 *SourceVertex = SourceModel->Vertices;
+	v3 *VerticesCache = Model->Cache->Data.Vertices;
 
 	v3 ScaleV = Tool->ScaleParam.xyz;
 	v3 ScaleOrigin = Tool->P - Model->Offset;
@@ -515,7 +515,7 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 				++Index)
 			{
 				v3 VCache = VerticesCache[Index];
-				Model->Data.Vertex[Index] = VCache * Transform;
+				Model->Data.Vertices[Index] = VCache * Transform;
 			}
 		} break;
 
@@ -528,7 +528,7 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Data.Vertex[VertexIndex];
+				v3 V = Model->Data.Vertices[VertexIndex];
 
 				V -= ScaleOrigin;
 
@@ -539,12 +539,12 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 
 				V = V + ScaleFactor;
 				V += ScaleOrigin;
-				Model->Data.Vertex[VertexIndex] = V;
+				Model->Data.Vertices[VertexIndex] = V;
 			}
 		} break;
 	}
 
-	Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
 }
 
 // TODO: Optimize
@@ -562,12 +562,11 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 			Model->Offset += Translate;
 		} break;
 
-		// TODO: Implement correct translation
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
 			model_data *SourceModel = Model->Source;
-			v3 *VerticesCache = Model->Cache->Data.Vertex;
+			v3 *VerticesCache = Model->Cache->Data.Vertices;
 			
 			m4x4 MAxis = ToM4x4(Model->Axis);
 			m4x4 InvRot = Transpose(MAxis);
@@ -588,10 +587,10 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 
 				VCache += ApplyTranslate;
 				VerticesCache[VertexIndex] = VCache;
-				Model->Data.Vertex[VertexIndex] = VCache * ModelTrans;
+				Model->Data.Vertices[VertexIndex] = VCache * ModelTrans;
 			}
 
-			Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
+			Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
 		} break;
 	}
 }
@@ -1152,8 +1151,8 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 			{
 				model_edge *Edge = Model->Data.Edges + ElementID;
 				edge_faces_norm RelatedNorm = GetEdgeFacesRelatedNormals(Model, Edge);
-				v3 V0 = Model->Data.Vertex[Edge->V0];
-				v3 V1 = Model->Data.Vertex[Edge->V1];
+				v3 V0 = Model->Data.Vertices[Edge->V0];
+				v3 V1 = Model->Data.Vertices[Edge->V1];
 
 				Result.Z = Normalize(V1 - V0);
 				Result.Y = NLerp(RelatedNorm.N0, 0.5f, RelatedNorm.N1);
