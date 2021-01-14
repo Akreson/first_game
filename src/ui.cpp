@@ -566,17 +566,19 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
-			m4x4 MAxis = ToM4x4(Model->Axis);
-			m4x4 InvRot = Transpose(MAxis);
-
 			model_data *SourceModel = Model->Source;
 			v3 *VerticesCache = Model->Cache->Data.Vertex;
+			
+			m4x4 MAxis = ToM4x4(Model->Axis);
+			m4x4 InvRot = Transpose(MAxis);
+			m4x4 ModelTrans = Model->ScaleMat * MAxis;
+			
+			m3x3 S = ToM3x3(Model->ScaleMat);
+			m4x4 InvScale = ToM4x4(Inverse(S));
 
-			TransDir = Normalize(TransDir * InvRot);
+			TransDir = TransDir * InvRot * InvScale;
 			v3 ApplyTranslate = TransDir * TransTool->TransParam.w;
 			
-			m4x4 Transform = Model->ScaleMat * MAxis;
-			// TODO: Use vertex_transform_cache 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
@@ -586,7 +588,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 
 				VCache += ApplyTranslate;
 				VerticesCache[VertexIndex] = VCache;
-				Model->Data.Vertex[VertexIndex] = VCache * Transform;
+				Model->Data.Vertex[VertexIndex] = VCache * ModelTrans;
 			}
 
 			Model->AABB = ComputeMeshAABB(Model->Data.Vertex, Model->Data.VertexCount);
@@ -1583,7 +1585,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				if (AreEqual(WorldUI->Interaction, Interaction))
 				{
-					// TODO: Fix bug with wrong tool position on scaled model !!!
 					if (ProcessTransToolTransform(TransTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;

@@ -633,6 +633,46 @@ ToM3x3(m4x4 A)
 	return Result;
 }
 
+inline f32
+Det(m3x3 A)
+{
+	f32 Result;
+
+	f32 A0 = A.E[0][0] * ((A.E[1][1] * A.E[2][2]) - (A.E[1][2] * A.E[2][1]));
+	f32 A1 = A.E[1][0] * ((A.E[0][1] * A.E[2][2]) - (A.E[0][2] * A.E[2][1]));
+	f32 A2 = A.E[2][0] * ((A.E[0][1] * A.E[1][2]) - (A.E[0][2] * A.E[1][2]));
+	Result = A0 + (-A1) + A2;
+
+	return Result;
+}
+
+inline m3x3
+Inverse(m3x3 A)
+{
+	f32 InvD = 1.0f / Det(A);
+
+	f32 M00 = InvD *   (A.E[1][1] * A.E[2][2]) - (A.E[1][2] * A.E[2][1]);
+	f32 M01 = InvD * -((A.E[1][0] * A.E[2][2]) - (A.E[1][2] * A.E[2][0]));
+	f32 M02 = InvD *   (A.E[1][0] * A.E[2][1]) - (A.E[1][1] * A.E[2][0]);
+
+	f32 M10 = InvD * -((A.E[0][1] * A.E[2][2]) - (A.E[0][2] * A.E[2][1]));
+	f32 M11 = InvD *   (A.E[0][0] * A.E[2][2]) - (A.E[0][2] * A.E[2][0]);
+	f32 M12 = InvD * -((A.E[0][0] * A.E[2][1]) - (A.E[0][1] * A.E[2][0]));
+
+	f32 M20 = InvD *   (A.E[0][1] * A.E[1][2]) - (A.E[0][2] * A.E[1][1]);
+	f32 M21 = InvD * -((A.E[0][0] * A.E[1][2]) - (A.E[0][2] * A.E[1][0]));
+	f32 M22 = InvD *   (A.E[0][0] * A.E[1][1]) - (A.E[0][1] * A.E[1][0]);
+
+	m3x3 Result =
+	{{
+		M00, M01, M02,
+		M10, M11, M12,
+		M20, M21, M22,
+	}};
+
+	return Result;
+}
+
 // TODO: Optimize
 inline v4
 Transform(v4 A, m4x4 B)
