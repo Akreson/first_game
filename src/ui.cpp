@@ -84,6 +84,13 @@ AreEqual(ui_interaction A, ui_interaction B)
 	return Result;
 }
 
+inline u32
+GetIntAxisID(tools_axis_id AxisID)
+{
+	u32 Result = (u32)AxisID - 1;
+	return Result;
+}
+
 inline void
 ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 {
@@ -473,16 +480,20 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 #define SCALE_SPEED 0.4f
 // TODO: Optimize!!!
 void
-ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
+ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	model_target_element TargetElement, b32 IsGlobalSpace)
 {
 	model_data *SourceModel = Model->Source;
-	v3 *SourceVertex = SourceModel->Vertices;
+	v3 *SourceVertices = SourceModel->Vertices;
 	v3 *VerticesCache = Model->Cache->Data.Vertices;
+	v3 *DisplayVertices = Model->Data.Vertices;
 
-	v3 ScaleV = Tool->ScaleParam.xyz;
-	v3 ScaleOrigin = Tool->P - Model->Offset;
-	Tool->ScaleParam.w *= SCALE_SPEED;
+	f32 ScaleFactor = Tool->ScaleParam.w * SCALE_SPEED;
+	u32 AxisID = GetIntAxisID(Tool->InteractAxis);
+
+	v3 ScaleV = {};
+	ScaleV.E[AxisID] = 1.0f * ScaleFactor;
+	ScaleV += V3(1.0f);
 
 	switch (TargetElement)
 	{
@@ -491,23 +502,18 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 			m4x4 MAxis = ToM4x4(Model->Axis);
 			m4x4 InvRot = Transpose(MAxis);
 
-			m4x4 ApplyScale;
+			m4x4 ResultScale;
 			if (IsGlobalSpace)
 			{
-				ScaleV *= Tool->ScaleParam.w;
-
-				// TODO: Compute in temp matrix?
-				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
-				ApplyScale = MAxis * ApplyScale * InvRot;
+				ResultScale = ScaleMat(ScaleV);
+				ResultScale = MAxis * ResultScale * InvRot;
 			}
 			else
 			{
-				ScaleV = Normalize(ScaleV * InvRot);
-				ScaleV *= Tool->ScaleParam.w;
-				ApplyScale = ScaleMat(ScaleV + V3(1.0f));
+				ResultScale = ScaleMat(ScaleV);
 			}
 
-			Model->ScaleMat = Model->ScaleMat * ApplyScale;
+			Model->ScaleMat = Model->ScaleMat * ResultScale;
 			m4x4 Transform = Model->ScaleMat * MAxis;
 
 			for (u32 Index = 0;
@@ -515,31 +521,56 @@ ApplyScale(work_model *Model, element_id_buffer *UniqIndeces, scale_tools *Tool,
 				++Index)
 			{
 				v3 VCache = VerticesCache[Index];
-				Model->Data.Vertices[Index] = VCache * Transform;
+				DisplayVertices[Index] = VCache * Transform;
 			}
 		} break;
 
-		// TODO: Implement forbidding this behavior?
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
 		{
+			m4x4 MAxis = ToM4x4(Model->Axis);
+			m4x4 InvRot = Transpose(MAxis);
+			m4x4 ModelTrans = Model->ScaleMat * MAxis;
+
+			m3x3 S = ToM3x3(Model->ScaleMat);
+			m4x4 InvScale = ToM4x4(Inverse(S));
+			//m4x4 InvT = InvRot * InvScale;
+
+			v3 ScaleOrigin = Tool->P - Model->Offset;
+			ScaleOrigin = ScaleOrigin * InvRot * InvScale;
+
+			m4x4 ResultScale;
+			if (IsGlobalSpace)
+			{
+				ResultScale = ScaleMat(ScaleV);
+				ResultScale = MAxis * ResultScale * InvRot;
+			}
+			else
+			{
+				// TODO: InvScale brings incorect result to scaling
+				m4x4 ScaleAxis = ToM4x4(Tool->Axis) * InvRot * InvScale;
+				ScaleAxis.Row0.xyz = Normalize(ScaleAxis.Row0.xyz);
+				ScaleAxis.Row1.xyz = Normalize(ScaleAxis.Row1.xyz);
+				ScaleAxis.Row2.xyz = Normalize(ScaleAxis.Row2.xyz);
+				m4x4 InvScaleAxis = Transpose(ScaleAxis);
+
+				ResultScale = InvScaleAxis * ScaleMat(ScaleV) * ScaleAxis;
+			}
+			//m4x4 Transform = TranslateMat(-ScaleOrigin) * Scale * TranslateMat(ScaleOrigin);
+
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 V = Model->Data.Vertices[VertexIndex];
+				v3 VCache = VerticesCache[VertexIndex];
+				
+				VCache -= ScaleOrigin;
+				VCache = VCache * ResultScale;
+				VCache += ScaleOrigin;
 
-				V -= ScaleOrigin;
-
-				v3 NormV = Normalize(V);
-				f32 VDotS = Dot(NormV, Tool->ScaleParam.xyz);
-				VDotS = Abs(VDotS) <= 0.001f ? 1.0f : VDotS;
-				v3 ScaleFactor = ScaleV * Sign(VDotS);
-
-				V = V + ScaleFactor;
-				V += ScaleOrigin;
-				Model->Data.Vertices[VertexIndex] = V;
+				VerticesCache[VertexIndex] = VCache;
+				DisplayVertices[VertexIndex] = VCache * ModelTrans;
 			}
 		} break;
 	}
@@ -565,7 +596,6 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
-			model_data *SourceModel = Model->Source;
 			v3 *VerticesCache = Model->Cache->Data.Vertices;
 			
 			m4x4 MAxis = ToM4x4(Model->Axis);
@@ -576,7 +606,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 			m4x4 InvScale = ToM4x4(Inverse(S));
 
 			TransDir = TransDir * InvRot * InvScale;
-			v3 ApplyTranslate = TransDir * TransTool->TransParam.w;
+			v3 ResultTranslate = TransDir * TransTool->TransParam.w;
 			
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
@@ -585,7 +615,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 				v3 VCache = VerticesCache[VertexIndex];
 
-				VCache += ApplyTranslate;
+				VCache += ResultTranslate;
 				VerticesCache[VertexIndex] = VCache;
 				Model->Data.Vertices[VertexIndex] = VCache * ModelTrans;
 			}
@@ -962,7 +992,7 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 {
 	b32 Result = false;
 
-	u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
+	u32 IntrAxisID = GetIntAxisID(Tool->InteractAxis);
 	v3 ScaleAxis = Tool->Axis.Row[IntrAxisID];
 	ray_params AxisRay = CreateRay(Tool->P, ScaleAxis);
 
@@ -979,6 +1009,7 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 
 		tools_axis_params *ActiveAxis = Tool->DisplayState.Axis + IntrAxisID;
 		ActiveAxis->Len = CurrentP;
+
 		// TODO: Redundant?
 		ActiveAxis->EdgeCenter = CurrentP * 0.5f;
 		ActiveAxis->EdgeLenHalfSize = ActiveAxis->EdgeCenter;
@@ -987,7 +1018,9 @@ ProcessScaleToolTransform(scale_tools *Tool, ray_params Ray)
 		{
 			f32 ScaleFactor = (CurrentP - Tool->PrevP);
 
+			// TODO: Remove later
 			Tool->ScaleParam.xyz = ScaleAxis;
+
 			Tool->ScaleParam.w = ScaleFactor;
 			Tool->PrevP = CurrentP;
 			Result = true;
@@ -1002,7 +1035,7 @@ ProcessTransToolTransform(translate_tools *Tool, ray_params Ray)
 {
 	b32 Result = false;
 
-	u32 IntrAxisID = (u32)Tool->InteractAxis - 1;
+	u32 IntrAxisID = GetIntAxisID(Tool->InteractAxis);
 	v3 IntrAxis = Tool->Axis.Row[IntrAxisID];
 
 	if (!Tool->IsPlaneIntr)
@@ -1466,13 +1499,20 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					Axis = SetAxisForTool(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 				}
 
+				// TODO: Temp solution, handle different space mod properly
+				if (WorldUI->Selected.Count > 1)
+				{
+					IsGlobalSpace = true;
+				}
+
 				f32 ZSignMod = 1.0f; //Sign(Dot(Axis.Z, RayPCenterP));
 				//Axis.Z *= ZSignMod;
 
 				tools_axis_id InteractAxis = RayScaleToolAxisTest(Ray, ScaleAxisParams, Axis, ScaleTool->P, ZSignMod);
 				if (InteractAxis)
 				{
-					ScaleTool->AxisMask.E[(u32)InteractAxis - 1] = 1.0f;
+					u32 AxisID = GetIntAxisID(InteractAxis);
+					ScaleTool->AxisMask.E[AxisID] = 1.0f;
 				}
 
 				Interaction = SetToolAxisIntr(ToolType_Scale, UI_InteractionType_Select, InteractAxis);
@@ -1490,6 +1530,12 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 			else
 			{
+				// TODO: Temp solution, handle different space mod properly
+				if (WorldUI->Selected.Count > 1)
+				{
+					IsGlobalSpace = true;
+				}
+
 				Axis = ScaleTool->Axis;
 				Interaction = SetToolAxisIntr(ToolType_Scale, UI_InteractionType_Move, ScaleTool->InteractAxis);
 
@@ -1498,12 +1544,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if (ProcessScaleToolTransform(ScaleTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-
-						/*if (IsDown(Input->Ctrl))
-						{
-						}*/
-
-						ApplyScale(Model, &Tools->UniqIndeces, ScaleTool, TargetElement, IsGlobalSpace);
+						ApplyScale(Model, ScaleTool, &Tools->UniqIndeces, TargetElement, IsGlobalSpace);
 					}
 
 					SetDefaultDisplayParams(&ScaleTool->DisplayState, ScaleAxisParams, ScaleTool->InteractAxis);
@@ -1554,14 +1595,16 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				if (InteractAxis)
 				{
 					TransTool->IsPlaneIntr = true;
-					TransTool->PlaneMask.E[(u32)InteractAxis - 1] = 1.0f;
+					u32 AxisID = GetIntAxisID(InteractAxis);
+					TransTool->PlaneMask.E[AxisID] = 1.0f;
 				}
 				else
 				{
 					InteractAxis = RayTransToolAxisTest(Ray, ScaleAxisParams, Axis, TransTool->P, ZSignMod);
 					if (InteractAxis)
 					{
-						TransTool->AxisMask.E[(u32)InteractAxis - 1] = 1.0f;
+						u32 AxisID = GetIntAxisID(InteractAxis);
+						TransTool->AxisMask.E[AxisID] = 1.0f;
 					}
 				}
 

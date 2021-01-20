@@ -633,6 +633,38 @@ ToM3x3(m4x4 A)
 	return Result;
 }
 
+inline m4x4
+ToM4x4(m3x3 A)
+{
+	m4x4 Result = {};
+	Result.Row0.xyz = A.X;
+	Result.Row1.xyz = A.Y;
+	Result.Row2.xyz = A.Z;
+	Result.E[3][3] = 1.0f;
+
+	return Result;
+}
+
+// NOTE: For Test
+inline m3x3
+operator*(m3x3 A, m3x3 B)
+{
+	m3x3 Result = {};
+
+	for (u32 r = 0; r <= 2; ++r)
+	{
+		for (u32 c = 0; c <= 2; ++c)
+		{
+			for (u32 i = 0; i <= 2; ++i)
+			{
+				Result.E[r][c] += A.E[r][i] * B.E[i][c];
+			}
+		}
+	}
+
+	return Result;
+}
+
 inline f32
 Det(m3x3 A)
 {
@@ -640,12 +672,13 @@ Det(m3x3 A)
 
 	f32 A0 = A.E[0][0] * ((A.E[1][1] * A.E[2][2]) - (A.E[1][2] * A.E[2][1]));
 	f32 A1 = A.E[1][0] * ((A.E[0][1] * A.E[2][2]) - (A.E[0][2] * A.E[2][1]));
-	f32 A2 = A.E[2][0] * ((A.E[0][1] * A.E[1][2]) - (A.E[0][2] * A.E[1][2]));
+	f32 A2 = A.E[2][0] * ((A.E[0][1] * A.E[1][2]) - (A.E[0][2] * A.E[1][1]));
 	Result = A0 + (-A1) + A2;
 
 	return Result;
 }
 
+// TODO: Optimize
 inline m3x3
 Inverse(m3x3 A)
 {
@@ -669,6 +702,10 @@ Inverse(m3x3 A)
 		M10, M11, M12,
 		M20, M21, M22,
 	}};
+
+#if 1
+	m3x3 I = Result * A;
+#endif
 
 	return Result;
 }
@@ -801,18 +838,6 @@ Identity(void)
 		0, 0, 1, 0,
 		0, 0, 0, 1
 	}};
-
-	return Result;
-}
-
-inline m4x4
-ToM4x4(m3x3 A)
-{
-	m4x4 Result = {};
-	Result.Row0.xyz = A.X;
-	Result.Row1.xyz = A.Y;
-	Result.Row2.xyz = A.Z;
-	Result.E[3][3] = 1.0f;
 
 	return Result;
 }
