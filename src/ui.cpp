@@ -540,6 +540,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 			ScaleOrigin = ScaleOrigin * InvRot * InvScale;
 
 			m4x4 ResultScale;
+			v3 ScaleApply;
 			if (IsGlobalSpace)
 			{
 				ResultScale = ScaleMat(ScaleV);
@@ -547,6 +548,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 			}
 			else
 			{
+#if 0
 				// TODO: InvScale brings incorect result to scaling
 				m4x4 ScaleAxis = ToM4x4(Tool->Axis) * InvRot * InvScale;
 				ScaleAxis.Row0.xyz = Normalize(ScaleAxis.Row0.xyz);
@@ -555,6 +557,27 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				m4x4 InvScaleAxis = Transpose(ScaleAxis);
 
 				ResultScale = InvScaleAxis * ScaleMat(ScaleV) * ScaleAxis;
+#else
+				/*m4x4 InvScaleAxis = InvRot * InvScale;
+
+				v3 ScaleA = Tool->Axis.Row[AxisID];
+
+				v3 SDir = ScaleA * InvScaleAxis;
+				SDir *= ScaleFactor;
+
+				ScaleApply = SDir;
+
+				m4x4 SMat = ScaleMat(SDir);
+				ResultScale = SMat;*/
+
+				m4x4 ScaleAxis = ToM4x4(Tool->Axis) * InvRot * InvScale;
+				v3 ScaleA = {};
+				ScaleA.E[AxisID] = 1.0f * ScaleFactor;
+
+				m4x4 SMat = ScaleMat(ScaleA);
+				SMat = SMat * ScaleAxis;
+				ResultScale = SMat;
+#endif
 			}
 			//m4x4 Transform = TranslateMat(-ScaleOrigin) * Scale * TranslateMat(ScaleOrigin);
 
@@ -566,7 +589,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				v3 VCache = VerticesCache[VertexIndex];
 				
 				VCache -= ScaleOrigin;
-				VCache = VCache * ResultScale;
+				VCache = VCache + (VCache * ResultScale);
 				VCache += ScaleOrigin;
 
 				VerticesCache[VertexIndex] = VCache;
