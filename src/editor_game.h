@@ -75,7 +75,7 @@ struct game_editor_state
 	work_model WorkModels[32];
 	u16 WorkModelsCount;
 
-	model_transform_cache TransCache[32];
+	//model_transform_cache TransCache[32];
 	u16 ModelTransCacheCount;
 
 	static_mesh StaticMesh[16];

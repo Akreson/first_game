@@ -59,16 +59,10 @@ struct model_data
 // TODO: Separate?
 // Choose how to store rotation (for now m4x4)
 // Is need at all?
-struct vertex_transform_cache
+struct vertex_transform_state
 {
 	m4x4 R;
 	v3 T;
-};
-
-struct model_transform_cache
-{
-	model_data Data;
-	vertex_transform_cache *Trans;
 };
 
 struct work_model
@@ -76,10 +70,7 @@ struct work_model
 	model_data Data;
 
 	model_data *Source;
-	model_transform_cache *Cache;
-
-	// TODO: Use m3x3?
-	m4x4 ScaleMat;
+	vertex_transform_state *VertexTrans;
 
 	m3x3 Axis;
 	rect3 AABB;
