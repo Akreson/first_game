@@ -439,7 +439,7 @@ void
 ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Rotation)
 {
-	v3 *Source = Model->Source->Vertices;
+	v3 *SourceVertices = Model->Source->Vertices;
 	vertex_transform_state *TransStates = Model->VertexTrans;
 	
 	v3 ModelSpaleRotOrigin = RotationOrigin - Model->Offset;
@@ -453,20 +453,15 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				Index < Model->Data.VertexCount;
 				++Index)
 			{
-				v3 VSource = Source[Index];
+				v3 VSource = SourceVertices[Index];
 				vertex_transform_state *Trans = TransStates + Index;
 
-				m4x4 Transform = Trans->R;
+				m4x4 Transform = ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
 
 				Transform = Transform * RelativeRotation;
-				
-				m4x4 CurrentRot = Identity();
-				CurrentRot.Row0.xyz = Transform.Row0.xyz;
-				CurrentRot.Row1.xyz = Transform.Row1.xyz;
-				CurrentRot.Row2.xyz = Transform.Row2.xyz;
 
-				Trans->R = CurrentRot;
+				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
 
 				Model->Data.Vertices[Index] = VSource * Transform;
@@ -482,20 +477,15 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 VSource = Source[VertexIndex];
+				v3 VSource = SourceVertices[VertexIndex];
 				vertex_transform_state *Trans = TransStates + VertexIndex;
 
-				m4x4 Transform = Trans->R;
+				m4x4 Transform = ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
 
 				Transform = Transform * RelativeRotation;
 
-				m4x4 CurrentRot = Identity();
-				CurrentRot.Row0.xyz = Transform.Row0.xyz;
-				CurrentRot.Row1.xyz = Transform.Row1.xyz;
-				CurrentRot.Row2.xyz = Transform.Row2.xyz;
-
-				Trans->R = CurrentRot;
+				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
 
 				Model->Data.Vertices[VertexIndex] = VSource * Transform;
@@ -506,7 +496,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
 }
 
-#define SCALE_SPEED 0.4f
+#define SCALE_SPEED 0.3f
 // TODO: Optimize!!!
 void
 ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
@@ -536,6 +526,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 			}
 			else
 			{
+				// TODO: Finish
 				ResultScale = ScaleMat(ScaleV);
 			}
 
@@ -546,17 +537,12 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				v3 VSource = SourceVertices[Index];
 				vertex_transform_state *Trans = TransStates + Index;
 
-				m4x4 Transform = Trans->R;
+				m4x4 Transform = ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
 
 				Transform = Transform * ResultScale;
 
-				m4x4 CurrentRot = Identity();
-				CurrentRot.Row0.xyz = Transform.Row0.xyz;
-				CurrentRot.Row1.xyz = Transform.Row1.xyz;
-				CurrentRot.Row2.xyz = Transform.Row2.xyz;
-
-				Trans->R = CurrentRot;
+				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
 
 				Model->Data.Vertices[Index] = VSource * Transform;

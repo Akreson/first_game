@@ -431,7 +431,7 @@ InitModelVertexState(game_editor_state *Editor, u32 VertexCount)
 
 	PagePushArray(Arena, vertex_transform_state, VertexCount, TransState, 0);
 
-	m4x4 I = Identity();
+	m3x3 I = Identity3x3();
 	v3 T = V3(0);
 
 	for (u32 TransIndex = 0;
