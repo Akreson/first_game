@@ -61,6 +61,7 @@ struct model_data
 // Is need at all?
 struct vertex_transform_state
 {
+	// TODO: Get rid of rotation?
 	m4x4 R;
 	v3 T;
 };

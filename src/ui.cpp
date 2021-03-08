@@ -476,7 +476,6 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
-
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
@@ -513,11 +512,10 @@ void
 ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	model_target_element TargetElement, b32 IsGlobalSpace)
 {
-#if 0
 	model_data *SourceModel = Model->Source;
 	v3 *SourceVertices = SourceModel->Vertices;
-	v3 *VerticesCache = Model->Cache->Data.Vertices;
 	v3 *DisplayVertices = Model->Data.Vertices;
+	vertex_transform_state *TransStates = Model->VertexTrans;
 
 	f32 ScaleFactor = Tool->ScaleParam.w * SCALE_SPEED;
 	u32 AxisID = GetIntAxisID(Tool->InteractAxis);
@@ -530,35 +528,46 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	{
 		case ModelTargetElement_Model:
 		{
-			m4x4 MAxis = ToM4x4(Model->Axis);
-			m4x4 InvRot = Transpose(MAxis);
-
+#if 1
 			m4x4 ResultScale;
 			if (IsGlobalSpace)
 			{
 				ResultScale = ScaleMat(ScaleV);
-				ResultScale = MAxis * ResultScale * InvRot;
 			}
 			else
 			{
 				ResultScale = ScaleMat(ScaleV);
 			}
 
-			Model->ScaleMat = Model->ScaleMat * ResultScale;
-			m4x4 Transform = Model->ScaleMat * MAxis;
-
 			for (u32 Index = 0;
 				Index < Model->Data.VertexCount;
 				++Index)
 			{
-				v3 VCache = VerticesCache[Index];
-				DisplayVertices[Index] = VCache * Transform;
+				v3 VSource = SourceVertices[Index];
+				vertex_transform_state *Trans = TransStates + Index;
+
+				m4x4 Transform = Trans->R;
+				SetTranslation(&Transform, Trans->T);
+
+				Transform = Transform * ResultScale;
+
+				m4x4 CurrentRot = Identity();
+				CurrentRot.Row0.xyz = Transform.Row0.xyz;
+				CurrentRot.Row1.xyz = Transform.Row1.xyz;
+				CurrentRot.Row2.xyz = Transform.Row2.xyz;
+
+				Trans->R = CurrentRot;
+				Trans->T = Transform.Row3.xyz;
+
+				Model->Data.Vertices[Index] = VSource * Transform;
 			}
+#endif
 		} break;
 
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
 		{
+#if 0
 			m4x4 MAxis = ToM4x4(Model->Axis);
 			m4x4 InvRot = Transpose(MAxis);
 			m4x4 ModelTrans = Model->ScaleMat * MAxis;
@@ -603,11 +612,11 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				VerticesCache[VertexIndex] = VCache;
 				DisplayVertices[VertexIndex] = VCache * ModelTrans;
 			}
+#endif
 		} break;
 	}
 
 	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
-#endif
 }
 
 // TODO: Optimize
