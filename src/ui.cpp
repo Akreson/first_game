@@ -518,7 +518,6 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	{
 		case ModelTargetElement_Model:
 		{
-#if 1
 			m4x4 ResultScale;
 			if (IsGlobalSpace)
 			{
@@ -526,8 +525,9 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 			}
 			else
 			{
-				// TODO: Finish
-				ResultScale = ScaleMat(ScaleV);
+				m4x4 MAxis = ToM4x4(Model->Axis);
+				m4x4 InvRot = Transpose(MAxis);
+				ResultScale = InvRot * ScaleMat(ScaleV) * MAxis;
 			}
 
 			for (u32 Index = 0;
@@ -547,7 +547,6 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 
 				Model->Data.Vertices[Index] = VSource * Transform;
 			}
-#endif
 		} break;
 
 		case ModelTargetElement_Face:
