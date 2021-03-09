@@ -440,6 +440,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Rotation)
 {
 	v3 *SourceVertices = Model->Source->Vertices;
+	v3 *DisplayVertices = Model->Data.Vertices;
 	vertex_transform_state *TransStates = Model->VertexTrans;
 	
 	v3 ModelSpaleRotOrigin = RotationOrigin - Model->Offset;
@@ -464,7 +465,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
 
-				Model->Data.Vertices[Index] = VSource * Transform;
+				DisplayVertices[Index] = VSource * Transform;
 			}
 		} break;
 
@@ -488,7 +489,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
 
-				Model->Data.Vertices[VertexIndex] = VSource * Transform;
+				DisplayVertices[VertexIndex] = VSource * Transform;
 			}
 		} break;
 	}
@@ -599,6 +600,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 	translate_tools *TransTool, model_target_element ElementTarget, b32 IsGlobalSpace)
 {
 	v3 TransDir = TransTool->TransParam.xyz;
+	v3 *DisplayVertices = Model->Data.Vertices;
 
 	switch (ElementTarget)
 	{
@@ -625,9 +627,10 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
+
 				v3 VSource = Source[VertexIndex];
-				
 				vertex_transform_state *Trans = TransState + VertexIndex;
+
 				Trans->T += ResultTranslate;
 
 				//m4x4 Transform = Trans->R;
@@ -635,7 +638,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 				
 				//VSource += ResultTranslate;
 				//Model->Data.Vertices[VertexIndex] = VSource * Transform;
-				Model->Data.Vertices[VertexIndex] += ResultTranslate;
+				DisplayVertices[VertexIndex] += ResultTranslate;
 			}
 
 			Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
