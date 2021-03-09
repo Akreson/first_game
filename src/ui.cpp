@@ -545,59 +545,48 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
 
-				Model->Data.Vertices[Index] = VSource * Transform;
+				DisplayVertices[Index] = VSource * Transform;
 			}
 		} break;
 
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
 		{
-#if 0
-			m4x4 MAxis = ToM4x4(Model->Axis);
-			m4x4 InvRot = Transpose(MAxis);
-			m4x4 ModelTrans = Model->ScaleMat * MAxis;
-
-			m3x3 S = ToM3x3(Model->ScaleMat);
-			m4x4 InvScale = ToM4x4(Inverse(S));
-			//m4x4 InvT = InvRot * InvScale;
-
 			v3 ScaleOrigin = Tool->P - Model->Offset;
-			ScaleOrigin = ScaleOrigin * InvRot * InvScale;
 
 			m4x4 ResultScale;
 			if (IsGlobalSpace)
 			{
 				ResultScale = ScaleMat(ScaleV);
-				ResultScale = MAxis * ResultScale * InvRot;
 			}
 			else
 			{
-				// TODO: InvScale brings incorect result to scaling
-				m4x4 ScaleAxis = ToM4x4(Tool->Axis) * InvRot * InvScale;
-				ScaleAxis.Row0.xyz = Normalize(ScaleAxis.Row0.xyz);
-				ScaleAxis.Row1.xyz = Normalize(ScaleAxis.Row1.xyz);
-				ScaleAxis.Row2.xyz = Normalize(ScaleAxis.Row2.xyz);
-				m4x4 InvScaleAxis = Transpose(ScaleAxis);
-
-				ResultScale = InvScaleAxis * ScaleMat(ScaleV) * ScaleAxis;
+				m4x4 TAxis = ToM4x4(Tool->Axis);
+				m4x4 InvTAxis = Transpose(TAxis);
+				ResultScale = InvTAxis * ScaleMat(ScaleV) * TAxis;
 			}
-			//m4x4 Transform = TranslateMat(-ScaleOrigin) * Scale * TranslateMat(ScaleOrigin);
+			
+			m4x4 ScaleTransform = TranslateMat(-ScaleOrigin) * ResultScale * TranslateMat(ScaleOrigin);
 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
-				v3 VCache = VerticesCache[VertexIndex];
-				
-				VCache -= ScaleOrigin;
-				VCache = VCache * ResultScale;
-				VCache += ScaleOrigin;
 
-				VerticesCache[VertexIndex] = VCache;
-				DisplayVertices[VertexIndex] = VCache * ModelTrans;
+				v3 VSource = SourceVertices[VertexIndex];
+				vertex_transform_state *Trans = TransStates + VertexIndex;
+
+				m4x4 Transform = ToM4x4(Trans->R);
+				SetTranslation(&Transform, Trans->T);
+
+				Transform = Transform * ScaleTransform;
+
+				Trans->R = ToM3x3(Transform);
+				Trans->T = Transform.Row3.xyz;
+				
+				DisplayVertices[VertexIndex] = VSource * Transform;
 			}
-#endif
 		} break;
 	}
 
