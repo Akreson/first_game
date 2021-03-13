@@ -438,8 +438,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_model *ModelEntry = (render_entry_model *)Data;
 				BufferOffset += sizeof(render_entry_model);
 
-				m4x4 ModelTransform = Identity();
-				SetTranslation(&ModelTransform, ModelEntry->Offset);
+				m4x4 ModelTransform = TranslateMat(ModelEntry->Offset);
 
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
@@ -465,8 +464,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				render_entry_trin_model *TrinModel = (render_entry_trin_model *)Data;
 				BufferOffset += sizeof(render_entry_trin_model);
 			
-				m4x4 ModelTransform = Identity();
-				SetTranslation(&ModelTransform, TrinModel->Pos);
+				m4x4 ModelTransform = TranslateMat(TrinModel->Pos);
 
 				glBindVertexArray(OpenGL.TrinBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
@@ -493,8 +491,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				BufferOffset += sizeof(render_entry_tool_rotate);
 
 				m4x4 Scale = ScaleMat(RotateTool->Scale);
-				m4x4 Traslate = Identity();
-				SetTranslation(&Traslate, RotateTool->Pos);
+				m4x4 Traslate = TranslateMat(RotateTool->Pos);
 
 				m4x4 Transform = Scale * Traslate;
 				UseProgramBegin(&OpenGL.RotateTools, &Commands->PersProj.Forward,
@@ -513,8 +510,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				BufferOffset += sizeof(render_entry_static_mesh);
 
 				m4x4 Scale = ScaleMat(MeshEntry->Scale);
-				m4x4 Traslate = Identity();
-				SetTranslation(&Traslate, MeshEntry->Pos);
+				m4x4 Traslate = TranslateMat(MeshEntry->Pos);
 
 				m4x4 Transform = Scale * Traslate;
 				UseProgramBegin(&OpenGL.StaticMeshProg,
@@ -538,8 +534,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				OpenGL.OutlineSet = true;
 				OpenGL.OutlineColor = OutlineEntry->OutlineColor;
 
-				m4x4 ModelTransform = Identity();
-				SetTranslation(&ModelTransform, OutlineModel->Offset);
+				m4x4 ModelTransform = TranslateMat(OutlineModel->Offset);
 
 				glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.BlurBlit[0].Handle);
 				glClear(GL_COLOR_BUFFER_BIT);
