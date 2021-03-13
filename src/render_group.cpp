@@ -124,11 +124,11 @@ PushBitmap(render_group *Group, renderer_texture BitmapTex, v2 Min, v2 Max, v3 C
 }
 
 void
-BeginPushTrinModel(render_group *Group, v3 Pos)
+BeginPushTrinModel(render_group *Group, v3 Pos, u16 RenderFlags)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_trin_model *TrinModelEntry =
-		(render_entry_trin_model *)PushRenderElement(Group, render_entry_trin_model, RenderEntryToggleFlags_DepthTest);
+		(render_entry_trin_model *)PushRenderElement(Group, render_entry_trin_model, RenderFlags);
 
 	TrinModelEntry->Pos = Pos;
 	TrinModelEntry->StartOffset = Commands->TriangleBufferSize;
@@ -294,10 +294,11 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
 }
 
 void
-PushStaticMesh(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale, v3 Color = V3(1))
+PushStaticMesh(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale, v3 Color, u16 RenderFlags)
 {
 	game_render_commands *Commands = Group->Commands;
-	render_entry_static_mesh *MeshEntry = (render_entry_static_mesh *)PushRenderElement(Group, render_entry_static_mesh);
+	render_entry_static_mesh *MeshEntry =
+		(render_entry_static_mesh *)PushRenderElement(Group, render_entry_static_mesh, RenderFlags);
 
 	MeshEntry->Mesh = Mesh;
 	MeshEntry->Color = Color;
@@ -441,7 +442,7 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	unalign_rect3 ZArrow = CreateRect(ZArrowCenter, Axis.X, Axis.Y, Axis.Z, ArrowHalfDim);
 	unalign_rect3 ZEdge = CreateRect(ZEdgeCenter, Axis.X, Axis.Y, Axis.Z, ZEdgeHalfDim);
 
-	BeginPushTrinModel(Group, Pos);
+	BeginPushTrinModel(Group, Pos, RenderEntryToggleFlags_DepthTest);
 
 	PushUnalignRectAsTrin(Commands, XEdge, AxisColor.X);
 	PushUnalignRectAsTrin(Commands, XArrow, AxisColor.X);
@@ -490,7 +491,7 @@ PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 A
 	plane_rect3 YPlane = CreatePlaneRectFromAxis(Pos, Axis.Z, Axis.X, PlaneDim);
 	plane_rect3 ZPlane = CreatePlaneRectFromAxis(Pos, Axis.X, Axis.Y, PlaneDim);
 
-	BeginPushTrinModel(Group, Pos);
+	BeginPushTrinModel(Group, Pos, RenderEntryToggleFlags_DepthTest);
 
 	PushUnalignRectAsTrin(Commands, XEdge, AxisColor.X);
 	PushUnalignRectAsTrin(Commands, YEdge, AxisColor.Y);
@@ -505,10 +506,10 @@ PushTranslateTool(render_group *Group, trans_tool_axis_params AxisParams, m3x3 A
 	v3 XArrowCenter = Pos + (Axis.X * AxisParams.Axis.Len);
 	v3 YArrowCenter = Pos + (Axis.Y * AxisParams.Axis.Len);
 	v3 ZArrowCenter = Pos + (Axis.Z * AxisParams.Axis.Len);
-	
-	PushStaticMesh(Group, ArrowMesh, XArrowCenter, Scale, AxisColor.X.rgb);
-	PushStaticMesh(Group, ArrowMesh, YArrowCenter, Scale, AxisColor.Y.rgb);
-	PushStaticMesh(Group, ArrowMesh, ZArrowCenter, Scale, AxisColor.Z.rgb);
+
+	PushStaticMesh(Group, ArrowMesh, XArrowCenter, Scale, AxisColor.X.rgb, RenderEntryToggleFlags_DepthTest);
+	PushStaticMesh(Group, ArrowMesh, YArrowCenter, Scale, AxisColor.Y.rgb, RenderEntryToggleFlags_DepthTest);
+	PushStaticMesh(Group, ArrowMesh, ZArrowCenter, Scale, AxisColor.Z.rgb, RenderEntryToggleFlags_DepthTest);
 }
 
 void
