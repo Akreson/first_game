@@ -361,6 +361,44 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 }
 
 inline void
+SetToggleStates(u16 ToggleFlags)
+{
+	if (ToggleFlags & RenderEntryToggleFlags_DepthTest)
+	{
+		glDisable(GL_DEPTH_TEST);
+	}
+
+	if (ToggleFlags & RenderEntryToggleFlags_CullFace)
+	{
+		glEnable(GL_CULL_FACE);
+	}
+
+	if (ToggleFlags & RenderEntryToggleFlags_Blend)
+	{
+		glDisable(GL_BLEND);
+	}
+}
+
+inline void
+ReleaseToggleStates(u16 ToggleFlags)
+{
+	if (ToggleFlags & RenderEntryToggleFlags_DepthTest)
+	{
+		glEnable(GL_DEPTH_TEST);
+	}
+
+	if (ToggleFlags & RenderEntryToggleFlags_CullFace)
+	{
+		glDisable(GL_CULL_FACE);
+	}
+
+	if (ToggleFlags & RenderEntryToggleFlags_Blend)
+	{
+		glEnable(GL_BLEND);
+	}
+}
+
+inline void
 OpenGLBindTex(GLenum Target, GLenum Slot, GLuint Handle)
 {
 	glActiveTexture(Slot);
@@ -407,6 +445,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 		render_entry_header *Header = (render_entry_header *)(Commands->PushBufferBase + BufferOffset);
 		BufferOffset += sizeof(render_entry_header);
 		void *Data = (Commands->PushBufferBase + BufferOffset);
+		u16 EntryToggleFlags = Header->ToggleFlags;
 
 		switch (Header->Type)
 		{
@@ -431,9 +470,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 			case RenderEntryType_render_entry_model:
 			{
-				glEnable(GL_CULL_FACE);
-				//glCullFace(GL_BACK);
-				//glFrontFace(GL_CCW);
+				SetToggleStates(EntryToggleFlags);
 
 				render_entry_model *ModelEntry = (render_entry_model *)Data;
 				BufferOffset += sizeof(render_entry_model);
@@ -452,14 +489,14 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
-
 				UseProgramEnd(&OpenGL.ModelProg);
-				glDisable(GL_CULL_FACE);
+
+				ReleaseToggleStates(EntryToggleFlags);
 			} break;
 
 			case RenderEntryType_render_entry_trin_model:
 			{
-				glDisable(GL_DEPTH_TEST);
+				SetToggleStates(EntryToggleFlags);
 
 				render_entry_trin_model *TrinModel = (render_entry_trin_model *)Data;
 				BufferOffset += sizeof(render_entry_trin_model);
@@ -476,16 +513,14 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
-
 				UseProgramEnd(&OpenGL.BitmapProg);
 
-				glEnable(GL_DEPTH_TEST);
+				ReleaseToggleStates(EntryToggleFlags);
 			} break;
 
 			case RenderEntryType_render_entry_tool_rotate:
 			{
-				glEnable(GL_CULL_FACE);
-				glDisable(GL_DEPTH_TEST);
+				SetToggleStates(EntryToggleFlags);
 
 				render_entry_tool_rotate *RotateTool = (render_entry_tool_rotate *)Data;
 				BufferOffset += sizeof(render_entry_tool_rotate);
@@ -500,12 +535,13 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glDrawElements(GL_TRIANGLES, RotateTool->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);
 
-				glEnable(GL_DEPTH_TEST);
-				glDisable(GL_CULL_FACE);
+				ReleaseToggleStates(EntryToggleFlags);
 			} break;
 
 			case RenderEntryType_render_entry_static_mesh:
 			{
+				SetToggleStates(EntryToggleFlags);
+
 				render_entry_static_mesh *MeshEntry = (render_entry_static_mesh *)Data;
 				BufferOffset += sizeof(render_entry_static_mesh);
 
@@ -519,12 +555,14 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray((GLuint)MeshEntry->Mesh.Handle);
 				glDrawElements(GL_TRIANGLES, MeshEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);
+
+				ReleaseToggleStates(EntryToggleFlags);
 			} break;
 
 			// TODO: Clean up
 			case RenderEntryType_render_entry_model_outline:
 			{
-				glDisable(GL_BLEND);
+				SetToggleStates(EntryToggleFlags);
 
 				render_entry_model_outline *OutlineEntry = (render_entry_model_outline *)Data;
 				BufferOffset += sizeof(render_entry_model_outline);
@@ -575,7 +613,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(0);
 				glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.MainFB.Handle);
 
-				glEnable(GL_BLEND);
+				ReleaseToggleStates(EntryToggleFlags);
 			} break;
 		}
 	}

@@ -52,6 +52,13 @@ enum face_element_renderer_params
 	FaceElementParams_SetAll = 0xFFFFFFFF,
 };
 
+enum render_entry_toggle_flags
+{
+	RenderEntryToggleFlags_DepthTest = (1 << 0),
+	RenderEntryToggleFlags_CullFace = (1 << 1),
+	RenderEntryToggleFlags_Blend = (1 << 2)
+};
+
 struct face_render_params
 {
 	union
@@ -104,6 +111,7 @@ struct face_edge_params
 struct render_entry_header
 {
 	u16 Type;
+	u16 ToggleFlags;
 };
 
 struct render_entry_static_mesh
@@ -175,10 +183,10 @@ struct render_model_face_vertex
 struct render_entry_tool_rotate
 {
 	renderer_mesh Mesh;
+	v3 Pos;
 	v3 XAxis;
 	v3 YAxis;
 	v3 ZAxis;
-	v3 Pos;
 	v3 ViewDir;
 	v4 AxisActivityState;
 	v2i PerpInfo;

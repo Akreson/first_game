@@ -61,7 +61,7 @@ Unproject(render_group *Group, v2 Mouse)
 }
 
 void *
-PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
+PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type, u16 ToggleFlags = 0)
 {
 	void *Result = nullptr;
 	game_render_commands *Commands = Group->Commands;
@@ -73,6 +73,7 @@ PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
 		Commands->PushBufferSize += sizeof(render_entry_header);
 
 		Header->Type = Type;
+		Header->ToggleFlags = ToggleFlags;
 
 		Result = (void *)(Header + 1);
 		Commands->PushBufferSize += Size;
@@ -85,7 +86,7 @@ PushRenderElement_(render_group *Group, u32 Size, render_entry_type Type)
 	return Result;
 }
 
-#define PushRenderElement(Group, Type) (Type *)PushRenderElement_(Group, sizeof(Type), RenderEntryType_##Type)
+#define PushRenderElement(Group, Type, ...) (Type *)PushRenderElement_(Group, sizeof(Type), RenderEntryType_##Type, ##__VA_ARGS__)
 
 inline render_triangle_vertex
 CreateTrinVertex(v3 V, v2 UV, v4 Color = V4(1.0f))
@@ -127,7 +128,7 @@ BeginPushTrinModel(render_group *Group, v3 Pos)
 {
 	game_render_commands *Commands = Group->Commands;
 	render_entry_trin_model *TrinModelEntry =
-		(render_entry_trin_model *)PushRenderElement(Group, render_entry_trin_model);
+		(render_entry_trin_model *)PushRenderElement(Group, render_entry_trin_model, RenderEntryToggleFlags_DepthTest);
 
 	TrinModelEntry->Pos = Pos;
 	TrinModelEntry->StartOffset = Commands->TriangleBufferSize;
@@ -248,7 +249,8 @@ void
 BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params ModelHiLi)
 {
 	game_render_commands *Commands = Group->Commands;
-	render_entry_model *ModelEntry = (render_entry_model *)PushRenderElement(Group, render_entry_model);
+	render_entry_model *ModelEntry =
+		(render_entry_model *)PushRenderElement(Group, render_entry_model, RenderEntryToggleFlags_CullFace);
 
 	ModelEntry->StartOffset = Commands->VertexBufferSize;
 	ModelEntry->Offset = Offset;
@@ -258,7 +260,7 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params 
 	if (ModelHiLi.OutlineIsSet)
 	{
 		render_entry_model_outline *ModelOutlineEntry =
-			(render_entry_model_outline *)PushRenderElement(Group, render_entry_model_outline);
+			(render_entry_model_outline *)PushRenderElement(Group, render_entry_model_outline, RenderEntryToggleFlags_Blend);
 		
 		ModelOutlineEntry->ModelEntry = ModelEntry;
 		ModelOutlineEntry->OutlineColor = ModelHiLi.OutlineColor;
@@ -514,7 +516,9 @@ PushRotateTool(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale,
 	m3x3 Axis, v4 AxisMask, v2i PerpInfo, v3 ViewDir)
 {
 	game_render_commands *Commands = Group->Commands;
-	render_entry_tool_rotate *RotateToolEntry = (render_entry_tool_rotate *)PushRenderElement(Group, render_entry_tool_rotate);
+	u16 ToggleFlags = RenderEntryToggleFlags_DepthTest | RenderEntryToggleFlags_CullFace;
+	render_entry_tool_rotate *RotateToolEntry =
+		(render_entry_tool_rotate *)PushRenderElement(Group, render_entry_tool_rotate, ToggleFlags);
 
 	RotateToolEntry->Mesh = Mesh;
 	RotateToolEntry->XAxis = Axis.X;
