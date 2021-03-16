@@ -404,10 +404,6 @@ WinMain(HINSTANCE Instance,
 					++ButtonIndex)
 				{
 					GameInput.MouseButtons[ButtonIndex].TransionState = 0;
-					if (IsBitSet(GetKeyState(VK_LBUTTON), 15))
-					{
-						int a = 5;
-					}
 					PlatformProcessButtonState(&GameInput.MouseButtons[ButtonIndex],
 						IsBitSet(GetKeyState(Win32MappedMouseID[ButtonIndex]), 15));
 				}
