@@ -58,11 +58,13 @@ struct model_data
 
 // TODO: Separate?
 // Choose how to store rotation (for now m4x4)
-// Is need at all?
+// Is need at all?!
+// TODO: See if will need be opimize!!
 struct vertex_transform_state
 {
 	// TODO: Get rid of rotation?
 	m3x3 R;
+	m3x3 S;
 	v3 T;
 };
 

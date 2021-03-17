@@ -439,7 +439,7 @@ InitModelVertexState(game_editor_state *Editor, u32 VertexCount)
 		++TransIndex)
 	{
 		vertex_transform_state *Transform = TransState + TransIndex;
-		Transform->R = I;
+		Transform->S = Transform->R = I;
 		Transform->T = T;
 	}
 

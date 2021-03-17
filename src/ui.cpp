@@ -457,12 +457,13 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				v3 VSource = SourceVertices[Index];
 				vertex_transform_state *Trans = TransStates + Index;
 
-				m4x4 Transform = ToM4x4(Trans->R);
+				m4x4 CurrRotation = ToM4x4(Trans->R);
+				CurrRotation = CurrRotation * RelativeRotation;
+
+				m4x4 Transform = ToM4x4(Trans->S) * CurrRotation;
 				SetTranslation(&Transform, Trans->T);
 
-				Transform = Transform * RelativeRotation;
-
-				Trans->R = ToM3x3(Transform);
+				Trans->R = ToM3x3(CurrRotation);
 				Trans->T = Transform.Row3.xyz;
 
 				DisplayVertices[Index] = VSource * Transform;
@@ -472,6 +473,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
+			// TODO: add scale process
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
 				++Index)
@@ -515,6 +517,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	ScaleV.E[AxisID] = 1.0f * ScaleFactor;
 	ScaleV += V3(1.0f);
 
+	// TODO: Debug make apply scale in right way
 	switch (TargetElement)
 	{
 		case ModelTargetElement_Model:
@@ -538,12 +541,13 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				v3 VSource = SourceVertices[Index];
 				vertex_transform_state *Trans = TransStates + Index;
 
-				m4x4 Transform = ToM4x4(Trans->R);
+				m4x4 CurrScale = ToM4x4(Trans->S);
+				CurrScale = CurrScale * ResultScale;
+
+				m4x4 Transform = CurrScale * ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
 
-				Transform = Transform * ResultScale;
-
-				Trans->R = ToM3x3(Transform);
+				Trans->S = ToM3x3(CurrScale);
 				Trans->T = Transform.Row3.xyz;
 
 				DisplayVertices[Index] = VSource * Transform;
@@ -578,12 +582,13 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				v3 VSource = SourceVertices[VertexIndex];
 				vertex_transform_state *Trans = TransStates + VertexIndex;
 
-				m4x4 Transform = ToM4x4(Trans->R);
+				m4x4 CurrScale = ToM4x4(Trans->S);
+				CurrScale = CurrScale * ResultScale;
+
+				m4x4 Transform = CurrScale * ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
 
-				Transform = Transform * ScaleTransform;
-
-				Trans->R = ToM3x3(Transform);
+				Trans->S = ToM3x3(CurrScale);
 				Trans->T = Transform.Row3.xyz;
 				
 				DisplayVertices[VertexIndex] = VSource * Transform;
