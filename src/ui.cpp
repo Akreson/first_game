@@ -458,10 +458,11 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				vertex_transform_state *Trans = TransStates + Index;
 
 				m4x4 CurrRotation = ToM4x4(Trans->R);
+				SetTranslation(&CurrRotation, Trans->T);
 				CurrRotation = CurrRotation * RelativeRotation;
 
-				m4x4 Transform = ToM4x4(Trans->S) * CurrRotation;
-				SetTranslation(&Transform, Trans->T);
+				m4x4 Transform = CurrRotation;
+				Transform = ToM4x4(Trans->S) * CurrRotation;
 
 				Trans->R = ToM3x3(CurrRotation);
 				Trans->T = Transform.Row3.xyz;
@@ -522,16 +523,17 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	{
 		case ModelTargetElement_Model:
 		{
-			m4x4 ResultScale;
+			m4x4 ApplyScale;
 			if (IsGlobalSpace)
-			{
-				ResultScale = ScaleMat(ScaleV);
-			}
-			else
 			{
 				m4x4 MAxis = ToM4x4(Model->Axis);
 				m4x4 InvRot = Transpose(MAxis);
-				ResultScale = InvRot * ScaleMat(ScaleV) * MAxis;
+				ApplyScale = ScaleMat(ScaleV);
+				ApplyScale = MAxis * ApplyScale * InvRot;
+			}
+			else
+			{
+				ApplyScale = ScaleMat(ScaleV);
 			}
 
 			for (u32 Index = 0;
@@ -542,10 +544,11 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				vertex_transform_state *Trans = TransStates + Index;
 
 				m4x4 CurrScale = ToM4x4(Trans->S);
-				CurrScale = CurrScale * ResultScale;
+				CurrScale = CurrScale * ApplyScale;
 
-				m4x4 Transform = CurrScale * ToM4x4(Trans->R);
+				m4x4 Transform = ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
+				Transform = CurrScale * Transform;
 
 				Trans->S = ToM3x3(CurrScale);
 				Trans->T = Transform.Row3.xyz;
@@ -559,19 +562,20 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 		{
 			v3 ScaleOrigin = Tool->P - Model->Offset;
 
-			m4x4 ResultScale;
+			m4x4 ApplyScale;
 			if (IsGlobalSpace)
 			{
-				ResultScale = ScaleMat(ScaleV);
+				m4x4 MAxis = ToM4x4(Model->Axis);
+				m4x4 InvRot = Transpose(MAxis);
+				ApplyScale = ScaleMat(ScaleV);
+				ApplyScale = MAxis * ApplyScale * InvRot;
 			}
 			else
 			{
-				m4x4 TAxis = ToM4x4(Tool->Axis);
-				m4x4 InvTAxis = Transpose(TAxis);
-				ResultScale = InvTAxis * ScaleMat(ScaleV) * TAxis;
+				ApplyScale = ScaleMat(ScaleV);
 			}
 			
-			m4x4 ScaleTransform = TranslateMat(-ScaleOrigin) * ResultScale * TranslateMat(ScaleOrigin);
+			m4x4 ScaleTransform = TranslateMat(-ScaleOrigin) * ApplyScale * TranslateMat(ScaleOrigin);
 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
@@ -583,7 +587,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				vertex_transform_state *Trans = TransStates + VertexIndex;
 
 				m4x4 CurrScale = ToM4x4(Trans->S);
-				CurrScale = CurrScale * ResultScale;
+				CurrScale = CurrScale * ApplyScale;
 
 				m4x4 Transform = CurrScale * ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
