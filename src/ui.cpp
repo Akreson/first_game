@@ -473,9 +473,12 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				m4x4 CurrRotation = ToM4x4(Trans->R);
 
 				CurrRotation = CurrRotation * RelativeRotation;
-				Trans->R = ToM3x3(CurrRotation);
-
+				
 				m4x4 Transform = Scale * Translate * CurrRotation;
+
+				Trans->R = ToM3x3(CurrRotation);
+				Trans->T = Transform.Row3.xyz;
+
 				DisplayVertices[Index] = VSource * Transform;
 #endif
 			}
@@ -573,6 +576,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				m4x4 Transform = CurrScale * Translate * Rotation;
 
 				Trans->S = ToM3x3(CurrScale);
+				Trans->T = Transform.Row3.xyz;
 #endif
 				DisplayVertices[Index] = VSource * Transform;
 			}
