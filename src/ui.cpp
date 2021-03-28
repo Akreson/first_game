@@ -461,8 +461,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				SetTranslation(&CurrRotation, Trans->T);
 				CurrRotation = CurrRotation * RelativeRotation;
 
-				m4x4 Transform = CurrRotation;
-				Transform = ToM4x4(Trans->S) * CurrRotation;
+				m4x4 Transform = ToM4x4(Trans->S) * CurrRotation;
 
 				Trans->R = ToM3x3(CurrRotation);
 				Trans->T = Transform.Row3.xyz;
@@ -500,7 +499,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
 }
 
-#define SCALE_SPEED 0.3f
+#define SCALE_SPEED 1.0f
 // TODO: Optimize!!!
 void
 ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
@@ -560,11 +559,11 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
 		{
-			v3 ScaleOrigin = Tool->P - Model->Offset;
-
-			m4x4 ApplyScale;
 			m4x4 MAxis = ToM4x4(Model->Axis);
 			m4x4 InvRot = Transpose(MAxis);
+			v3 ScaleOrigin = (Tool->P - Model->Offset) * InvRot;
+
+			m4x4 ApplyScale;
 			if (IsGlobalSpace)
 			{
 				ApplyScale = ScaleMat(ScaleV);
@@ -572,17 +571,19 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 			}
 			else
 			{
-				//m4x4 A = ToM4x4(Tool->Axis) * InvRot;
 				m4x4 TAxis = ToM4x4(Tool->Axis) * InvRot;
 				m4x4 InvTAxis = Transpose(TAxis);
 
 				ApplyScale = ScaleMat(ScaleV);
-				//ApplyScale = MAxis * ApplyScale * InvRot;
+				// ApplyScale = TAxis * ApplyScale * InvTAxis;
 				ApplyScale = InvTAxis * ApplyScale * TAxis;
 			}
 			
+			m4x4 NegTrans = TranslateMat(-ScaleOrigin);
+			m4x4 PosTrans = TranslateMat(ScaleOrigin);
+
 			// TODO: IS NEED?!!
-			m4x4 ScaleTransform = TranslateMat(-ScaleOrigin) * ApplyScale * TranslateMat(ScaleOrigin);
+			m4x4 ScaleTransform = NegTrans * ApplyScale * PosTrans;
 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
@@ -591,20 +592,46 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
 				v3 VSource = SourceVertices[VertexIndex];
-				vertex_transform_state *Trans = TransStates + Index;
+				vertex_transform_state *Trans = TransStates + VertexIndex;
 
+#if 0
 				m4x4 CurrScale = ToM4x4(Trans->S);
-				//CurrScale = CurrScale * ScaleTransform;
-				CurrScale = CurrScale * ApplyScale;
+				CurrScale = CurrScale * ScaleTransform;
+				//CurrScale = CurrScale * ApplyScale;
 
 				m4x4 Transform = ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
+
 				Transform = CurrScale * Transform;
 
 				Trans->S = ToM3x3(CurrScale);
 				Trans->T = Transform.Row3.xyz;
+				
+				//VSource -= ScaleOrigin;
 
 				v3 TransResult = VSource * Transform;
+				//TransResult += ScaleOrigin;
+				
+				//VSource = VSource * Transform;
+				//VSource += ScaleOrigin;
+#else
+
+				m4x4 CurrScale = ToM4x4(Trans->S);
+				CurrScale = CurrScale * ApplyScale;
+				CurrScale = NegTrans * CurrScale * PosTrans;
+
+				VSource = VSource * CurrScale;
+
+				m4x4 Transform = ToM4x4(Trans->R);
+				SetTranslation(&Transform, Trans->T);
+
+				//Transform = CurrScale * Transform;
+
+				v3 TransResult = VSource * Transform;
+
+				Trans->T = Transform.Row3.xyz;
+				Trans->S = ToM3x3(CurrScale);
+#endif
 				DisplayVertices[VertexIndex] = TransResult;
 			}
 		} break;
@@ -1417,7 +1444,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 	editor_world_ui *WorldUI = &Editor->WorldUI;
 	tools *Tools = &WorldUI->Tools;
 	work_model *Model = Editor->WorkModels + WorldUI->IModel.ID;
-	b32 IsGlobalSpace = IsDown(Input->Ctrl);
 
 	if (!Tools->IsInit)
 	{
@@ -1431,6 +1457,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 		case ToolType_Rotate:
 		{
 			rotate_tools *RotateTool = &Tools->Rotate;
+			Tools->IsGlobalSpace = IsDown(Input->Ctrl);
+
 			ray_to_point_params PosRelParams =
 				GetRayToPointRelParam(Ray.P, RotateTool->P, Tools->AdjustScaleDist);
 
@@ -1438,7 +1466,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			RotateTool->FromPosToRayP = Normalize(PosRelParams.ToolToRayV, PosRelParams.LenV);
 
 			m3x3 Axis;
-			if (IsGlobalSpace)
+			if (Tools->IsGlobalSpace)
 			{
 				Axis = Identity3x3();
 				RotateTool->DefaultAxisSet = true;
@@ -1529,9 +1557,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			m3x3 Axis;
 			if (ScaleTool->InteractAxis == ToolsAxisID_None)
 			{
+				Tools->IsGlobalSpace = IsDown(Input->Ctrl);
+
 				ScaleTool->AxisMask = {};
 
-				if (IsGlobalSpace)
+				if (Tools->IsGlobalSpace)
 				{
 					Axis = Identity3x3();
 				}
@@ -1540,11 +1570,11 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					Axis = SetAxisForTool(Model, &WorldUI->Selected, WorldUI->IModel.Target);
 				}
 
-				// TODO: Temp solution, handle different space mod properly
-				if (WorldUI->Selected.Count > 1)
-				{
-					IsGlobalSpace = true;
-				}
+				//// TODO: Temp solution, handle different space mod properly
+				//if (WorldUI->Selected.Count > 1)
+				//{
+				//	IsGlobalSpace = true;
+				//}
 
 				f32 ZSignMod = 1.0f; //Sign(Dot(Axis.Z, RayPCenterP));
 				//Axis.Z *= ZSignMod;
@@ -1571,12 +1601,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			}
 			else
 			{
-				// TODO: Temp solution, handle different space mod properly
-				if (WorldUI->Selected.Count > 1)
-				{
-					IsGlobalSpace = true;
-				}
-
 				Axis = ScaleTool->Axis;
 				Interaction = SetToolAxisIntr(ToolType_Scale, UI_InteractionType_Move, ScaleTool->InteractAxis);
 
@@ -1585,7 +1609,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if (ProcessScaleToolTransform(ScaleTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-						ApplyScale(Model, ScaleTool, &Tools->UniqIndeces, TargetElement, IsGlobalSpace);
+						ApplyScale(Model, ScaleTool, &Tools->UniqIndeces, TargetElement, Tools->IsGlobalSpace);
 					}
 
 					SetDefaultDisplayParams(&ScaleTool->DisplayState, ScaleAxisParams, ScaleTool->InteractAxis);
@@ -1616,11 +1640,13 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			m3x3 Axis;
 			if (TransTool->InteractAxis == ToolsAxisID_None)
 			{
+				Tools->IsGlobalSpace = IsDown(Input->Ctrl);
+
 				TransTool->AxisMask = {};
 				TransTool->PlaneMask = {};
 				TransTool->IsPlaneIntr = false;
 
-				if (IsGlobalSpace)
+				if (Tools->IsGlobalSpace)
 				{
 					Axis = Identity3x3();
 				}
@@ -1671,7 +1697,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					if (ProcessTransToolTransform(TransTool, Ray))
 					{
 						model_target_element TargetElement = (model_target_element)WorldUI->IModel.Target;
-						ApplyTranslate(Model, &Tools->UniqIndeces, TransTool, TargetElement, IsGlobalSpace);
+						ApplyTranslate(Model, &Tools->UniqIndeces, TransTool, TargetElement, Tools->IsGlobalSpace);
 					}
 				}
 				else

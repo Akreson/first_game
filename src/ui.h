@@ -248,6 +248,7 @@ struct translate_tools
 struct tools
 {
 	f32 AdjustScaleDist;
+	u32 IsGlobalSpace;
 	u16 Type;
 	b16 IsInit;
 
