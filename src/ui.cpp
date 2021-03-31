@@ -474,7 +474,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 
 				CurrRotation = CurrRotation * RelativeRotation;
 				
-				m4x4 Transform = Scale * Translate * CurrRotation;
+				m4x4 Transform = Scale * CurrRotation * Translate;
 
 				Trans->R = ToM3x3(CurrRotation);
 				Trans->T = Transform.Row3.xyz;
@@ -496,7 +496,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 
 				v3 VSource = SourceVertices[VertexIndex];
 				vertex_transform_state *Trans = TransStates + VertexIndex;
-
+#if 0
 				m4x4 Transform = ToM4x4(Trans->R);
 				SetTranslation(&Transform, Trans->T);
 
@@ -504,7 +504,18 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 
 				Trans->R = ToM3x3(Transform);
 				Trans->T = Transform.Row3.xyz;
+#else
+				m4x4 Scale = ToM4x4(Trans->S);
+				m4x4 Translate = TranslateMat(Trans->T);
+				m4x4 CurrRotation = ToM4x4(Trans->R);
 
+				CurrRotation = CurrRotation * RelativeRotation;
+
+				m4x4 Transform = Scale * CurrRotation * Translate;
+
+				Trans->R = ToM3x3(CurrRotation);
+				Trans->T = Transform.Row3.xyz;
+#endif
 				DisplayVertices[VertexIndex] = VSource * Transform;
 			}
 		} break;
@@ -573,7 +584,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 
 				CurrScale = CurrScale * ApplyScale;
 
-				m4x4 Transform = CurrScale * Translate * Rotation;
+				m4x4 Transform = CurrScale * Rotation * Translate;
 
 				Trans->S = ToM3x3(CurrScale);
 				Trans->T = Transform.Row3.xyz;
