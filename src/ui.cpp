@@ -547,7 +547,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	{
 		case ModelTargetElement_Model:
 		{
-			m4x4 ApplyScale;
+			/*m4x4 ApplyScale;
 			if (IsGlobalSpace)
 			{
 				m4x4 MAxis = ToM4x4(Model->Axis);
@@ -558,7 +558,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 			else
 			{
 				ApplyScale = ScaleMat(ScaleV);
-			}
+			}*/
 
 			for (u32 Index = 0;
 				Index < Model->Data.VertexCount;
@@ -581,6 +581,19 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				m4x4 CurrScale = ToM4x4(Trans->S);
 				m4x4 Translate = TranslateMat(Trans->T);
 				m4x4 Rotation = ToM4x4(Trans->R);
+
+				m4x4 ApplyScale;
+				if (IsGlobalSpace)
+				{
+					m4x4 MAxis = Rotation;
+					m4x4 InvRot = Transpose(MAxis);
+					ApplyScale = ScaleMat(ScaleV);
+					ApplyScale = MAxis * ApplyScale * InvRot;
+				}
+				else
+				{
+					ApplyScale = ScaleMat(ScaleV);
+				}
 
 				CurrScale = CurrScale * ApplyScale;
 
