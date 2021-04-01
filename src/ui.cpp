@@ -609,31 +609,31 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Face:
 		case ModelTargetElement_Edge:
 		{
-			m4x4 MAxis = ToM4x4(Model->Axis);
-			m4x4 InvRot = Transpose(MAxis);
-			v3 ScaleOrigin = (Tool->P - Model->Offset) * InvRot;
+			//m4x4 MAxis = ToM4x4(Model->Axis);
+			//m4x4 InvRot = Transpose(MAxis);
+			//v3 ScaleOrigin = (Tool->P - Model->Offset) * InvRot;
 
-			m4x4 ApplyScale;
-			if (IsGlobalSpace)
-			{
-				ApplyScale = ScaleMat(ScaleV);
-				ApplyScale = MAxis * ApplyScale * InvRot;
-			}
-			else
-			{
-				m4x4 TAxis = ToM4x4(Tool->Axis) * InvRot;
-				m4x4 InvTAxis = Transpose(TAxis);
+			//m4x4 ApplyScale;
+			//if (IsGlobalSpace)
+			//{
+			//	ApplyScale = ScaleMat(ScaleV);
+			//	ApplyScale = MAxis * ApplyScale * InvRot;
+			//}
+			//else
+			//{
+			//	m4x4 TAxis = ToM4x4(Tool->Axis) * InvRot;
+			//	m4x4 InvTAxis = Transpose(TAxis);
 
-				ApplyScale = ScaleMat(ScaleV);
-				// ApplyScale = TAxis * ApplyScale * InvTAxis;
-				ApplyScale = InvTAxis * ApplyScale * TAxis;
-			}
-			
-			m4x4 NegTrans = TranslateMat(-ScaleOrigin);
-			m4x4 PosTrans = TranslateMat(ScaleOrigin);
+			//	ApplyScale = ScaleMat(ScaleV);
+			//	// ApplyScale = TAxis * ApplyScale * InvTAxis;
+			//	ApplyScale = InvTAxis * ApplyScale * TAxis;
+			//}
+			//
+			//m4x4 NegTrans = TranslateMat(-ScaleOrigin);
+			//m4x4 PosTrans = TranslateMat(ScaleOrigin);
 
-			// TODO: IS NEED?!!
-			m4x4 ScaleTransform = NegTrans * ApplyScale * PosTrans;
+			//// TODO: IS NEED?!!
+			//m4x4 ScaleTransform = NegTrans * ApplyScale * PosTrans;
 
 			for (u32 Index = 0;
 				Index < UniqIndeces->Count;
@@ -685,14 +685,38 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				m4x4 Translate = TranslateMat(Trans->T);
 				m4x4 Rotation = ToM4x4(Trans->R);
 
+				m4x4 MAxis = Rotation;
+				m4x4 InvRot = Transpose(MAxis);
+
+				m4x4 ApplyScale;
+				if (IsGlobalSpace)
+				{
+					ApplyScale = ScaleMat(ScaleV);
+					ApplyScale = MAxis * ApplyScale * InvRot;
+				}
+				else
+				{
+					m4x4 TAxis = ToM4x4(Tool->Axis) * InvRot;
+					m4x4 InvTAxis = Transpose(TAxis);
+
+					ApplyScale = ScaleMat(ScaleV);
+					// ApplyScale = TAxis * ApplyScale * InvTAxis;
+					ApplyScale = InvTAxis * ApplyScale * TAxis;
+				}
+
+				v3 ScaleOrigin = ((Tool->P - Model->Offset) - Trans->T) * InvRot;
+
+				m4x4 NegTrans = TranslateMat(-ScaleOrigin);
+				m4x4 PosTrans = TranslateMat(ScaleOrigin);
+				m4x4 ScaleTransform = NegTrans * ApplyScale * PosTrans;
+
 				CurrScale = CurrScale * ScaleTransform;
 
-				m4x4 Transform = CurrScale * Translate;
+				m4x4 Transform = CurrScale * Rotation * Translate;
 
-				Trans->S = ToM3x3(Transform);
+				Trans->S = ToM3x3(CurrScale);
 				Trans->T = Transform.Row3.xyz;
 
-				Transform = Transform * Rotation;
 				v3 TransResult = VSource * Transform;
 #endif
 				DisplayVertices[VertexIndex] = TransResult;
