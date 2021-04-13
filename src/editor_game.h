@@ -55,18 +55,6 @@ struct model_highlight_params
 	b32 OutlineIsSet;
 };
 
-struct model_ray_result
-{
-	u32 ModelIndex;
-	element_ray_result Face;
-};
-
-struct model_ray_sort
-{
-	u32 Index;
-	f32 Length;
-};
-
 struct game_editor_state
 {
 	model_data SourceModels[32];

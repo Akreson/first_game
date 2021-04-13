@@ -126,7 +126,7 @@ struct rot_tool_perp_axis
 		struct
 		{
 			u32 Index;
-			u32 IsSet;
+			b32 IsSet;
 		};
 
 		v2i V;

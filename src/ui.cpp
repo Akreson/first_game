@@ -818,7 +818,7 @@ IsRotateToolAxisPerp(f32 PerpThreshold, v3 Axis, v3 CameraZ)
 	b32 Result = false;
 
 	f32 ADotC = Abs(Dot(Axis, CameraZ));
-	if (Abs(ADotC) >= PerpThreshold)
+	if (ADotC >= PerpThreshold)
 	{
 		Result = true;
 	}
@@ -839,7 +839,7 @@ SetRotToolPerpInfo(m3x3 Axis, f32 PerpThreshold, v3 FromPosToRayP)
 	u32 PerpAxisIndex;
 	if (IsHavePerpAxis)
 	{
-		Result.IsSet = 1;
+		Result.IsSet = true;
 
 		if (IsXPerp)
 			Result.Index = 0;

@@ -456,6 +456,7 @@ PushScaleTool(render_group *Group,  v3 Pos, m3x3 Axis,
 	EndPushTrinModel(Group);
 }
 
+// TODO: left v3 P param?
 internal inline plane_rect3
 CreatePlaneRectFromAxis(v3 P, v3 XAxis, v3 YAxis, v2 Dim)
 {

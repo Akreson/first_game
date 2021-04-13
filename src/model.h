@@ -142,3 +142,15 @@ struct edge_faces_norm
 {
 	v3 N0, N1;
 };
+
+struct model_ray_result
+{
+	u32 ModelIndex;
+	element_ray_result Face;
+};
+
+struct model_ray_sort
+{
+	u32 Index;
+	f32 Length;
+};
