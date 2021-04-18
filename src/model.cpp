@@ -223,7 +223,7 @@ GetPlaneAvgNormal(work_model *Model, model_face *Face)
 	return Result;
 }
 
-internal inline face_plane
+inline face_plane
 GetFacePlane(face_vertex Vertex)
 {
 	face_plane Result;
@@ -239,7 +239,7 @@ GetFacePlane(face_vertex Vertex)
 	return Result;
 }
 
-internal inline face_plane
+inline face_plane
 GetFacePlane(work_model *Model, u32 FaceIndex)
 {
 	face_plane Result;
@@ -248,6 +248,77 @@ GetFacePlane(work_model *Model, u32 FaceIndex)
 	face_vertex Vertex = GetFaceVertex(Model, Face);
 
 	Result = GetFacePlane(Vertex);
+	return Result;
+}
+
+inline f32
+PointToEdgeProj(v3 *Vertices, model_edge *Edge, v3 P)
+{
+	v3 V0 = Vertices[Edge->V0];
+	v3 V1 = Vertices[Edge->V1];
+
+	v3 PV0 = V0 - P;
+	v3 V01 = V1 - V0;
+	f32 tResult = Dot(PV0, V01) / Dot(V01, V01);
+
+	return tResult;
+}
+
+f32
+PointToEdgeOnFaceLengthSq(v3 *Vertices, model_edge *Edge, v3 P)
+{
+	v3 V0 = Vertices[Edge->V0];
+	v3 V1 = Vertices[Edge->V1];
+
+	v3 PV0 = V0 - P;
+	v3 V01 = V1 - V0;
+	f32 t = Dot(PV0, V01) / Dot(V01, V01);
+	v3 D = V0 + t * V01;
+	v3 PD = P - D;
+
+	f32 ResultLengthSq = LengthSq(PD);
+	return ResultLengthSq;
+}
+
+
+// TODO: Optimize, unroll
+inline point_to_edge_proj
+GetClosestEdgeToPointOnFace(work_model *Model, u32 FaceIndex, v3 P)
+{
+	point_to_edge_proj Result = {};
+
+	model_face *Face = Model->Data.Faces + FaceIndex;
+	
+	model_edge *FaceEdges[4];
+	FaceEdges[0] = Model->Data.Edges + Face->Edge0;
+	FaceEdges[1] = Model->Data.Edges + Face->Edge1;
+	FaceEdges[2] = Model->Data.Edges + Face->Edge2;
+	FaceEdges[3] = Model->Data.Edges + Face->Edge3;
+
+	f32 SqLengthResult[4];
+	SqLengthResult[0] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[0], P);
+	SqLengthResult[1] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[1], P);
+	SqLengthResult[2] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[2], P);
+	SqLengthResult[3] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[3], P);
+
+	u32 EdgeIndex;
+	f32 MinLength = FLOAT_MAX;
+	for (u32 Index = 0;
+		Index < ArrayCount(SqLengthResult);
+		++Index)
+	{
+		f32 LengthSqToEdge = SqLengthResult[Index];
+		if (LengthSqToEdge < MinLength)
+		{
+			EdgeIndex = Index;
+			MinLength = LengthSqToEdge;
+		}
+	}
+
+	Result.Edge = FaceEdges[EdgeIndex];
+	Result.ID = Face->EdgesID[EdgeIndex];
+	Result.t = PointToEdgeProj(Model->Data.Vertices, Result.Edge, P);
+
 	return Result;
 }
 
@@ -630,9 +701,7 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 {
 	static_mesh *Sphere = AddStaticMesh(Editor);
 
-	CreateStaticSphere(
-		&Editor->MainArena, &Editor->TranArena,
-		Sphere, Radius, StackCount, SliceCount);
+	CreateStaticSphere(&Editor->MainArena, &Editor->TranArena, Sphere, Radius, StackCount, SliceCount);
 
 	Sphere->Mesh = PlatformAPI.AllocateMesh(
 		SetAllocMeshParams(Sphere->Vertex, (u32 *)Sphere->Tris, Sphere->VertexCount, Sphere->TrisCount));
@@ -640,6 +709,7 @@ CreateStaticSphere(game_editor_state *Editor, f32 Radius, u32 StackCount, u32 Sl
 	return Sphere;
 }
 
+// TODO: Test if FaceResult init and it on the same face
 b32
 RayModelFacesIntersect(work_model *Model, ray_params Ray, element_ray_result *FaceResult)
 {
@@ -662,7 +732,7 @@ RayModelFacesIntersect(work_model *Model, ray_params Ray, element_ray_result *Fa
 		f32 DotRayPlane0 = Dot(Ray.Dir, Plane.P0.N);
 		f32 DotRayPlane1 = Dot(Ray.Dir, Plane.P1.N);
 
-		if ((DotRayPlane0 < 0))
+		if (DotRayPlane0 < 0)
 		{
 			f32 tRay = RayPlaneIntersect(Ray, Plane.P0, DotRayPlane0);
 			if (tRay >= 0)
@@ -702,6 +772,7 @@ RayModelFacesIntersect(work_model *Model, ray_params Ray, element_ray_result *Fa
 // TODO: Optimize or change to another method
 // Check if precompute and then check face visibility
 // give benefit
+// TODO: Test if EdgeResult init and it on the same edge
 b32
 RayModelEdgesIntersect(work_model *Model, ray_params Ray, element_ray_result *EdgeResult, f32 IntrRadius)
 {

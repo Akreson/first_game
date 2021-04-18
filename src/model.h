@@ -154,3 +154,10 @@ struct model_ray_sort
 	u32 Index;
 	f32 Length;
 };
+
+struct point_to_edge_proj
+{
+	model_edge *Edge;
+	u32 ID;
+	f32 t;
+};

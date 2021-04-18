@@ -28,6 +28,7 @@ enum tool_type
 	ToolType_Rotate,
 	ToolType_Translate,
 	ToolType_Scale,
+	ToolType_Split,
 
 	ToolType_Count,
 };

@@ -172,7 +172,7 @@ AddToSelectedBuffer(element_id_buffer *Selected, u32 ElementID, u32 ITarget, b32
 					u32 BufferElementID = Selected->Elements[Index];
 					if (BufferElementID == ElementID)
 					{
-						Selected->Elements[Index] = Selected->Elements[--Selected->Count];
+						Selected->Elements[Index] = Selected->Elements[--ElementCount];
 						AddToBuff = false;
 						break;
 					}
@@ -1409,6 +1409,23 @@ RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams
 	return Result;
 }
 
+inline point_to_edge_proj
+GetStartEdgeForSplit(ray_params MouseRay, work_model *Model, element_ray_result *Face)
+{
+	point_to_edge_proj Result = {};
+
+	if (RayAABBIntersect(MouseRay, Model->AABB, Model->Offset))
+	{
+		if (RayModelFacesIntersect(Model, MouseRay, Face))
+		{
+			Result = GetClosestEdgeToPointOnFace(Model, Face->ID, Face->P);
+		}
+	}
+
+	return Result;
+}
+
+
 // TODO: Apply transform only when exit move interaction
 // for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
@@ -1687,6 +1704,18 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 			PushTranslateTool(RenderGroup, ScaleAxisParams, Axis, TransTool->AxisMask, TransTool->PlaneMask,
 				TransTool->P, PosRelParams.ScaleFactor, Editor->StaticMesh[BuiltInMesh_TranslateArrow].Mesh);
+		} break;
+
+		case ToolType_Split:
+		{
+			interact_model *IModel = &WorldUI->IModel;
+			IModel->Face = {};
+
+			point_to_edge_proj StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
+			if (StartEdge.Edge)
+			{
+				// TODO: Continue
+			}
 		} break;
 	}
 
