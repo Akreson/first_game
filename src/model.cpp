@@ -530,14 +530,11 @@ InitWorkModel(game_editor_state *Editor, model_data *SourceModel, v4 Color, v3 O
 	Model->Color = Color;
 	Model->Offset = Offset;
 	Model->Axis = Identity3x3();
-	//Model->ScaleMat = Identity();
 	Model->Source = SourceModel;
 	Model->Data.VertexCount = SourceModel->VertexCount;
 	Model->Data.FaceCount = SourceModel->FaceCount;
 	Model->Data.EdgeCount = SourceModel->EdgeCount;
 	Model->VertexTrans = InitModelVertexState(Editor, Model->Data.VertexCount);
-
-	// TODO: Init transform cache
 
 	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertices, SourceModel->Vertices);
 	PagePushArray(Arena, model_face, SourceModel->FaceCount, Model->Data.Faces, SourceModel->Faces);

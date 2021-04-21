@@ -246,6 +246,27 @@ struct translate_tools
 	} Intr;
 };
 
+struct split_tool
+{
+	point_to_edge_proj StartEdge;
+};
+
+struct split_buffer_element
+{
+	v3 V;
+	u32 FaceID[2];
+	u32 EdgeID;
+
+	v3 EdgeDir;
+};
+
+struct split_buffer
+{
+	split_buffer_element *Elem;
+	u32 MaxCount;
+	u32 Count;
+};
+
 struct tools
 {
 	f32 AdjustScaleDist;
@@ -254,6 +275,7 @@ struct tools
 	b16 IsInit;
 
 	element_id_buffer UniqIndeces;
+	split_buffer SplitBuffer;
 
 	union
 	{
@@ -265,6 +287,7 @@ struct tools
 				rotate_tools Rotate;
 				scale_tools Scale;
 				translate_tools Translate;
+				split_tool Split;
 			};
 		};
 	};

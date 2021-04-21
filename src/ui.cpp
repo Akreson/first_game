@@ -122,6 +122,7 @@ ProcessWorldUIInput(editor_world_ui *WorldUI, game_input *Input)
 		}
 		else if (IsITargetEq(WorldUI->ITarget, Tools))
 		{
+			// TODO: Add FreeToolInfo func?
 			++WorldUI->Tools.Type;
 			if (WorldUI->Tools.Type == ToolType_Count)
 			{
@@ -1264,7 +1265,7 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 
 // TODO: Add more tools!!!
 void
-InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, memory_arena *TranArena)
+InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, page_memory_arena *PageArena)
 {
 	element_id_buffer *Selected = &WorldUI->Selected;
 	interact_model *IModel = &WorldUI->IModel;
@@ -1314,6 +1315,16 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, memory_aren
 			InitAxisParams->ArrowHalfSize = SCALE_TOOL_SIZE * 0.045f;
 		} break;
 
+		case ToolType_Split:
+		{
+			Tools->Split = {};
+
+			if (!Tools->SplitBuffer.Elem)
+			{
+				Tools->SplitBuffer.MaxCount = 100;
+				PagePushArray(PageArena, split_buffer_element, Tools->SplitBuffer.MaxCount, Tools->SplitBuffer.Elem, 0);
+			}
+		} break;
 
 		InvalidDefaultCase;
 	}
@@ -1425,7 +1436,6 @@ GetStartEdgeForSplit(ray_params MouseRay, work_model *Model, element_ray_result 
 	return Result;
 }
 
-
 // TODO: Apply transform only when exit move interaction
 // for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
@@ -1441,7 +1451,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 	if (!Tools->IsInit)
 	{
-		InitTools(WorldUI, Tools, Model, &Editor->TranArena);
+		InitTools(WorldUI, Tools, Model, &Editor->PageArena);
 	}
 
 	ray_params Ray = WorldUI->MouseRay;
@@ -1708,13 +1718,25 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 		case ToolType_Split:
 		{
+			split_tool *Split = &Tools->Split;
+
 			interact_model *IModel = &WorldUI->IModel;
 			IModel->Face = {};
 
-			point_to_edge_proj StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
-			if (StartEdge.Edge)
+			Split->StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
+			if (Split->StartEdge.Edge)
 			{
-				// TODO: Continue
+				u32 StartFaceID = IModel->Face.ID;
+				u32 StartEdgeID = Split->StartEdge.ID;
+
+				u32 CurrentFaceID = StartFaceID;
+				u32 CurrentEdgeID = StartEdgeID;
+				model_edge *Edge = Split->StartEdge.Edge;
+				while (true)
+				{
+					split_buffer_element Elem;
+
+				}
 			}
 		} break;
 	}
