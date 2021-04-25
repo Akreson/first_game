@@ -135,7 +135,7 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	__m128i EdgeA = _mm_load_si128((__m128i *)A);
 	__m128i EdgeB = _mm_load_si128((__m128i *)B);
 
-	EdgeA = ShuffleU32(EdgeB, 0, 1, 0, 1);
+	EdgeA = ShuffleU32(EdgeA, 0, 1, 0, 1);
 	EdgeB = ShuffleU32(EdgeB, 0, 1, 1, 0);
 
 	__m128i CmpMask = _mm_cmpeq_epi32(EdgeA, EdgeB);
