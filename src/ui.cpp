@@ -1775,30 +1775,40 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 					u32 OppositeEdgeIndex = UINT_MAX;
 
+					u32 MaskArr[4];
+					u32 SetBit[4];
 					__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
 					u32 Mask0 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask0));
-					OppositeEdgeIndex = !Mask0 ? 0 : OppositeEdgeIndex;
+					MaskArr[0] = Mask0;
+					SetBit[0] = CountOfSetBits(Mask0);
 
 					__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
 					u32 Mask1 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask1));
-					OppositeEdgeIndex = !Mask1 ? 1 : OppositeEdgeIndex;
+					MaskArr[1] = Mask1;
+					SetBit[1] = CountOfSetBits(Mask1);
 
 					__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
 					u32 Mask2 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask2));
-					OppositeEdgeIndex = !Mask2 ? 2 : OppositeEdgeIndex;
+					MaskArr[2] = Mask2;
+					SetBit[2] = CountOfSetBits(Mask2);
 
 					__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
 					u32 Mask3 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask3));
-					OppositeEdgeIndex = !Mask3 ? 3 : OppositeEdgeIndex;
+					MaskArr[3] = Mask3;
+					SetBit[3] = CountOfSetBits(Mask3);
+
+					__m128i Mask = _mm_load_si128((__m128i *)MaskArr);
+					/*
+					TODO:
+					check SetBit where only 1bit set
+					check mask of this edge and check is common vertex it FromVertexID
+					*/
+
 
 					Assert(OppositeEdgeIndex != UINT_MAX);
 					model_edge *OppositeEdge = ModelEdges + Face->EdgesID[OppositeEdgeIndex];
 					
 
-
-					/*__m128i CmpMask3 = _mm_cmpeq_epi32(VerticesA, VertexB3);
-					__m128i OrMask0 = _mm_or_si128(CmpMask0, CmpMask1);*/
-					//_mm_movemask_ps(_mm_castsi128_ps(OrMask));
 				}
 			}
 		} break;
