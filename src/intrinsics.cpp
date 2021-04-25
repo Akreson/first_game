@@ -1,9 +1,12 @@
 
-#define ShuffleU32(A, S0, S1, S3, S4) \
-	_mm_shuffle_epi32(A, (S0 << 0) | (S1 << 2) | (S3 << 4) | (S4 << 6))
+#define ShuffleU32(A, S0, S1, S2, S3) \
+	_mm_shuffle_epi32(A, (S0 << 0) | (S1 << 2) | (S2 << 4) | (S3 << 6))
 
 #define ShuffleU32_4x(A, S) \
 	_mm_shuffle_epi32(A, (S << 0) | (S << 2) | (S << 4) | (S << 6))
+
+#define ShuffleF32(A, B, S0, S1, S2, S3) \
+	_mm_shuffle_ps(A, B, (S0 << 0) | (S1 << 2) | (S2 << 4) | (S3 << 6))
 
 struct bit_scan_result
 {

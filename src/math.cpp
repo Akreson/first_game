@@ -603,6 +603,13 @@ Lerp(v3 A, f32 t, v3 B)
 }
 
 inline v3
+LerpRange(v3 A, f32 t, v3 Range)
+{
+	v3 Result = A + (t * Range);
+	return Result;
+}
+
+inline v3
 NLerp(v3 A, f32 t, v3 B)
 {
 	v3 Result = Normalize(Lerp(A, t, B));

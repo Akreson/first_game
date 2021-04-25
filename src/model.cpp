@@ -264,7 +264,7 @@ PointToEdgeProj(v3 *Vertices, model_edge *Edge, v3 P)
 	return tResult;
 }
 
-f32
+inline f32
 PointToEdgeOnFaceLengthSq(v3 *Vertices, model_edge *Edge, v3 P)
 {
 	v3 V0 = Vertices[Edge->V0];

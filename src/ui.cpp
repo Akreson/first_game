@@ -1726,16 +1726,80 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			Split->StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
 			if (Split->StartEdge.Edge)
 			{
+				u32 tSplit = Split->StartEdge.t;
+				
+				v3 *Vertices = Model->Data.Vertices;
+				model_edge *ModelEdges = Model->Data.Edges;
+				
+				split_buffer *SplitBuffer = &Tools->SplitBuffer;
+
 				u32 StartFaceID = IModel->Face.ID;
 				u32 StartEdgeID = Split->StartEdge.ID;
 
 				u32 CurrentFaceID = StartFaceID;
 				u32 CurrentEdgeID = StartEdgeID;
+				
 				model_edge *Edge = Split->StartEdge.Edge;
+				u32 FromVertexEdgeIndex = 0;
 				while (true)
 				{
 					split_buffer_element Elem;
+					Elem.EdgeID = CurrentEdgeID;
+					//*(u64 *)&Elem.FaceID = *(u64 *)&Edge->FaceID;
 
+					u32 ToVertexEdgeIndex = !FromVertexEdgeIndex;
+
+					u32 FromVertexID = Edge->VertexID[FromVertexEdgeIndex];
+					u32 ToVertexID = Edge->VertexID[ToVertexEdgeIndex];
+
+					v3 V0 = Vertices[FromVertexID];
+					v3 V1 = Vertices[ToVertexID];
+
+					v3 V01 = V1 - V0;
+					Elem.V = LerpRange(V0, tSplit, V01);
+					Elem.EdgeDir = Normalize(V01);
+
+					model_face *Face = Model->Data.Faces + CurrentFaceID;
+					__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
+					__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
+					__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
+					__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
+
+					__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
+					TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
+
+					Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
+					Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
+					Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
+					Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
+
+					u32 OppositeEdgeIndex = UINT_MAX;
+
+					__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
+					u32 Mask0 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask0));
+					OppositeEdgeIndex = !Mask0 ? 0 : OppositeEdgeIndex;
+
+					__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
+					u32 Mask1 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask1));
+					OppositeEdgeIndex = !Mask1 ? 1 : OppositeEdgeIndex;
+
+					__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
+					u32 Mask2 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask2));
+					OppositeEdgeIndex = !Mask2 ? 2 : OppositeEdgeIndex;
+
+					__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
+					u32 Mask3 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask3));
+					OppositeEdgeIndex = !Mask3 ? 3 : OppositeEdgeIndex;
+
+					Assert(OppositeEdgeIndex != UINT_MAX);
+					model_edge *OppositeEdge = ModelEdges + Face->EdgesID[OppositeEdgeIndex];
+					__m128i OppositeEdgeVertexIndex = _mm_load_si128((__m128i *)OppositeEdge);
+					OppositeEdgeVertexIndex = ShuffleU32(OppositeEdgeVertexIndex, 0, 1, 0, 1);
+
+
+					/*__m128i CmpMask3 = _mm_cmpeq_epi32(VerticesA, VertexB3);
+					__m128i OrMask0 = _mm_or_si128(CmpMask0, CmpMask1);*/
+					//_mm_movemask_ps(_mm_castsi128_ps(OrMask));
 				}
 			}
 		} break;
