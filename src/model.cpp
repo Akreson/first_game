@@ -127,6 +127,8 @@ MatchFaceVertex(model_face *A, model_edge *B)
 	return Result;
 }
 
+
+//TODO: define behavior for case when all vertices match?
 inline edge_vertex_match
 MatchEdgeVertex(model_edge *A, model_edge *B)
 {
@@ -139,6 +141,27 @@ MatchEdgeVertex(model_edge *A, model_edge *B)
 	EdgeB = ShuffleU32(EdgeB, 0, 1, 1, 0);
 
 	__m128i CmpMask = _mm_cmpeq_epi32(EdgeA, EdgeB);
+	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
+
+	bit_scan_result MaskResult = FindLeastSignificantSetBit(Mask32);
+
+	Result.Succes = MaskResult.Succes;
+	Result.Index = MaskResult.Index > 1 ? MaskResult.Index - 2 : MaskResult.Index;
+
+	return Result;
+}
+
+//NOTE: B format is (0, 1, 1, 0)
+inline edge_vertex_match
+MatchEdgeVertex(model_edge *A, __m128i B)
+{
+	edge_vertex_match Result;
+
+	__m128i EdgeA = _mm_load_si128((__m128i *)A);
+
+	EdgeA = ShuffleU32(EdgeA, 0, 1, 0, 1);
+
+	__m128i CmpMask = _mm_cmpeq_epi32(EdgeA, B);
 	u32 Mask32 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask));
 
 	bit_scan_result MaskResult = FindLeastSignificantSetBit(Mask32);

@@ -1793,8 +1793,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 					Assert(OppositeEdgeIndex != UINT_MAX);
 					model_edge *OppositeEdge = ModelEdges + Face->EdgesID[OppositeEdgeIndex];
-					__m128i OppositeEdgeVertexIndex = _mm_load_si128((__m128i *)OppositeEdge);
-					OppositeEdgeVertexIndex = ShuffleU32(OppositeEdgeVertexIndex, 0, 1, 0, 1);
+					
 
 
 					/*__m128i CmpMask3 = _mm_cmpeq_epi32(VerticesA, VertexB3);
