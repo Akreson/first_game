@@ -16,8 +16,8 @@ Win32SetPixelFormat(HDC WindowDC)
 			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
 			
 			// NOTE: Disabled for the ability to take screenshots
-			WGL_DOUBLE_BUFFER_ARB, GL_FALSE,
-			//WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+			//WGL_DOUBLE_BUFFER_ARB, GL_FALSE,
+			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
 			//WGL_SWAP_COPY_ARB, GL_TRUE,
 			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
 			0
@@ -31,7 +31,7 @@ Win32SetPixelFormat(HDC WindowDC)
 	{
 		SuggestedPixelFormat.nSize = sizeof(SuggestedPixelFormat);
 		SuggestedPixelFormat.nVersion = 1;
-		SuggestedPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
+		SuggestedPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
 		SuggestedPixelFormat.iPixelType = PFD_TYPE_RGBA;
 		SuggestedPixelFormat.iLayerType = PFD_MAIN_PLANE;
 		SuggestedPixelFormat.cColorBits = 32;
@@ -134,6 +134,8 @@ Win32InitOpenGL(HDC WindowDC, f32 ScreenWidth, f32 ScreenHeight)
 
 	if (wglMakeCurrent(WindowDC, OpenGLRC))
 	{
+		Win32LoadOpenGLFunction(glGetStringi);
+
 		opengl_info OpenGLInfo = OpenGLGetInfo();
 
 		if (OpenGLInfo.GL_EXT_framebuffer_object)

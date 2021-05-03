@@ -404,13 +404,13 @@ CompileOutlinePassProgram(outline_program *Prog)
 {
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec2 Vertex;
-	layout (location = 1) in vec2 TextCoord;
+	layout (location = 1) in vec2 InTextCoords;
 
-	out vec2 TexCoords;
+	out vec2 OutTexCoords;
 
 	void main()
 	{
-		TexCoords = TextCoord;
+		OutTexCoords = InTextCoords;
 		gl_Position = vec4(Vertex, 0, 1.0f);
 	}
 
@@ -419,7 +419,7 @@ CompileOutlinePassProgram(outline_program *Prog)
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	in vec2 TexCoords;	
+	in vec2 OutTexCoords;	
 
 	uniform sampler2D PrepassTex;
 	uniform sampler2D BlurTex;
@@ -428,13 +428,14 @@ CompileOutlinePassProgram(outline_program *Prog)
 	
 	void main()
 	{
-		vec3 MainColor = texture(MainTex, TexCoords).rgb;
-		float PrepassColor = texture(PrepassTex, TexCoords).r;
-		float BlurColor = texture(BlurTex, TexCoords).r;
+		vec3 MainColor = texture(MainTex, OutTexCoords).rgb;
+		float PrepassColor = texture(PrepassTex, OutTexCoords).r;
+		float BlurColor = texture(BlurTex, OutTexCoords).r;
 		
 		float DiffColor = max(0, BlurColor - PrepassColor);
 		
 		FragColor = vec4(MainColor + (vec3(DiffColor * 1.2) * OutlineColor), 1.0f);
+		//FragColor = vec4(1.0f);
 	}
 	)FOO";
 

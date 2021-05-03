@@ -81,6 +81,12 @@
 
 #define GL_CLAMP_TO_EDGE                  0x812F
 
+#define GL_NUM_EXTENSIONS                 0x821D
+#define GL_DEBUG_SEVERITY_HIGH            0x9146
+#define GL_DEBUG_SEVERITY_MEDIUM          0x9147
+#define GL_DEBUG_SEVERITY_LOW             0x9148
+
+
 typedef char GLchar;
 typedef size_t GLsizeiptr;
 typedef int* GLintptr;
@@ -159,7 +165,11 @@ typedef void type_glValidateProgram(GLuint program);
 
 typedef void type_glDebugMessageCallback(DEBUGPROC callback, void * userParam);
 
+typedef const GLubyte* type_glGetStringi(GLenum name, GLuint index);
+
 #define OpenGLGlobalVariable(Name) global type_##Name *Name;
+
+OpenGLGlobalVariable(glGetStringi);
 
 OpenGLGlobalVariable(glCreateProgram);
 OpenGLGlobalVariable(glDeleteProgram);

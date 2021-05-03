@@ -34,3 +34,25 @@ StringAreEqual(u32 ALength, char *A, char const *B)
 
 	return Result;
 }
+
+b32
+StringAreEqual(const char *A, char const *B)
+{
+	b32 Result = false;
+	char const *AtB = B;
+	char const *AtA = A;
+
+	for (;
+		(*AtB != 0) || (*AtA != 0);
+		++AtB, ++AtA)
+	{
+		if (*AtB != *AtA)
+		{
+			return false;
+		}
+	}
+
+	Result = (*AtB == 0);
+
+	return Result;
+}

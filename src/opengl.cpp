@@ -5,6 +5,9 @@ global const char *SharedHeaderCode;
 
 #include "opengl_program.cpp"
 
+GLint GLError;
+#define GLGetError() GLError = glGetError();
+
 void OpenGLMessageDebugCallback(
 	GLenum source,
 	GLenum type,
@@ -14,8 +17,11 @@ void OpenGLMessageDebugCallback(
 	const GLchar* message,
 	const void* userParam)
 {
-	// TODO: More log information?
-	Assert(0)
+	if (severity == GL_DEBUG_SEVERITY_HIGH)
+	{
+		// TODO: More log information?
+		Assert(0);
+	}
 }
 
 // TODO: Provide more options?
@@ -186,20 +192,15 @@ OpenGLGetInfo()
 	Result.Renderer = (char *)glGetString(GL_RENDERER);
 	Result.Version = (char *)glGetString(GL_VERSION);
 
-	Result.Extension = (char *)glGetString(GL_EXTENSIONS);
-
-	char *At = Result.Extension;
-	for (; *At;)
+	GLint ExtCount = 0;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &ExtCount);
+	for (GLint Index = 0; Index < ExtCount; ++Index)
 	{
-		while (IsWhitespace(*At)) { ++At; }
-		char *End = At;
-		while (*End && !IsWhitespace(*End)) { ++End; }
-
-		umm Count = End - At;
-
-		if (StringAreEqual((u32)Count, At, "GL_EXT_framebuffer_object")) { Result.GL_EXT_framebuffer_object = true; }
-
-		At = End;
+		const char *Extension = (const char *)glGetStringi(GL_EXTENSIONS, Index);
+		if (StringAreEqual(Extension, "GL_EXT_framebuffer_object"))
+		{
+			Result.GL_EXT_framebuffer_object = true;
+		}
 	}
 
 	return Result;
@@ -295,9 +296,11 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	// NOTE Set Editor model vertex VAO
 	glGenVertexArrays(1, &OpenGL.VertexBufferVAO);
 	glGenBuffers(1, &OpenGL.VertexBufferVBO);
+	GLGetError()
 
 	glBindVertexArray(OpenGL.VertexBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
+	GLGetError()
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
@@ -436,6 +439,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glClearColor(0.16f, 0.16f, 0.16f, 1.0f);
 	glBindFramebuffer(GL_FRAMEBUFFER, OpenGL.MainFB.Handle);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glClearColor(0, 0, 0, 0);
 
 	for (u32 BufferOffset = 0;
@@ -621,6 +625,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	// TODO: Add separate queue for post-process?
 	if (OpenGL.OutlineSet)
 	{
+		glDisable(GL_DEPTH_TEST);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glBindVertexArray(OpenGL.FullScreenVAO);
 
@@ -634,7 +639,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 		UseProgramEnd(&OpenGL.OutlineProg);
 
 		glBindVertexArray(0);
-
+		glEnable(GL_DEPTH_TEST);
 		OpenGL.OutlineSet = false;
 	}
 	else
