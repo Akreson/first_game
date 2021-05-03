@@ -1739,6 +1739,9 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				u32 CurrentFaceID = StartFaceID;
 				u32 CurrentEdgeID = StartEdgeID;
 				
+				__m128i Zero_4x = _mm_setzero_si128();
+				__m128i One_4x = _mm_set1_epi32(1);
+
 				model_edge *Edge = Split->StartEdge.Edge;
 				u32 FromVertexEdgeIndex = 0;
 				while (true)
@@ -1758,6 +1761,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					v3 V01 = V1 - V0;
 					Elem.V = LerpRange(V0, tSplit, V01);
 					Elem.EdgeDir = Normalize(V01);
+			
+					__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
 
 					model_face *Face = Model->Data.Faces + CurrentFaceID;
 					__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
@@ -1765,8 +1770,17 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
 					__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
 
-					__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
 					TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
+					
+					__m128i FromVertexID_4x = _mm_set1_epi32(FromVertexID);
+					__m128i TextEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
+
+					u32 TestVertexID = iToMaskU32(TextEdgeVertexIDIndex);
+					u32 TextVertexIDMask0 = TestVertexID & 0x3;
+					u32 TextVertexIDMask1 = TestVertexID & 0xC;
+
+					__m128i TextVertexIDMask0_4x = _mm_set1_epi32(TextVertexIDMask0);
+					__m128i TextVertexIDMask1_4x = _mm_set1_epi32(TextVertexIDMask1);
 
 					Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
 					Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
@@ -1776,34 +1790,54 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					u32 OppositeEdgeIndex = UINT_MAX;
 
 					u32 MaskArr[4];
-					u32 SetBit[4];
+					u32 SetBitArr[4];
+
 					__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
-					u32 Mask0 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask0));
-					MaskArr[0] = Mask0;
-					SetBit[0] = CountOfSetBits(Mask0);
-
 					__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
-					u32 Mask1 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask1));
-					MaskArr[1] = Mask1;
-					SetBit[1] = CountOfSetBits(Mask1);
-
 					__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
-					u32 Mask2 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask2));
-					MaskArr[2] = Mask2;
-					SetBit[2] = CountOfSetBits(Mask2);
-
 					__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
-					u32 Mask3 = _mm_movemask_ps(_mm_castsi128_ps(CmpMask3));
+
+					u32 Mask0 = iToMaskU32(CmpMask0);
+					u32 Mask1 = iToMaskU32(CmpMask1);
+					u32 Mask2 = iToMaskU32(CmpMask2);
+					u32 Mask3 = iToMaskU32(CmpMask3);
+
+					MaskArr[0] = Mask0;
+					MaskArr[1] = Mask1;
+					MaskArr[2] = Mask2;
 					MaskArr[3] = Mask3;
-					SetBit[3] = CountOfSetBits(Mask3);
 
-					__m128i Mask = _mm_load_si128((__m128i *)MaskArr);
-					/*
-					TODO:
-					check SetBit where only 1bit set
-					check mask of this edge and check is common vertex it FromVertexID
-					*/
+					SetBitArr[0] = CountOfSetBits(Mask0);
+					SetBitArr[1] = CountOfSetBits(Mask1);
+					SetBitArr[2] = CountOfSetBits(Mask2);
+					SetBitArr[3] = CountOfSetBits(Mask3);
 
+					__m128i Mask_4x = _mm_load_si128((__m128i *)MaskArr);
+					__m128i SetBit_4x = _mm_load_si128((__m128i *)SetBitArr);
+
+					__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
+					u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
+					Assert(CountOfSetBits(OppositeMaskU32) == 1);
+					bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
+
+					__m128i OneMatchMask = _mm_cmpeq_epi32(SetBit_4x, One_4x);
+					__m128i OneMatchEdge = _mm_and_si128(Mask_4x, OneMatchMask);
+					
+					__m128i OneMatchTest0 = _mm_and_si128(OneMatchEdge, TextVertexIDMask0_4x);
+					__m128i OneMatchTest1 = _mm_and_si128(OneMatchEdge, TextVertexIDMask1_4x);
+
+					u32 OneMatchTestMask = iToMaskU32(_mm_or_si128(OneMatchTest0, OneMatchTest1));
+					bit_scan_result OneMatchTestIndex = FindLeastSignificantSetBit(OneMatchTestMask);
+
+					//TODO: Change?
+					model_edge *Opposite = ModelEdges + Face->EdgesID[OppositeIndex.Index];
+					model_edge *Common = ModelEdges + Face->EdgesID[OneMatchTestIndex.Index];
+
+					edge_vertex_match CommonVertex = MatchEdgeVertex(Opposite, Common);
+					
+					Assert(CommonVertex.Succes);
+
+					// TODO: Continue
 
 					Assert(OppositeEdgeIndex != UINT_MAX);
 					model_edge *OppositeEdge = ModelEdges + Face->EdgesID[OppositeEdgeIndex];

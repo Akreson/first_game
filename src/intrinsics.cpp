@@ -8,6 +8,8 @@
 #define ShuffleF32(A, B, S0, S1, S2, S3) \
 	_mm_shuffle_ps(A, B, (S0 << 0) | (S1 << 2) | (S2 << 4) | (S3 << 6))
 
+#define iToMaskU32(A) _mm_movemask_ps(_mm_castsi128_ps(A))
+
 struct bit_scan_result
 {
 	u16 Index;
