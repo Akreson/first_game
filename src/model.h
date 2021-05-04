@@ -1,5 +1,10 @@
 #pragma once
 
+struct model_edge_faces
+{
+	u32 ID[2];
+};
+
 struct model_edge
 {
 	union
@@ -18,6 +23,8 @@ struct model_edge
 		{
 			u32 Face0, Face1;
 		};
+
+		model_edge_faces Faces;
 	};
 
 };

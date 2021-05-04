@@ -1726,7 +1726,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			Split->StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
 			if (Split->StartEdge.Edge)
 			{
-				u32 tSplit = Split->StartEdge.t;
+				f32 tSplit = Split->StartEdge.t;
 				
 				v3 *Vertices = Model->Data.Vertices;
 				model_edge *ModelEdges = Model->Data.Edges;
@@ -1744,11 +1744,22 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				model_edge *Edge = Split->StartEdge.Edge;
 				u32 FromVertexEdgeIndex = 0;
-				while (true)
+
+				/*struct split_buffer_element
+				{
+					v3 V;
+					u32 FaceID[2];
+					u32 EdgeID;
+
+					v3 EdgeDir;
+				};*/
+
+				b32 LoopNotFull = true;
+				while (LoopNotFull)
 				{
 					split_buffer_element Elem;
 					Elem.EdgeID = CurrentEdgeID;
-					//*(u64 *)&Elem.FaceID = *(u64 *)&Edge->FaceID;
+					Elem.Faces = Edge->Faces;
 
 					u32 ToVertexEdgeIndex = !FromVertexEdgeIndex;
 
@@ -1773,14 +1784,14 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
 					
 					__m128i FromVertexID_4x = _mm_set1_epi32(FromVertexID);
-					__m128i TextEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
+					__m128i TestEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
 
-					u32 TestVertexID = iToMaskU32(TextEdgeVertexIDIndex);
-					u32 TextVertexIDMask0 = TestVertexID & 0x3;
-					u32 TextVertexIDMask1 = TestVertexID & 0xC;
+					u32 TestVertexID = iToMaskU32(TestEdgeVertexIDIndex);
+					u32 TestVertexIDMask0 = TestVertexID & 0x3;
+					u32 TestVertexIDMask1 = TestVertexID & 0xC;
 
-					__m128i TextVertexIDMask0_4x = _mm_set1_epi32(TextVertexIDMask0);
-					__m128i TextVertexIDMask1_4x = _mm_set1_epi32(TextVertexIDMask1);
+					__m128i TestVertexIDMask0_4x = _mm_set1_epi32(TestVertexIDMask0);
+					__m128i TestVertexIDMask1_4x = _mm_set1_epi32(TestVertexIDMask1);
 
 					Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
 					Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
@@ -1817,32 +1828,36 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 					__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
 					u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
+
 					Assert(CountOfSetBits(OppositeMaskU32) == 1);
+
 					bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
+					Assert(OppositeIndex.Succes);
 
 					__m128i OneMatchMask = _mm_cmpeq_epi32(SetBit_4x, One_4x);
 					__m128i OneMatchEdge = _mm_and_si128(Mask_4x, OneMatchMask);
 					
-					__m128i OneMatchTest0 = _mm_and_si128(OneMatchEdge, TextVertexIDMask0_4x);
-					__m128i OneMatchTest1 = _mm_and_si128(OneMatchEdge, TextVertexIDMask1_4x);
+					__m128i OneMatchTest0 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask0_4x);
+					__m128i OneMatchTest1 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask1_4x);
 
 					u32 OneMatchTestMask = iToMaskU32(_mm_or_si128(OneMatchTest0, OneMatchTest1));
 					bit_scan_result OneMatchTestIndex = FindLeastSignificantSetBit(OneMatchTestMask);
+					Assert(OneMatchTestIndex.Succes);
 
 					//TODO: Change?
-					model_edge *Opposite = ModelEdges + Face->EdgesID[OppositeIndex.Index];
+					u32 OppositeEdgeID = Face->EdgesID[OppositeIndex.Index];
+					model_edge *Opposite = ModelEdges + OppositeEdgeID;
 					model_edge *Common = ModelEdges + Face->EdgesID[OneMatchTestIndex.Index];
 
 					edge_vertex_match CommonVertex = MatchEdgeVertex(Opposite, Common);
-					
 					Assert(CommonVertex.Succes);
 
-					// TODO: Continue
+					Edge = Opposite;
+					FromVertexEdgeIndex = CommonVertex.Index;
+					CurrentEdgeID = OppositeEdgeID;
+					CurrentFaceID = (Opposite->Face0 == CurrentFaceID) ? Opposite->Face1 : Opposite->Face0;
 
-					Assert(OppositeEdgeIndex != UINT_MAX);
-					model_edge *OppositeEdge = ModelEdges + Face->EdgesID[OppositeEdgeIndex];
-					
-
+					LoopNotFull = (StartEdgeID != OppositeEdgeID);
 				}
 			}
 		} break;

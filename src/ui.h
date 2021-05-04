@@ -254,7 +254,7 @@ struct split_tool
 struct split_buffer_element
 {
 	v3 V;
-	u32 FaceID[2];
+	model_edge_faces Faces;
 	u32 EdgeID;
 
 	v3 EdgeDir;
