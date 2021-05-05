@@ -331,7 +331,7 @@ PagePushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source = 0)
 
 	u32 UsedPagesBySize = Size / Arena->PageSize;
 	memory_index Remainder = (Size - (UsedPagesBySize * Arena->PageSize));
-	if (Remainder) UsedPagesBySize++;
+	UsedPagesBySize = Remainder ? UsedPagesBySize++ : UsedPagesBySize;
 
 	if (PageBase)
 	{

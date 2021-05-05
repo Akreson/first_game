@@ -1748,7 +1748,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				/*struct split_buffer_element
 				{
 					v3 V;
-					u32 FaceID[2];
+					model_edge_faces Faces;
 					u32 EdgeID;
 
 					v3 EdgeDir;
@@ -1772,6 +1772,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					v3 V01 = V1 - V0;
 					Elem.V = LerpRange(V0, tSplit, V01);
 					Elem.EdgeDir = Normalize(V01);
+
+
 			
 					__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
 
