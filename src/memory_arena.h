@@ -325,14 +325,13 @@ DeallocatePagePool(page_memory_arena *Arena, u32 PageIndex)
 void *
 PagePushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source = 0)
 {
-	u32 PageIndex;
-
 	u8 *PageBase = (u8 *)*Dest;
 
 	u32 UsedPagesBySize = Size / Arena->PageSize;
 	memory_index Remainder = (Size - (UsedPagesBySize * Arena->PageSize));
 	UsedPagesBySize = Remainder ? UsedPagesBySize++ : UsedPagesBySize;
 
+	u32 PageIndex;
 	if (PageBase)
 	{
 		Assert((umm)PageBase >= (umm)Arena->Base);

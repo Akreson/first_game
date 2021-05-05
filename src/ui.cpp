@@ -1263,75 +1263,6 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 	return Result;
 }
 
-// TODO: Add more tools!!!
-void
-InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, page_memory_arena *PageArena)
-{
-	element_id_buffer *Selected = &WorldUI->Selected;
-	interact_model *IModel = &WorldUI->IModel;
-
-	// TODO: Define pos. as common
-	tool_type ToolType = (tool_type)Tools->Type;
-	switch (ToolType)
-	{
-		case ToolType_Rotate:
-		{
-			rotate_tools *Rotate = &Tools->Rotate;
-			*Rotate = {};
-
-			Rotate->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-			Rotate->InitRadius = ROTATE_TOOL_DIAMETER * 0.5f;
-			Rotate->PerpThreshold = 0.95f;
-		} break;
-
-		case ToolType_Translate:
-		{
-			translate_tools *Trans = &Tools->Translate;
-			*Trans = {};
-
-			Trans->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-
-			trans_tool_axis_params *InitAxisParams = &Trans->InitAxisParams;
-			InitAxisParams->Axis.Len = TRANSLATE_TOOL_SIZE;
-			InitAxisParams->Axis.EdgeLenHalfSize = (TRANSLATE_TOOL_SIZE * 0.85f) * 0.5f;
-			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
-			InitAxisParams->EdgeXYHalfSize = 0.004f;
-			InitAxisParams->ArrowRadius = TRANSLATE_TOOL_ARROW_R;
-			InitAxisParams->PlaneRelDim = TRANSLATE_TOOL_SIZE * 0.18f;
-		} break;
-
-		case ToolType_Scale:
-		{
-			scale_tools *Scale = &Tools->Scale;
-			*Scale = {};
-
-			Scale->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
-
-			scl_tool_default_params *InitAxisParams = &Scale->InitAxisParams;
-			InitAxisParams->Axis.Len = SCALE_TOOL_SIZE;
-			InitAxisParams->Axis.EdgeLenHalfSize = (SCALE_TOOL_SIZE * 0.85f) * 0.5f;
-			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
-			InitAxisParams->EdgeXYHalfSize = 0.004f;
-			InitAxisParams->ArrowHalfSize = SCALE_TOOL_SIZE * 0.045f;
-		} break;
-
-		case ToolType_Split:
-		{
-			Tools->Split = {};
-
-			if (!Tools->SplitBuffer.Elem)
-			{
-				Tools->SplitBuffer.MaxCount = 100;
-				PagePushArray(PageArena, split_buffer_element, Tools->SplitBuffer.MaxCount, Tools->SplitBuffer.Elem, 0);
-			}
-		} break;
-
-		InvalidDefaultCase;
-	}
-
-	Tools->IsInit = true;
-}
-
 // TODO: Add sign mod to Z axis
 internal tools_axis_id
 RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams,
@@ -1420,6 +1351,75 @@ RayTransToolAxisPlaneTest(ray_params Ray, trans_tool_axis_params ScaleAxisParams
 	return Result;
 }
 
+// TODO: Add more tools!!!
+void
+InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, page_memory_arena *PageArena)
+{
+	element_id_buffer *Selected = &WorldUI->Selected;
+	interact_model *IModel = &WorldUI->IModel;
+
+	// TODO: Define pos. as common
+	tool_type ToolType = (tool_type)Tools->Type;
+	switch (ToolType)
+	{
+		case ToolType_Rotate:
+		{
+			rotate_tools *Rotate = &Tools->Rotate;
+			*Rotate = {};
+
+			Rotate->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
+			Rotate->InitRadius = ROTATE_TOOL_DIAMETER * 0.5f;
+			Rotate->PerpThreshold = 0.95f;
+		} break;
+
+		case ToolType_Translate:
+		{
+			translate_tools *Trans = &Tools->Translate;
+			*Trans = {};
+
+			Trans->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
+
+			trans_tool_axis_params *InitAxisParams = &Trans->InitAxisParams;
+			InitAxisParams->Axis.Len = TRANSLATE_TOOL_SIZE;
+			InitAxisParams->Axis.EdgeLenHalfSize = (TRANSLATE_TOOL_SIZE * 0.85f) * 0.5f;
+			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
+			InitAxisParams->EdgeXYHalfSize = 0.004f;
+			InitAxisParams->ArrowRadius = TRANSLATE_TOOL_ARROW_R;
+			InitAxisParams->PlaneRelDim = TRANSLATE_TOOL_SIZE * 0.18f;
+		} break;
+
+		case ToolType_Scale:
+		{
+			scale_tools *Scale = &Tools->Scale;
+			*Scale = {};
+
+			Scale->P = ComputeToolPos(Model, &Tools->UniqIndeces, Selected, IModel->Target);
+
+			scl_tool_default_params *InitAxisParams = &Scale->InitAxisParams;
+			InitAxisParams->Axis.Len = SCALE_TOOL_SIZE;
+			InitAxisParams->Axis.EdgeLenHalfSize = (SCALE_TOOL_SIZE * 0.85f) * 0.5f;
+			InitAxisParams->Axis.EdgeCenter = InitAxisParams->Axis.Len - InitAxisParams->Axis.EdgeLenHalfSize;
+			InitAxisParams->EdgeXYHalfSize = 0.004f;
+			InitAxisParams->ArrowHalfSize = SCALE_TOOL_SIZE * 0.045f;
+		} break;
+
+		case ToolType_Split:
+		{
+			Tools->Split = {};
+
+			if (!Tools->SplitBuffer.Elem)
+			{
+				Tools->SplitBuffer.MaxCount = 100;
+				PagePushArray(PageArena, split_buffer_element, Tools->SplitBuffer.MaxCount, Tools->SplitBuffer.Elem, 0);
+			}
+		} break;
+
+		InvalidDefaultCase;
+	}
+
+	Tools->IsInit = true;
+}
+
 inline point_to_edge_proj
 GetStartEdgeForSplit(ray_params MouseRay, work_model *Model, element_ray_result *Face)
 {
@@ -1434,6 +1434,18 @@ GetStartEdgeForSplit(ray_params MouseRay, work_model *Model, element_ray_result 
 	}
 
 	return Result;
+}
+
+inline void
+PushElementToSplitBuff(page_memory_arena *PageArena, split_buffer *Buffer, split_buffer_element Elem)
+{
+	if (Buffer->Count == Buffer->MaxCount)
+	{
+		PagePushArray(PageArena, split_buffer_element, Buffer->MaxCount, Buffer->Elem, 0);
+		Buffer->MaxCount *= 2;
+	}
+	
+	Buffer->Elem[Buffer->Count++] = Elem;
 }
 
 // TODO: Apply transform only when exit move interaction
@@ -1773,7 +1785,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					Elem.V = LerpRange(V0, tSplit, V01);
 					Elem.EdgeDir = Normalize(V01);
 
-
+					PushElementToSplitBuff(&Editor->PageArena, &Tools->SplitBuffer, Elem);
 			
 					__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
 
