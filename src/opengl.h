@@ -25,6 +25,10 @@
 #define GL_DYNAMIC_READ                   0x88E9
 #define GL_DYNAMIC_COPY                   0x88EA
 
+//#define GL_LINES                          0x0001
+//#define GL_LINE_LOOP                      0x0002
+//#define GL_LINE_STRIP                     0x0003
+
 #define GL_TEXTURE0                       0x84C0
 #define GL_TEXTURE1                       0x84C1
 #define GL_TEXTURE2                       0x84C2
@@ -86,6 +90,7 @@
 #define GL_DEBUG_SEVERITY_MEDIUM          0x9147
 #define GL_DEBUG_SEVERITY_LOW             0x9148
 
+#define GL_ALIASED_LINE_WIDTH_RANGE       0x846E
 
 typedef char GLchar;
 typedef size_t GLsizeiptr;
@@ -338,6 +343,14 @@ struct trin_model_color_pass_program
 	GLuint ModelTransformID;
 };
 
+struct line_pass_program
+{
+	GLuint ID;
+	GLuint ProjID;
+	GLuint TransformID;
+	GLuint ColorID;
+};
+
 struct opengl_renderer_info
 {
 	framebuffer_info MainFB;
@@ -347,6 +360,9 @@ struct opengl_renderer_info
 
 	GLuint TrinBufferVAO;
 	GLuint TrinBufferVBO;
+
+	GLuint LineBufferVAO;
+	GLuint LineBufferVBO;
 	
 	GLuint FullScreenVAO;
 	GLuint FullScreenVBO;
@@ -358,8 +374,8 @@ struct opengl_renderer_info
 	blur_program BlurProg;
 	outline_program OutlineProg;
 	rotate_tool_program RotateTools;
+	line_pass_program LinePass;
 	
-
 	static_mesh_program StaticMeshProg;
 
 	framebuffer_info Prepass;
@@ -369,6 +385,7 @@ struct opengl_renderer_info
 	b32 OutlineSet;
 	v3 OutlineColor;
 
+	v2 LineWidthParam;
 	//framebuffer_info Framebuffers[16];
 	//u32 FramebufferCount;
 };

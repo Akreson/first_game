@@ -679,3 +679,60 @@ UseProgramEnd(rotate_tool_program *Prog)
 {
 	glUseProgram(0);
 }
+
+
+internal void
+CompileLinePassProgram(line_pass_program *Prog)
+{
+	const char *VertexCode = R"FOO(
+	layout (location = 0) in vec3 InPos;
+
+	uniform mat4 Proj;
+	uniform mat4 ModelTransform;
+
+	void main()
+	{
+		gl_Position = Proj * ModelTransform * vec4(InPos, 1.0f);
+	}
+
+	)FOO";
+
+	// TODO: Set model color?
+	// TODO: Compute color for selected edge in right way
+
+	const char *FragmentCode = R"FOO(
+	out vec4 FragColor;
+
+	uniform vec3 LineColor;
+	
+	void main()
+	{
+		FragColor = vec4(LineColor, 1.0);
+	}
+	)FOO";
+
+	GLuint ProgID = OpenGLCreateProgram((GLchar *)SharedHeaderCode, (GLchar *)VertexCode, (GLchar *)FragmentCode);
+	Prog->ID = ProgID;
+
+	glUseProgram(ProgID);
+	Prog->ProjID = glGetUniformLocation(ProgID, "Proj");
+	Prog->TransformID = glGetUniformLocation(ProgID, "ModelTransform");
+	Prog->ColorID = glGetUniformLocation(ProgID, "LineColor");
+	glUseProgram(0);
+}
+
+internal void
+UseProgramBegin(line_pass_program *Prog, m4x4 *ProjMat, m4x4 *ModelMat, v3 Color)
+{
+	glUseProgram(Prog->ID);
+
+	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
+	glUniformMatrix4fv(Prog->TransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
+	glUniform3f(Prog->ColorID, Color.r, Color.g, Color.b);
+}
+
+internal void
+UseProgramEnd(line_pass_program *Prog)
+{
+	glUseProgram(0);
+}

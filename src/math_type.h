@@ -7,6 +7,11 @@ union v2
 	{
 		f32 x, y;
 	};
+
+	struct
+	{
+		f32 Min, Max;
+	};
 };
 
 union v2i

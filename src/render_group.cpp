@@ -148,6 +148,34 @@ EndPushTrinModel(render_group *Group)
 	ResetGuardPtr(&Commands->TBuffGroupGuard);
 }
 
+void
+BeginPushLine(render_group *Group, v3 Pos, v3 Color,u32 Type, f32 Width = 1.0f, u32 RenderFlags = 0)
+{
+	game_render_commands *Commands = Group->Commands;
+	render_entry_lines *LineEntry =
+		(render_entry_lines *)PushRenderElement(Group, render_entry_lines, RenderFlags);
+
+	LineEntry->Color = Color;
+	LineEntry->Pos = Pos;
+	LineEntry->Width = Width;
+	LineEntry->Type = (line_render_type)Type;
+
+	LineEntry->StartOffset = Commands->LineBufferSize;
+
+	SetGuardPtr(&Commands->LineBuffGroupGuard, (void *)LineEntry);
+}
+
+void
+EndPushLine(render_group *Group)
+{
+	game_render_commands *Commands = Group->Commands;
+	render_entry_lines *LineEntry = (render_entry_lines *)Commands->LineBuffGroupGuard;
+
+	LineEntry->ElementCount = (Commands->LineBufferSize - LineEntry->StartOffset) / sizeof(v3);
+
+	ResetGuardPtr(&Commands->LineBuffGroupGuard);
+}
+
 #define IsHaveMatch(A, B) \
 	(_mm_movemask_ps(_mm_castsi128_ps( \
 		_mm_cmpeq_epi32(_mm_and_si128(A, B), B))))
@@ -531,6 +559,30 @@ PushRotateTool(render_group *Group, renderer_mesh Mesh, v3 Pos, f32 Scale,
 	RotateToolEntry->Pos = Pos;
 	RotateToolEntry->ViewDir = ViewDir;
 	RotateToolEntry->PerpInfo = PerpInfo;
+}
+
+void
+PushSplitToolSegment(render_group *Group, split_buffer *Split, v3 Offset, v3 Color)
+{
+	u16 RenderFlags = RenderEntryToggleFlags_DepthTest;
+	BeginPushLine(Group, Offset, V3(1), LineRenderType_Loop, 2.0f, RenderFlags);
+
+	game_render_commands *Commands = Group->Commands;
+	v3 *StartLineVertecis = (v3 *)(Commands->LineBufferBase + Commands->LineBufferSize);
+	v3 *LineVertecis = StartLineVertecis;
+
+	for (u32 ElemIndex = 0;
+		ElemIndex < Split->Count;
+		++ElemIndex)
+	{
+		split_buffer_element *Elem = Split->Elem + ElemIndex;
+		*LineVertecis = Elem->V;
+		++LineVertecis;
+	}
+
+	Commands->LineBufferSize += sizeof(v3) * Split->Count;
+
+	EndPushLine(Group);
 }
 
 void

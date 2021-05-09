@@ -295,6 +295,11 @@ struct game_render_commands
 	u32 TriangleBufferSize;
 	u32 MaxTriangleBufferSize;
 	// TODO: store more mat
+
+	void *LineBuffGroupGuard;
+	u8 *LineBufferBase;
+	u32 LineBufferSize;
+	u32 MaxLineBufferSize;
 };
 
 inline void

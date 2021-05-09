@@ -28,12 +28,20 @@ enum alloc_mesh_params
 	AllocMeshParam_UVSet = (1 << 1),
 };
 
+enum line_render_type
+{
+	LineRenderType_Pair,
+	LineRenderType_Loop,
+	LineRenderType_Strip,
+};
+
 enum render_entry_type
 {
 	RenderEntryType_render_entry_bitmap,
 	RenderEntryType_render_entry_model,
 	RenderEntryType_render_entry_trin_model,
 	RenderEntryType_render_entry_static_mesh,
+	RenderEntryType_render_entry_lines,
 
 	RenderEntryType_render_entry_tool_rotate,
 
@@ -54,9 +62,11 @@ enum face_element_renderer_params
 
 enum render_entry_toggle_flags
 {
-	RenderEntryToggleFlags_DepthTest = (1 << 0),
-	RenderEntryToggleFlags_CullFace = (1 << 1),
-	RenderEntryToggleFlags_Blend = (1 << 2)
+	RenderEntryToggleFlags_None = 0,
+
+	RenderEntryToggleFlags_DepthTest = (1 << 1),
+	RenderEntryToggleFlags_CullFace = (1 << 2),
+	RenderEntryToggleFlags_Blend = (1 << 3)
 };
 
 struct face_render_params
@@ -128,6 +138,16 @@ struct render_triangle_vertex
 	v3 V;
 	v4 Color;
 	v2 UV;
+};
+
+struct render_entry_lines
+{
+	v3 Color;
+	v3 Pos;
+	f32 Width;
+	line_render_type Type;
+	u32 StartOffset;
+	u32 ElementCount;
 };
 
 struct render_entry_trin_model

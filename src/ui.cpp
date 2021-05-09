@@ -713,7 +713,7 @@ SetCurrentDirVector(rotate_tools *Tool, ray_params Ray, v3 *ResultVector)
 			f32 PDotD = Dot(Tool->InteractPlane.N, DirFromCenter);
 
 			CurrentVector = Normalize(DirFromCenter - (Tool->InteractPlane.N * PDotD));
-#if 1
+#if DEBUG_MODE
 			f32 CheckDot = Dot(CurrentVector, Tool->InteractPlane.N);
 			Assert(CheckDot < 0.00001f);
 #endif
@@ -1733,7 +1733,10 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			split_tool *Split = &Tools->Split;
 
 			interact_model *IModel = &WorldUI->IModel;
+			split_buffer *SplitBuffer = &Tools->SplitBuffer;
+
 			IModel->Face = {};
+			SplitBuffer->Count = 0;
 
 			Split->StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
 			if (Split->StartEdge.Edge)
@@ -1743,7 +1746,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				v3 *Vertices = Model->Data.Vertices;
 				model_edge *ModelEdges = Model->Data.Edges;
 				
-				split_buffer *SplitBuffer = &Tools->SplitBuffer;
 
 				u32 StartFaceID = IModel->Face.ID;
 				u32 StartEdgeID = Split->StartEdge.ID;
@@ -1756,15 +1758,6 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 				model_edge *Edge = Split->StartEdge.Edge;
 				u32 FromVertexEdgeIndex = 0;
-
-				/*struct split_buffer_element
-				{
-					v3 V;
-					model_edge_faces Faces;
-					u32 EdgeID;
-
-					v3 EdgeDir;
-				};*/
 
 				b32 LoopNotFull = true;
 				while (LoopNotFull)
@@ -1873,6 +1866,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 
 					LoopNotFull = (StartEdgeID != OppositeEdgeID);
 				}
+				
+				PushSplitToolSegment(RenderGroup, &Tools->SplitBuffer, Model->Offset, V3(1));
 			}
 		} break;
 	}

@@ -351,6 +351,8 @@ WinMain(HINSTANCE Instance,
 			void *VertexBuffer = Win32AllocateMemory(VertexBufferSize);
 			u32 TriangleBufferSize = MiB(5);
 			void *TriangleBuffer = Win32AllocateMemory(TriangleBufferSize);
+			u32 LineBufferSize = MiB(5);
+			void *LineBuffer = Win32AllocateMemory(LineBufferSize);
 
 			GameMemory.GameStorageSize = MiB(20);
 			GameMemory.GameStorage = Win32AllocateMemory(GameMemory.GameStorageSize);
@@ -417,6 +419,8 @@ WinMain(HINSTANCE Instance,
 				RenderCommands.MaxVertexBufferSize = VertexBufferSize;
 				RenderCommands.TriangleBufferBase = (u8 *)TriangleBuffer;
 				RenderCommands.MaxTriangleBufferSize = TriangleBufferSize;
+				RenderCommands.LineBufferBase = (u8 *)LineBuffer;
+				RenderCommands.MaxLineBufferSize = LineBufferSize;
 				
 				UpdateAndRender(&GameMemory, &GameInput, &RenderCommands);
 

@@ -275,9 +275,11 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	CompileOutlinePassProgram(&OpenGL.OutlineProg);
 	CompileRotateToolProgram(&OpenGL.RotateTools);
 	CompileTrinModelColorPassProgram(&OpenGL.TrinModelColorPassProg);
-
+	CompileLinePassProgram(&OpenGL.LinePass);
 	CompileStaticMeshProgram(&OpenGL.StaticMeshProg);
 	
+	glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, &OpenGL.LineWidthParam.E[0]);
+
 	// NOTE: Set main FBO
 	OpenGL.MainFB = CreateFramebuffer(ScreenWidth, ScreenHeight,
 		OpenGLFramebufferSetParam_Color|OpenGLFramebufferSetParam_Depth);
@@ -330,6 +332,20 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 3));
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(render_triangle_vertex), (void*)(sizeof(f32) * 7));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	//-----
+
+	// NOTE: Init line vertex buffer VBO
+	glGenVertexArrays(1, &OpenGL.LineBufferVAO);
+	glGenBuffers(1, &OpenGL.LineBufferVBO);
+
+	glBindVertexArray(OpenGL.LineBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.LineBufferVBO);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(v3), (void*)0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -401,6 +417,34 @@ ReleaseToggleStates(u16 ToggleFlags)
 	}
 }
 
+inline GLenum
+GetLineDrawType(line_render_type Type)
+{
+	GLenum Result;
+
+	switch (Type)
+	{
+		case LineRenderType_Pair:
+		{
+			Result = GL_LINES;
+		} break;
+
+		case LineRenderType_Loop:
+		{
+			Result = GL_LINE_LOOP;
+		} break;
+
+		case LineRenderType_Strip:
+		{
+			Result = GL_LINE_STRIP;
+		} break;
+
+		InvalidDefaultCase;
+	}
+	
+	return Result;
+}
+
 inline void
 OpenGLBindTex(GLenum Target, GLenum Slot, GLuint Handle)
 {
@@ -433,6 +477,12 @@ OpenGLRenderCommands(game_render_commands *Commands)
 	glBindVertexArray(OpenGL.TrinBufferVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.TrinBufferVBO);
 	glBufferData(GL_ARRAY_BUFFER, Commands->TriangleBufferSize, (GLvoid *)Commands->TriangleBufferBase, GL_STREAM_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	glBindVertexArray(OpenGL.LineBufferVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, OpenGL.LineBufferVBO);
+	glBufferData(GL_ARRAY_BUFFER, Commands->LineBufferSize, (GLvoid *)Commands->LineBufferBase, GL_STREAM_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
@@ -559,6 +609,42 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray((GLuint)MeshEntry->Mesh.Handle);
 				glDrawElements(GL_TRIANGLES, MeshEntry->Mesh.ElementCount, GL_UNSIGNED_INT, 0);
 				UseProgramEnd(&OpenGL.StaticMeshProg);
+
+				ReleaseToggleStates(EntryToggleFlags);
+			} break;
+
+			case RenderEntryType_render_entry_lines:
+			{
+				SetToggleStates(EntryToggleFlags);
+
+				render_entry_lines *LineEntry = (render_entry_lines *)Data;
+				BufferOffset += sizeof(render_entry_lines);
+
+				m4x4 ModelTransform = TranslateMat(LineEntry->Pos);
+
+				glBindVertexArray(OpenGL.LineBufferVAO);
+				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.LineBufferVBO);
+
+				f32 LineWidth = LineEntry->Width;
+				if (LineWidth < OpenGL.LineWidthParam.Min)
+				{
+					LineWidth = OpenGL.LineWidthParam.Min;
+				}
+				else if (LineWidth > OpenGL.LineWidthParam.Max)
+				{
+					LineWidth = OpenGL.LineWidthParam.Max;
+				}
+				glLineWidth(LineWidth);
+
+				UseProgramBegin(&OpenGL.LinePass, &Commands->ForwardPersCamera,
+					&ModelTransform, LineEntry->Color);
+
+				GLenum LineDrawType = GetLineDrawType(LineEntry->Type);
+				glDrawArrays(LineDrawType, LineEntry->StartOffset / sizeof(v3), LineEntry->ElementCount);
+
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindVertexArray(0);
+				UseProgramEnd(&OpenGL.BitmapProg);
 
 				ReleaseToggleStates(EntryToggleFlags);
 			} break;
