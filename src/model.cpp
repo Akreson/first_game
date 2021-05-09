@@ -280,7 +280,7 @@ PointToEdgeProj(v3 *Vertices, model_edge *Edge, v3 P)
 	v3 V0 = Vertices[Edge->V0];
 	v3 V1 = Vertices[Edge->V1];
 
-	v3 PV0 = V0 - P;
+	v3 PV0 = P - V0;
 	v3 V01 = V1 - V0;
 	f32 tResult = Dot(PV0, V01) / Dot(V01, V01);
 
@@ -293,7 +293,7 @@ PointToEdgeOnFaceLengthSq(v3 *Vertices, model_edge *Edge, v3 P)
 	v3 V0 = Vertices[Edge->V0];
 	v3 V1 = Vertices[Edge->V1];
 
-	v3 PV0 = V0 - P;
+	v3 PV0 = P - V0;
 	v3 V01 = V1 - V0;
 	f32 t = Dot(PV0, V01) / Dot(V01, V01);
 	v3 D = V0 + t * V01;

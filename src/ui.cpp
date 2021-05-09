@@ -1774,9 +1774,8 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 					v3 V0 = Vertices[FromVertexID];
 					v3 V1 = Vertices[ToVertexID];
 
-					v3 V01 = V1 - V0;
-					Elem.V = LerpRange(V0, tSplit, V01);
-					Elem.EdgeDir = Normalize(V01);
+					Elem.V = Lerp(V0, tSplit, V1);
+					//Elem.EdgeDir = Normalize(V01);
 
 					PushElementToSplitBuff(&Editor->PageArena, &Tools->SplitBuffer, Elem);
 			
