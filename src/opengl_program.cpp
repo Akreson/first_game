@@ -43,12 +43,12 @@ CompileBitmapProgram(bitmap_program *Prog)
 }
 
 internal void
-UseProgramBegin(bitmap_program *Prog, v3 Color, m4x4 *ProgMat)
+UseProgramBegin(bitmap_program *Prog, v3 Color, m4x4 *ProjMat)
 {
 	glUseProgram(Prog->ID);
 
 	glUniform3f(Prog->ColorID, Color.r, Color.g, Color.b);
-	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
 }
 
 internal void
@@ -98,11 +98,11 @@ CompileTrinModelColorPassProgram(trin_model_color_pass_program *Prog)
 }
 
 internal void
-UseProgramBegin(trin_model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat)
+UseProgramBegin(trin_model_color_pass_program *Prog, m4x4 *ProjMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
 
-	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 }
 
@@ -274,12 +274,12 @@ CompileModelProgram(model_program *Prog)
 }
 
 internal void
-UseProgramBegin(model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProgMat, m4x4 *ModelMat)
+UseProgramBegin(model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProjMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
 
 	glUniform4f(Prog->ModelColorID, Color.r, Color.g, Color.b, Color.a);
-	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 
 	// TODO: Delete later
@@ -333,11 +333,11 @@ CompileModelColorPassProgram(model_color_pass_program *Prog)
 }
 
 internal void
-UseProgramBegin(model_color_pass_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat)
+UseProgramBegin(model_color_pass_program *Prog, m4x4 *ProjMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
 
-	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 }
 
@@ -504,11 +504,11 @@ CompileStaticMeshProgram(static_mesh_program *Prog)
 }
 
 internal void
-UseProgramBegin(static_mesh_program *Prog, m4x4 *ProgMat, m4x4 *ModelMat, v3 Color)
+UseProgramBegin(static_mesh_program *Prog, m4x4 *ProjMat, m4x4 *ModelMat, v3 Color)
 {
 	glUseProgram(Prog->ID);
 
-	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->ProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
 	glUniformMatrix4fv(Prog->TransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 	glUniform3f(Prog->ColorID, Color.r, Color.g, Color.b);
 }
@@ -656,12 +656,12 @@ CompileRotateToolProgram(rotate_tool_program *Prog)
 }
 
 internal void
-UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProgMat, m4x4 *CameraMat,
+UseProgramBegin(rotate_tool_program *Prog, m4x4 *ProjMat, m4x4 *CameraMat,
 	m4x4 *ModelMat, render_entry_tool_rotate *Tools)
 {
 	glUseProgram(Prog->ID);
 
-	glUniformMatrix4fv(Prog->PersProj, 1, GL_FALSE, &ProgMat->E[0][0]);
+	glUniformMatrix4fv(Prog->PersProj, 1, GL_FALSE, &ProjMat->E[0][0]);
 	glUniformMatrix4fv(Prog->CameraTransform, 1, GL_FALSE, &CameraMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransform, 1, GL_FALSE, &ModelMat->E[0][0]);
 
