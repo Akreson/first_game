@@ -494,6 +494,18 @@ operator*(v4 A, v4 B)
 	return Result;
 }
 
+inline v4
+operator*(v4 A, f32 B)
+{
+	v4 Result;
+	Result.x = A.x * B;
+	Result.y = A.y * B;
+	Result.z = A.z * B;
+	Result.w = A.w * B;
+
+	return Result;
+}
+
 inline v3
 Abs(v3 A)
 {
@@ -556,6 +568,13 @@ Dot(v3 A, v3 B)
 }
 
 inline f32
+Dot(v4 A, v4 B)
+{
+	f32 Result = A.x*B.x + A.y*B.y + A.z*B.z + A.w*B.w;
+	return Result;
+}
+
+inline f32
 LengthSq(v3 A)
 {
 	f32 Result = Dot(A, A);
@@ -563,7 +582,21 @@ LengthSq(v3 A)
 }
 
 inline f32
+LengthSq(v4 A)
+{
+	f32 Result = Dot(A, A);
+	return Result;
+}
+
+inline f32
 Length(v3 A)
+{
+	f32 Result = SquareRoot(LengthSq(A));
+	return Result;
+}
+
+inline f32
+Length(v4 A)
 {
 	f32 Result = SquareRoot(LengthSq(A));
 	return Result;
@@ -580,6 +613,13 @@ inline v3
 Normalize(v3 A, f32 Length)
 {
 	v3 Result = A * (1.0f / Length);
+	return Result;
+}
+
+inline v4
+Normalize(v4 A)
+{
+	v4 Result = A * (1.0f / Length(A));
 	return Result;
 }
 
@@ -847,6 +887,90 @@ Identity(void)
 	}};
 
 	return Result;
+}
+
+inline m4x4
+ConvertQuatToMat(quat Q)
+{
+	m4x4 M = {};
+
+	float x2 = Q.E[0] + Q.E[0];
+	float y2 = Q.E[1] + Q.E[1];
+	float z2 = Q.E[2] + Q.E[2];
+	{
+		float xx2 = Q.E[0] * x2;
+		float yy2 = Q.E[1] * y2;
+		float zz2 = Q.E[2] * z2;
+		M.E[0][0] = 1.0f - yy2 - zz2;
+		M.E[1][1] = 1.0f - xx2 - zz2;
+		M.E[2][2] = 1.0f - xx2 - yy2;
+	}
+	{
+		float yz2 = Q.E[1] * z2;
+		float wx2 = Q.E[3] * x2;
+		M.E[2][1] = yz2 - wx2;
+		M.E[1][2] = yz2 + wx2;
+	}
+	{
+		float xy2 = Q.E[0] * y2;
+		float wz2 = Q.E[3] * z2;
+		M.E[1][0] = xy2 - wz2;
+		M.E[0][1] = xy2 + wz2;
+	}
+	{
+		float xz2 = Q.E[0] * z2;
+		float wy2 = Q.E[3] * y2;
+		M.E[0][2] = xz2 - wy2;
+		M.E[2][0] = xz2 + wy2;
+	}
+
+	return M;
+}
+
+inline quat
+ConvertMatToQuat(m4x4 M)
+{
+	quat Q = {};
+		
+	if ((M.E[0][0] + M.E[1][1] + M.E[2][2]) > 0.0f)
+	{
+		float t = M.E[0][0] + M.E[1][1] + M.E[2][2] + 1.0f;
+		float s = SquareRoot(t) * 0.5f;
+		Q.E[3] = s * t;
+		Q.E[2] = (M.E[0][1] - M.E[1][0]) * s;
+		Q.E[1] = (M.E[2][0] - M.E[0][2]) * s;
+		Q.E[0] = (M.E[1][2] - M.E[2][1]) * s;
+	}
+	else if ((M.E[0][0] > M.E[1][1]) && (M.E[0][0] > M.E[2][2]))
+	{
+		float t = M.E[0][0] - M.E[1][1] - M.E[2][2] + 1.0f;
+		float s = SquareRoot(t) * 0.5f;
+		Q.E[0] = s * t;
+		Q.E[1] = (M.E[0][1] + M.E[1][0]) * s;
+		Q.E[2] = (M.E[2][0] + M.E[0][2]) * s;
+		Q.E[3] = (M.E[1][2] - M.E[2][1]) * s;
+	}
+	else if (M.E[1][1] > M.E[2][2])
+	{
+		float t = -M.E[0][0] + M.E[1][1] - M.E[2][2] + 1.0f;
+		float s = SquareRoot(t) * 0.5f;
+		Q.E[1] = s * t;
+		Q.E[0] = (M.E[0][1] + M.E[1][0]) * s;
+		Q.E[3] = (M.E[2][0] - M.E[0][2]) * s;
+		Q.E[2] = (M.E[1][2] + M.E[2][1]) * s;
+	}
+	else
+	{
+		float t = -M.E[0][0] - M.E[1][1] + M.E[2][2] + 1.0f;
+		float s = SquareRoot(t) * 0.5f;
+
+		Q.E[2] = s * t;
+		Q.E[3] = (M.E[0][1] - M.E[1][0]) * s;
+		Q.E[0] = (M.E[2][0] + M.E[0][2]) * s;
+		Q.E[1] = (M.E[1][2] + M.E[2][1]) * s;
+	}
+
+	return Q;
 }
 
 inline m4x4_inv

@@ -461,7 +461,6 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	{
 		case ModelTargetElement_Model:
 		{
-
 			for (u32 Index = 0;
 				Index < Model->Data.VertexCount;
 				++Index)
@@ -473,6 +472,10 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				m4x4 CurrRotation = ToM4x4(Trans->R);
 				m4x4 Translate = TranslateMat(Trans->T);
 
+#if 0
+				quat ConvQuat = Normalize(ConvertMatToQuat(CurrRotation));
+				m4x4 ConvMath = ConvertQuatToMat(ConvQuat);
+#endif
 				v3 RotOrigin = ModelSpaceRotOrigin - Trans->T;
 				m4x4 RelativeRotation = TranslateMat(-RotOrigin) * Rotation * TranslateMat(RotOrigin);
 
@@ -1586,6 +1589,12 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	}
 }
 
+void
+ApplySplit(work_model *Model, split_buffer *SplitBuffer)
+{
+
+}
+
 // TODO: Apply transform only when exit move interaction
 // for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
@@ -1879,6 +1888,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			Split->StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
 			if (Split->StartEdge.Edge)
 			{
+				Split->StartEdge.t = IsDown(Input->Shift) ? Split->StartEdge.t : 0.5f;
 				SetSplitToolData(Split, SplitBuffer, &Model->Data, IModel->Face.ID, &Editor->PageArena);
 
 				Interaction = SetSplitSelectIntr(IModel->ID);

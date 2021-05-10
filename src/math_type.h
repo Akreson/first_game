@@ -93,6 +93,8 @@ union v4
 	};
 };
 
+typedef v4 quat;
+
 // NOTE: row-major
 // TODO: Add _m128
 union m4x4

@@ -300,6 +300,12 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 
 	WorldUI->MouseRay = CreateRay(CameraOt, Unproject(&RenderGroup, WorldUI->MouseP));
 
+	quat Q = V4(0, 0, 0, 1);
+	m4x4 M = Identity();
+
+	/*quat ConvQ = ConvertMatToQuat(M);
+	m4x4 ConvM = ConvertQuatToMat(Q);*/
+
 	for (u32 ModelIndex = 0;
 		ModelIndex < Editor->WorkModelsCount;
 		++ModelIndex)
