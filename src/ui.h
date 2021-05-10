@@ -256,8 +256,6 @@ struct split_buffer_element
 	v3 V;
 	model_edge_faces Faces;
 	u32 EdgeID;
-
-	v3 EdgeDir;
 };
 
 struct split_buffer

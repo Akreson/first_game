@@ -77,6 +77,17 @@ SetToolAxisIntr(tool_type Tool, ui_interaction_type Type, tools_axis_id Axis)
 	return Result;
 }
 
+inline ui_interaction
+SetSplitSelectIntr(u32 ModelID)
+{
+	ui_interaction Result;
+	Result.TypeID = SetIntrTypeID(UI_InteractionTarget_Tools, UI_InteractionType_Select);
+	Result.ID.ID[0] = ModelID;
+	Result.ID.ID[1] = 0;
+
+	return Result;
+}
+
 inline b32
 AreEqual(ui_interaction A, ui_interaction B)
 {
@@ -1448,6 +1459,133 @@ PushElementToSplitBuff(page_memory_arena *PageArena, split_buffer *Buffer, split
 	Buffer->Elem[Buffer->Count++] = Elem;
 }
 
+inline void
+SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
+	u32 StartFaceID, page_memory_arena *PageArena)
+{
+	f32 tSplit = Split->StartEdge.t;
+
+	v3 *Vertices = Data->Vertices;
+	model_edge *ModelEdges = Data->Edges;
+
+	u32 StartEdgeID = Split->StartEdge.ID;
+
+	u32 CurrentFaceID = StartFaceID;
+	u32 CurrentEdgeID = StartEdgeID;
+
+	__m128i Zero_4x = _mm_setzero_si128();
+	__m128i One_4x = _mm_set1_epi32(1);
+
+	model_edge *Edge = Split->StartEdge.Edge;
+	u32 FromVertexEdgeIndex = 0;
+
+	b32 LoopNotFull = true;
+	while (LoopNotFull)
+	{
+		split_buffer_element Elem;
+		Elem.EdgeID = CurrentEdgeID;
+		Elem.Faces = Edge->Faces;
+
+		u32 ToVertexEdgeIndex = !FromVertexEdgeIndex;
+
+		u32 FromVertexID = Edge->VertexID[FromVertexEdgeIndex];
+		u32 ToVertexID = Edge->VertexID[ToVertexEdgeIndex];
+
+		v3 V0 = Vertices[FromVertexID];
+		v3 V1 = Vertices[ToVertexID];
+
+		Elem.V = Lerp(V0, tSplit, V1);
+
+		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
+
+		__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
+
+		model_face *Face = Data->Faces + CurrentFaceID;
+		__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
+		__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
+		__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
+		__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
+
+		TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
+
+		__m128i FromVertexID_4x = _mm_set1_epi32(FromVertexID);
+		__m128i TestEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
+
+		u32 TestVertexID = iToMaskU32(TestEdgeVertexIDIndex);
+		u32 TestVertexIDMask0 = TestVertexID & 0x3;
+		u32 TestVertexIDMask1 = TestVertexID & 0xC;
+
+		__m128i TestVertexIDMask0_4x = _mm_set1_epi32(TestVertexIDMask0);
+		__m128i TestVertexIDMask1_4x = _mm_set1_epi32(TestVertexIDMask1);
+
+		Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
+		Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
+		Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
+		Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
+
+		u32 OppositeEdgeIndex = UINT_MAX;
+
+		u32 MaskArr[4];
+		u32 SetBitArr[4];
+
+		__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
+		__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
+		__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
+		__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
+
+		u32 Mask0 = iToMaskU32(CmpMask0);
+		u32 Mask1 = iToMaskU32(CmpMask1);
+		u32 Mask2 = iToMaskU32(CmpMask2);
+		u32 Mask3 = iToMaskU32(CmpMask3);
+
+		MaskArr[0] = Mask0;
+		MaskArr[1] = Mask1;
+		MaskArr[2] = Mask2;
+		MaskArr[3] = Mask3;
+
+		SetBitArr[0] = CountOfSetBits(Mask0);
+		SetBitArr[1] = CountOfSetBits(Mask1);
+		SetBitArr[2] = CountOfSetBits(Mask2);
+		SetBitArr[3] = CountOfSetBits(Mask3);
+
+		__m128i Mask_4x = _mm_load_si128((__m128i *)MaskArr);
+		__m128i SetBit_4x = _mm_load_si128((__m128i *)SetBitArr);
+
+		__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
+		u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
+
+		Assert(CountOfSetBits(OppositeMaskU32) == 1);
+
+		bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
+		Assert(OppositeIndex.Succes);
+
+		__m128i OneMatchMask = _mm_cmpeq_epi32(SetBit_4x, One_4x);
+		__m128i OneMatchEdge = _mm_and_si128(Mask_4x, OneMatchMask);
+
+		__m128i OneMatchTest0 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask0_4x);
+		__m128i OneMatchTest1 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask1_4x);
+
+		u32 OneMatchTestMask = iToMaskU32(_mm_or_si128(OneMatchTest0, OneMatchTest1));
+		bit_scan_result OneMatchTestIndex = FindLeastSignificantSetBit(OneMatchTestMask);
+		Assert(OneMatchTestIndex.Succes);
+
+		//TODO: Change?
+		u32 OppositeEdgeID = Face->EdgesID[OppositeIndex.Index];
+		model_edge *Opposite = ModelEdges + OppositeEdgeID;
+		model_edge *Common = ModelEdges + Face->EdgesID[OneMatchTestIndex.Index];
+
+		edge_vertex_match CommonVertex = MatchEdgeVertex(Opposite, Common);
+		Assert(CommonVertex.Succes);
+
+		Edge = Opposite;
+		FromVertexEdgeIndex = CommonVertex.Index;
+		CurrentEdgeID = OppositeEdgeID;
+		CurrentFaceID = (Opposite->Face0 == CurrentFaceID) ? Opposite->Face1 : Opposite->Face0;
+
+		LoopNotFull = (StartEdgeID != OppositeEdgeID);
+	}
+}
+
 // TODO: Apply transform only when exit move interaction
 // for rotate and translate?
 // TODO: Add interact quad for interact with 2 axis at the same time
@@ -1741,129 +1879,12 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 			Split->StartEdge = GetStartEdgeForSplit(WorldUI->MouseRay, Model, &IModel->Face);
 			if (Split->StartEdge.Edge)
 			{
-				f32 tSplit = Split->StartEdge.t;
-				
-				v3 *Vertices = Model->Data.Vertices;
-				model_edge *ModelEdges = Model->Data.Edges;
-				
+				SetSplitToolData(Split, SplitBuffer, &Model->Data, IModel->Face.ID, &Editor->PageArena);
 
-				u32 StartFaceID = IModel->Face.ID;
-				u32 StartEdgeID = Split->StartEdge.ID;
-
-				u32 CurrentFaceID = StartFaceID;
-				u32 CurrentEdgeID = StartEdgeID;
-				
-				__m128i Zero_4x = _mm_setzero_si128();
-				__m128i One_4x = _mm_set1_epi32(1);
-
-				model_edge *Edge = Split->StartEdge.Edge;
-				u32 FromVertexEdgeIndex = 0;
-
-				b32 LoopNotFull = true;
-				while (LoopNotFull)
+				Interaction = SetSplitSelectIntr(IModel->ID);
+				if (AreEqual(WorldUI->ToExecute, Interaction))
 				{
-					split_buffer_element Elem;
-					Elem.EdgeID = CurrentEdgeID;
-					Elem.Faces = Edge->Faces;
-
-					u32 ToVertexEdgeIndex = !FromVertexEdgeIndex;
-
-					u32 FromVertexID = Edge->VertexID[FromVertexEdgeIndex];
-					u32 ToVertexID = Edge->VertexID[ToVertexEdgeIndex];
-
-					v3 V0 = Vertices[FromVertexID];
-					v3 V1 = Vertices[ToVertexID];
-
-					Elem.V = Lerp(V0, tSplit, V1);
-					//Elem.EdgeDir = Normalize(V01);
-
-					PushElementToSplitBuff(&Editor->PageArena, &Tools->SplitBuffer, Elem);
-			
-					__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
-
-					model_face *Face = Model->Data.Faces + CurrentFaceID;
-					__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
-					__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
-					__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
-					__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
-
-					TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
-					
-					__m128i FromVertexID_4x = _mm_set1_epi32(FromVertexID);
-					__m128i TestEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
-
-					u32 TestVertexID = iToMaskU32(TestEdgeVertexIDIndex);
-					u32 TestVertexIDMask0 = TestVertexID & 0x3;
-					u32 TestVertexIDMask1 = TestVertexID & 0xC;
-
-					__m128i TestVertexIDMask0_4x = _mm_set1_epi32(TestVertexIDMask0);
-					__m128i TestVertexIDMask1_4x = _mm_set1_epi32(TestVertexIDMask1);
-
-					Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
-					Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
-					Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
-					Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
-
-					u32 OppositeEdgeIndex = UINT_MAX;
-
-					u32 MaskArr[4];
-					u32 SetBitArr[4];
-
-					__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
-					__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
-					__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
-					__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
-
-					u32 Mask0 = iToMaskU32(CmpMask0);
-					u32 Mask1 = iToMaskU32(CmpMask1);
-					u32 Mask2 = iToMaskU32(CmpMask2);
-					u32 Mask3 = iToMaskU32(CmpMask3);
-
-					MaskArr[0] = Mask0;
-					MaskArr[1] = Mask1;
-					MaskArr[2] = Mask2;
-					MaskArr[3] = Mask3;
-
-					SetBitArr[0] = CountOfSetBits(Mask0);
-					SetBitArr[1] = CountOfSetBits(Mask1);
-					SetBitArr[2] = CountOfSetBits(Mask2);
-					SetBitArr[3] = CountOfSetBits(Mask3);
-
-					__m128i Mask_4x = _mm_load_si128((__m128i *)MaskArr);
-					__m128i SetBit_4x = _mm_load_si128((__m128i *)SetBitArr);
-
-					__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
-					u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
-
-					Assert(CountOfSetBits(OppositeMaskU32) == 1);
-
-					bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
-					Assert(OppositeIndex.Succes);
-
-					__m128i OneMatchMask = _mm_cmpeq_epi32(SetBit_4x, One_4x);
-					__m128i OneMatchEdge = _mm_and_si128(Mask_4x, OneMatchMask);
-					
-					__m128i OneMatchTest0 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask0_4x);
-					__m128i OneMatchTest1 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask1_4x);
-
-					u32 OneMatchTestMask = iToMaskU32(_mm_or_si128(OneMatchTest0, OneMatchTest1));
-					bit_scan_result OneMatchTestIndex = FindLeastSignificantSetBit(OneMatchTestMask);
-					Assert(OneMatchTestIndex.Succes);
-
-					//TODO: Change?
-					u32 OppositeEdgeID = Face->EdgesID[OppositeIndex.Index];
-					model_edge *Opposite = ModelEdges + OppositeEdgeID;
-					model_edge *Common = ModelEdges + Face->EdgesID[OneMatchTestIndex.Index];
-
-					edge_vertex_match CommonVertex = MatchEdgeVertex(Opposite, Common);
-					Assert(CommonVertex.Succes);
-
-					Edge = Opposite;
-					FromVertexEdgeIndex = CommonVertex.Index;
-					CurrentEdgeID = OppositeEdgeID;
-					CurrentFaceID = (Opposite->Face0 == CurrentFaceID) ? Opposite->Face1 : Opposite->Face0;
-
-					LoopNotFull = (StartEdgeID != OppositeEdgeID);
+					WorldUI->Selected.Count = 0;
 				}
 				
 				PushSplitToolSegment(RenderGroup, &Tools->SplitBuffer, Model->Offset, V3(1));
@@ -1906,8 +1927,7 @@ EditorUIInteraction(game_editor_state *Editor, game_input *Input, render_group *
 			{
 				WorldUI->UpdateModelInteraction = true;
 			}
-			else if (WasDown(Input->MouseButtons[PlatformMouseButton_Right]) &&
-				IsDown(Input->Shift))
+			else if (WasDown(Input->MouseButtons[PlatformMouseButton_Right]) && IsDown(Input->Shift))
 			{
 				if (IsITargetEq(WorldUI->ITarget, Model) &&
 					(WorldUI->Selected.Count ||
