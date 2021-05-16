@@ -256,6 +256,8 @@ struct split_buffer_element
 	v3 V;
 	model_edge_faces Faces;
 	u32 EdgeID;
+	u32 VertexID;
+	u32 FromIndex;
 };
 
 struct split_buffer

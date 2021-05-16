@@ -52,15 +52,41 @@ struct model_face
 };
 
 // NOTE: Triangle specifed in conter-clokwise order
+
+struct model_data_vertex
+{
+	v3 *E;
+	u32 Count;
+	u32 MaxCount;
+};
+
+struct model_data_face
+{
+	model_face *E;
+	u32 Count;
+	u32 MaxCount;
+};
+
+struct model_data_edge
+{
+	model_edge *E;
+	u32 Count;
+	u32 MaxCount;
+};
+
 struct model_data
 {
 	v3 *Vertices;
-	model_face *Faces;
-	model_edge *Edges;
-
 	u32 VertexCount;
+	u32 MaxVertexCount;
+
+	model_face *Faces;
 	u32 FaceCount;
+	u32 MaxFaceCount;
+
+	model_edge *Edges;
 	u32 EdgeCount;
+	u32 MaxEdgeCount;
 };
 
 // TODO: Separate?

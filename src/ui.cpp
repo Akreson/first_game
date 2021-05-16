@@ -472,10 +472,6 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				m4x4 CurrRotation = ConvertQuatToM4x4(Trans->R);
 				m4x4 Translate = TranslateMat(Trans->T);
 
-#if 0
-				quat ConvQuat = Normalize(ConvertMatToQuat(CurrRotation));
-				m4x4 ConvMath = ConvertQuatToMat(ConvQuat);
-#endif
 				v3 RotOrigin = ModelSpaceRotOrigin - Trans->T;
 				m4x4 RelativeRotation = TranslateMat(-RotOrigin) * Rotation * TranslateMat(RotOrigin);
 
@@ -1466,6 +1462,7 @@ inline void
 SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	u32 StartFaceID, page_memory_arena *PageArena)
 {
+	u32 ModelVertexCount = Data->VertexCount;
 	f32 tSplit = Split->StartEdge.t;
 
 	v3 *Vertices = Data->Vertices;
@@ -1482,6 +1479,7 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	model_edge *Edge = Split->StartEdge.Edge;
 	u32 FromVertexEdgeIndex = 0;
 
+	u32 CreatedVertex = 0;
 	b32 LoopNotFull = true;
 	while (LoopNotFull)
 	{
@@ -1498,6 +1496,8 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		v3 V1 = Vertices[ToVertexID];
 
 		Elem.V = Lerp(V0, tSplit, V1);
+		Elem.VertexID = ModelVertexCount + CreatedVertex++;
+		Elem.FromIndex = FromVertexEdgeIndex;
 
 		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
 
@@ -1590,9 +1590,18 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 }
 
 void
-ApplySplit(work_model *Model, split_buffer *SplitBuffer)
+ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer)
 {
+	PushElementToSplitBuff(PageArena, SplitBuffer, SplitBuffer->Elem[0]);
 
+	
+
+	for (u32 ElemIndex = 0;
+		ElemIndex < (SplitBuffer->Count - 1);
+		++ElemIndex)
+	{
+
+	}
 }
 
 // TODO: Apply transform only when exit move interaction
@@ -1895,6 +1904,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				if (AreEqual(WorldUI->ToExecute, Interaction))
 				{
 					WorldUI->Selected.Count = 0;
+					ApplySplit(&Editor->PageArena, Model, &Tools->SplitBuffer);
 				}
 				
 				PushSplitToolSegment(RenderGroup, &Tools->SplitBuffer, Model->Offset, V3(1));
