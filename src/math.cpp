@@ -897,7 +897,7 @@ Identity(void)
 }
 
 inline m4x4
-ConvertQuatToMat4x4(quat Q)
+ConvertQuatToM4x4(quat Q)
 {
 	m4x4 M = {};
 
