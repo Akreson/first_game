@@ -528,6 +528,7 @@ InitModelVertexState(game_editor_state *Editor, u32 VertexCount)
 	//m4x4 I4x4 = Identity();
 	m3x3 I3x3 = Identity3x3();
 	v3 T = V3(0);
+	quat R = IdentityQuat();
 
 	for (u32 TransIndex = 0;
 		TransIndex < VertexCount;
@@ -535,7 +536,7 @@ InitModelVertexState(game_editor_state *Editor, u32 VertexCount)
 	{
 		vertex_transform_state *Transform = TransState + TransIndex;
 		Transform->S = I3x3;
-		Transform->R = I3x3;
+		Transform->R = R;
 		Transform->T = T;
 	}
 

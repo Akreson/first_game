@@ -656,6 +656,13 @@ NLerp(v3 A, f32 t, v3 B)
 	return Result;
 }
 
+inline quat
+IdentityQuat(void)
+{
+	quat Result = {0, 0, 0, 1};
+	return Result;
+}
+
 inline m3x3
 Identity3x3(void)
 {
@@ -890,7 +897,7 @@ Identity(void)
 }
 
 inline m4x4
-ConvertQuatToMat(quat Q)
+ConvertQuatToMat4x4(quat Q)
 {
 	m4x4 M = {};
 
@@ -924,6 +931,7 @@ ConvertQuatToMat(quat Q)
 		M.E[2][0] = xz2 + wy2;
 	}
 
+	M.E[3][3] = 1.0f;
 	return M;
 }
 

@@ -469,7 +469,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				vertex_transform_state *Trans = TransStates + Index;
 
 				m4x4 Scale = ToM4x4(Trans->S);
-				m4x4 CurrRotation = ToM4x4(Trans->R);
+				m4x4 CurrRotation = ConvertQuatToMat4x4(Trans->R);
 				m4x4 Translate = TranslateMat(Trans->T);
 
 #if 0
@@ -483,7 +483,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 				
 				m4x4 Transform = Scale * CurrRotation * Translate;
 
-				Trans->R = ToM3x3(CurrRotation);
+				Trans->R = Normalize(ConvertMatToQuat(CurrRotation));
 				Trans->T = Transform.Row3.xyz;
 
 				DisplayVertices[Index] = VSource * Transform;
@@ -505,7 +505,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 
 				m4x4 Scale = ToM4x4(Trans->S);
 				m4x4 Translate = TranslateMat(Trans->T);
-				m4x4 CurrRotation = ToM4x4(Trans->R);
+				m4x4 CurrRotation = ConvertQuatToMat4x4(Trans->R);
 
 				v3 RotOrigin = ModelSpaceRotOrigin - Trans->T;
 				m4x4 RelativeRotation = TranslateMat(-RotOrigin) * Rotation * TranslateMat(RotOrigin);
@@ -514,7 +514,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 
 				m4x4 Transform = Scale * CurrRotation * Translate;
 
-				Trans->R = ToM3x3(CurrRotation);
+				Trans->R = Normalize(ConvertMatToQuat(CurrRotation));
 				Trans->T = Transform.Row3.xyz;
 
 				DisplayVertices[VertexIndex] = VSource * Transform;
@@ -555,7 +555,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				vertex_transform_state *Trans = TransStates + Index;
 
 				m4x4 CurrScale = ToM4x4(Trans->S);
-				m4x4 Rotation = ToM4x4(Trans->R);
+				m4x4 Rotation = ConvertQuatToMat4x4(Trans->R);
 				m4x4 Translate = TranslateMat(Trans->T);
 
 				m4x4 ApplyScale;
@@ -597,7 +597,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 				vertex_transform_state *Trans = TransStates + VertexIndex;
 
 				m4x4 CurrScale = ToM4x4(Trans->S);
-				m4x4 Rotation = ToM4x4(Trans->R);
+				m4x4 Rotation = ConvertQuatToMat4x4(Trans->R);
 				m4x4 Translate = TranslateMat(Trans->T);
 
 				m4x4 MAxis = Rotation;

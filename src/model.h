@@ -71,7 +71,7 @@ struct vertex_transform_state
 {
 	// TODO: Get rid of rotation?
 	m3x3 S;
-	m3x3 R;
+	quat R;
 	v3 T;
 };
 
