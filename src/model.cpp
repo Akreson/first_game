@@ -191,10 +191,10 @@ GetFaceVertex(work_model *Model, model_face *Face)
 	face_vertex Result;
 
 	v3 ModelOffset = Model->Offset;
-	Result.V0 = Model->Data.Vertices[Face->V0] + ModelOffset;
-	Result.V1 = Model->Data.Vertices[Face->V1] + ModelOffset;
-	Result.V2 = Model->Data.Vertices[Face->V2] + ModelOffset;
-	Result.V3 = Model->Data.Vertices[Face->V3] + ModelOffset;
+	Result.V0 = Model->Data.Vertices.E[Face->V0] + ModelOffset;
+	Result.V1 = Model->Data.Vertices.E[Face->V1] + ModelOffset;
+	Result.V2 = Model->Data.Vertices.E[Face->V2] + ModelOffset;
+	Result.V3 = Model->Data.Vertices.E[Face->V3] + ModelOffset;
 
 	return Result;
 }
@@ -267,7 +267,7 @@ GetFacePlane(work_model *Model, u32 FaceIndex)
 {
 	face_plane Result;
 
-	model_face *Face = Model->Data.Faces + FaceIndex;
+	model_face *Face = Model->Data.Faces.E + FaceIndex;
 	face_vertex Vertex = GetFaceVertex(Model, Face);
 
 	Result = GetFacePlane(Vertex);
@@ -310,19 +310,19 @@ GetClosestEdgeToPointOnFace(work_model *Model, u32 FaceIndex, v3 P)
 {
 	point_to_edge_proj Result = {};
 
-	model_face *Face = Model->Data.Faces + FaceIndex;
+	model_face *Face = Model->Data.Faces.E + FaceIndex;
 	
 	model_edge *FaceEdges[4];
-	FaceEdges[0] = Model->Data.Edges + Face->Edge0;
-	FaceEdges[1] = Model->Data.Edges + Face->Edge1;
-	FaceEdges[2] = Model->Data.Edges + Face->Edge2;
-	FaceEdges[3] = Model->Data.Edges + Face->Edge3;
+	FaceEdges[0] = Model->Data.Edges.E + Face->Edge0;
+	FaceEdges[1] = Model->Data.Edges.E + Face->Edge1;
+	FaceEdges[2] = Model->Data.Edges.E + Face->Edge2;
+	FaceEdges[3] = Model->Data.Edges.E + Face->Edge3;
 
 	f32 SqLengthResult[4];
-	SqLengthResult[0] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[0], P);
-	SqLengthResult[1] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[1], P);
-	SqLengthResult[2] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[2], P);
-	SqLengthResult[3] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices, FaceEdges[3], P);
+	SqLengthResult[0] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices.E, FaceEdges[0], P);
+	SqLengthResult[1] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices.E, FaceEdges[1], P);
+	SqLengthResult[2] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices.E, FaceEdges[2], P);
+	SqLengthResult[3] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices.E, FaceEdges[3], P);
 
 	u32 EdgeIndex;
 	f32 MinLength = FLOAT_MAX;
@@ -340,7 +340,7 @@ GetClosestEdgeToPointOnFace(work_model *Model, u32 FaceIndex, v3 P)
 
 	Result.Edge = FaceEdges[EdgeIndex];
 	Result.ID = Face->EdgesID[EdgeIndex];
-	Result.t = PointToEdgeProj(Model->Data.Vertices, Result.Edge, P);
+	Result.t = PointToEdgeProj(Model->Data.Vertices.E, Result.Edge, P);
 
 	return Result;
 }
@@ -349,8 +349,8 @@ edge_faces_norm
 GetEdgeFacesRelatedNormals(work_model *Model, model_edge *Edge)
 {
 	edge_faces_norm Result;
-	model_face *Face0 = Model->Data.Faces + Edge->Face0;
-	model_face *Face1 = Model->Data.Faces + Edge->Face1;
+	model_face *Face0 = Model->Data.Faces.E + Edge->Face0;
+	model_face *Face1 = Model->Data.Faces.E + Edge->Face1;
 
 	face_plane Plane0 = GetFacePlane(Model, Edge->Face0);
 	face_plane Plane1 = GetFacePlane(Model, Edge->Face1);
@@ -460,8 +460,44 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 	return Rect;
 }
 
+inline void
+PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v3 Elem)
+{
+	if (Vertices->Count == Vertices->MaxCount)
+	{
+		PagePushArray(PageArena, split_buffer_element, Vertices->MaxCount, Vertices->E, 0);
+		Vertices->MaxCount *= 2;
+	}
+		
+	Vertices->E[Vertices->Count++] = Elem;
+}
+
+inline void
+PushModelDataVertex(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
+{
+	if (Edges->Count == Edges->MaxCount)
+	{
+		PagePushArray(PageArena, split_buffer_element, Edges->MaxCount, Edges->E, 0);
+		Edges->MaxCount *= 2;
+	}
+
+	Edges->E[Edges->Count++] = Elem;
+}
+
+inline void
+PushModelDataVertex(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)
+{
+	if (Faces->Count == Faces->MaxCount)
+	{
+		PagePushArray(PageArena, split_buffer_element, Faces->MaxCount, Faces->E, 0);
+		Faces->MaxCount *= 2;
+	}
+
+	Faces->E[Faces->Count++] = Elem;
+}
+
 void
-GeneratingCube(page_memory_arena *Arena, model_data *Model, f32 HalfDim = 0.5f)
+GeneratingCube(page_memory_arena *Arena, model_data *Data, f32 HalfDim = 0.5f)
 {
 	v3 Vertex[8];
 	Vertex[0] = V3(-HalfDim, -HalfDim, HalfDim);
@@ -508,13 +544,22 @@ GeneratingCube(page_memory_arena *Arena, model_data *Model, f32 HalfDim = 0.5f)
 	MatchEdgeToFace(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 	MatchFaceToEdge(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 
-	PagePushArray(Arena, v3, ArrayCount(Vertex), Model->Vertices, Vertex);
-	PagePushArray(Arena, model_face, ArrayCount(Faces), Model->Faces, Faces);
-	PagePushArray(Arena, model_edge, ArrayCount(Edges), Model->Edges, Edges);
+	u32 StartMaxCount = 100;
+	PagePushArray(Arena, v3, StartMaxCount, Data->Vertices.E, 0);
+	PagePushArray(Arena, model_edge, StartMaxCount, Data->Edges.E, 0);
+	PagePushArray(Arena, model_face, StartMaxCount, Data->Faces.E, 0);
 
-	Model->VertexCount = ArrayCount(Vertex);
-	Model->FaceCount = ArrayCount(Faces);
-	Model->EdgeCount = ArrayCount(Edges);
+	Copy(sizeof(v3) * ArrayCount(Vertex), Data->Vertices.E, Vertex);
+	Copy(sizeof(model_edge) * ArrayCount(Edges), Data->Edges.E, Edges);
+	Copy(sizeof(model_face) * ArrayCount(Faces), Data->Faces.E, Faces);
+	
+	Data->Vertices.MaxCount = StartMaxCount;
+	Data->Edges.MaxCount = StartMaxCount;
+	Data->Faces.MaxCount = StartMaxCount;
+
+	Data->Vertices.Count = ArrayCount(Vertex);
+	Data->Edges.Count = ArrayCount(Edges);
+	Data->Faces.Count = ArrayCount(Faces);
 }
 
 vertex_transform_state *
@@ -544,35 +589,30 @@ InitModelVertexState(game_editor_state *Editor, u32 VertexCount)
 }
 
 inline work_model *
-InitWorkModel(game_editor_state *Editor, model_data *SourceModel, v4 Color, v3 Offset)
+InitWorkModel(game_editor_state *Editor, work_model *Model, v4 Color, v3 Offset)
 {
 	page_memory_arena *Arena = &Editor->PageArena;
-	
-	work_model *Model = Editor->WorkModels + Editor->WorkModelsCount++;
-	Assert(Editor->SourceModelsCount < ArrayCount(Editor->SourceModels));
-	
+	model_data *Data = &Model->Data;
+
 	Model->Color = Color;
 	Model->Offset = Offset;
 	Model->Axis = Identity3x3();
-	Model->Source = SourceModel;
-	Model->Data.VertexCount = SourceModel->VertexCount;
-	Model->Data.FaceCount = SourceModel->FaceCount;
-	Model->Data.EdgeCount = SourceModel->EdgeCount;
-	Model->VertexTrans = InitModelVertexState(Editor, Model->Data.VertexCount);
+	Model->AABB = ComputeMeshAABB(Data->Vertices.E, Data->Vertices.Count);
+	Data->VertexTrans = InitModelVertexState(Editor, Data->Vertices.Count);
 
-	PagePushArray(Arena, v3, SourceModel->VertexCount, Model->Data.Vertices, SourceModel->Vertices);
-	PagePushArray(Arena, model_face, SourceModel->FaceCount, Model->Data.Faces, SourceModel->Faces);
-	PagePushArray(Arena, model_edge, SourceModel->EdgeCount, Model->Data.Edges, SourceModel->Edges);
+	Data->SourceV.Count = Data->Vertices.Count;
+	Data->SourceV.MaxCount = Data->Vertices.MaxCount;
 
-	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
+	PagePushArray(Arena, v3, Data->SourceV.MaxCount, Data->SourceV.E, 0);
+	Copy(sizeof(v3) * Data->Vertices.Count, Data->SourceV.E, Data->Vertices.E);
 
 	return Model;
 }
 
-inline model_data *
+inline work_model *
 AddModel(game_editor_state *Editor)
 {
-	model_data *Model = Editor->SourceModels + Editor->SourceModelsCount++;
+	work_model *Model = Editor->WorkModels + Editor->WorkModelsCount++;
 	Assert(Editor->SourceModelsCount < ArrayCount(Editor->SourceModels));
 
 	return Model;
@@ -581,10 +621,10 @@ AddModel(game_editor_state *Editor)
 work_model *
 AddCubeModel(game_editor_state *Editor, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
 {
-	model_data *SourceModel = AddModel(Editor);
-	GeneratingCube(&Editor->PageArena, SourceModel);
+	work_model *Model = AddModel(Editor);
+	GeneratingCube(&Editor->PageArena, &Model->Data);
 
-	work_model *Model = InitWorkModel(Editor, SourceModel, Color, Offset);
+	InitWorkModel(Editor, Model, Color, Offset);
 	return Model;
 }
 
@@ -739,13 +779,13 @@ RayModelFacesIntersect(work_model *Model, ray_params Ray, element_ray_result *Fa
 
 	v3 ModelOffset = Model->Offset;
 	for (u32 FaceIndex = 0;
-		FaceIndex < Model->Data.FaceCount;
+		FaceIndex < Model->Data.Faces.Count;
 		++FaceIndex)
 	{
 		b32 HitTest = false;
 		v3 IntersetPoint;
 
-		model_face *Face = Model->Data.Faces + FaceIndex;
+		model_face *Face = Model->Data.Faces.E + FaceIndex;
 		face_vertex Vertex = GetFaceVertex(Model, Face);
 
 		face_plane Plane = GetFacePlane(Vertex);
@@ -805,10 +845,10 @@ RayModelEdgesIntersect(work_model *Model, ray_params Ray, element_ray_result *Ed
 	// NOTE: 0 - edge ray, 1 - mouse ray
 	v3 ModelOffset = Model->Offset;
 	for (u32 EdgeIndex = 0;
-		EdgeIndex < Model->Data.EdgeCount;
+		EdgeIndex < Model->Data.Edges.Count;
 		++EdgeIndex)
 	{
-		model_edge Edge = Model->Data.Edges[EdgeIndex];
+		model_edge Edge = Model->Data.Edges.E[EdgeIndex];
 
 		face_plane Plane0 = GetFacePlane(Model, Edge.Face0);
 		face_plane Plane1 = GetFacePlane(Model, Edge.Face1);
@@ -822,8 +862,8 @@ RayModelEdgesIntersect(work_model *Model, ray_params Ray, element_ray_result *Ed
 		if (((Face0DotRayPlane0 < 0) || (Face0DotRayPlane1 < 0)) ||
 			((Face1DotRayPlane0 < 0) || (Face1DotRayPlane1 < 0)))
 		{
-			v3 SegmentStart = Model->Data.Vertices[Edge.V0] + ModelOffset;
-			v3 SegmentEnd = Model->Data.Vertices[Edge.V1] + ModelOffset;
+			v3 SegmentStart = Model->Data.Vertices.E[Edge.V0] + ModelOffset;
+			v3 SegmentEnd = Model->Data.Vertices.E[Edge.V1] + ModelOffset;
 			v3 SegmentDirV = SegmentEnd - SegmentStart;
 
 			f32 IntrRadiusSq = Square(IntrRadius);
@@ -869,7 +909,7 @@ RayModelEdgesIntersect(work_model *Model, ray_params Ray, element_ray_result *Ed
 		element_ray_result FaceResult;
 		if (RayModelFacesIntersect(Model, Ray, &FaceResult))
 		{
-			model_edge Edge = Model->Data.Edges[ClosestIndex];
+			model_edge Edge = Model->Data.Edges.E[ClosestIndex];
 			if ((FaceResult.ID != Edge.Face0) && (FaceResult.ID != Edge.Face1))
 			{
 				f32 LengthToFacePSq = LengthSq(FaceResult.P - Ray.P);

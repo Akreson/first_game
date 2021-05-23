@@ -114,13 +114,13 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 				}
 				else
 				{
-					model_face *IFace = Model->Faces + IModel->Face.ID;
-					model_face *CompFace = Model->Faces + FaceIndex;
+					model_face *IFace = Model->Faces.E + IModel->Face.ID;
+					model_face *CompFace = Model->Faces.E + FaceIndex;
 
 					face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IFace);
 					if (EdgeMatch.Succes)
 					{
-						model_edge *Edge = Model->Edges + CompFace->EdgesID[EdgeMatch.Index];
+						model_edge *Edge = Model->Edges.E + CompFace->EdgesID[EdgeMatch.Index];
 						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, Edge);
 					}
 				}
@@ -129,7 +129,7 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 
 		case ModelTargetElement_Edge:
 		{
-			model_face *CompFace = Model->Faces + FaceIndex;
+			model_face *CompFace = Model->Faces.E + FaceIndex;
 
 			select_buffer_face_edges_match MatchResult =
 				IsInSelectedBuffer(&WorldUI->Selected, CompFace);
@@ -144,7 +144,7 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 					face_edge_match EdgeMatch = MatchFaceEdge(CompFace, EdgeID);
 					if (EdgeMatch.Succes)
 					{
-						model_edge *Edge = Model->Edges + EdgeID;
+						model_edge *Edge = Model->Edges.E + EdgeID;
 						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, Edge);
 					}
 				}
@@ -154,7 +154,7 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 			if (IsHotIntrTypeID(WorldUI, IntrTypeID))
 			{
 				u32 IEdgeIndex = IModel->Edge.ID;
-				model_edge *IEdge = Model->Edges + IEdgeIndex;
+				model_edge *IEdge = Model->Edges.E + IEdgeIndex;
 
 				face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IEdgeIndex);
 				if (EdgeMatch.Succes)
@@ -317,10 +317,10 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 		BeginPushModel(&RenderGroup, Model->Color, Model->Offset, ModelHiLi);
 		
 		for (u32 FaceIndex = 0;
-			FaceIndex < Model->Data.FaceCount;
+			FaceIndex < Model->Data.Faces.Count;
 			++FaceIndex)
 		{
-			model_face Face = Model->Data.Faces[FaceIndex];
+			model_face Face = Model->Data.Faces.E[FaceIndex];
 			face_render_params FaceParam = {};
 			
 			if (IsActive)
@@ -328,7 +328,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 				FaceParam = SetFaceRenderParams(Editor, &Model->Data, FaceIndex);
 			}
 
-			PushFace(&RenderGroup, Model->Data.Vertices, Face, FaceParam);
+			PushFace(&RenderGroup, Model->Data.Vertices.E, Face, FaceParam);
 		}
 
 		EndPushModel(&RenderGroup);

@@ -74,21 +74,6 @@ struct model_data_edge
 	u32 MaxCount;
 };
 
-struct model_data
-{
-	v3 *Vertices;
-	u32 VertexCount;
-	u32 MaxVertexCount;
-
-	model_face *Faces;
-	u32 FaceCount;
-	u32 MaxFaceCount;
-
-	model_edge *Edges;
-	u32 EdgeCount;
-	u32 MaxEdgeCount;
-};
-
 // TODO: Separate?
 // Choose how to store rotation (for now m4x4)
 // Is need at all?!
@@ -101,12 +86,20 @@ struct vertex_transform_state
 	v3 T;
 };
 
+struct model_data
+{
+	model_data_vertex Vertices;
+	model_data_edge Edges;
+	model_data_face Faces;
+
+	model_data_vertex SourceV;
+
+	vertex_transform_state *VertexTrans;
+};
+
 struct work_model
 {
 	model_data Data;
-
-	model_data *Source;
-	vertex_transform_state *VertexTrans;
 
 	m3x3 Axis;
 	rect3 AABB;

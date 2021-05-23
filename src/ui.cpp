@@ -345,7 +345,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 FaceIndex = Selected->Elements[Index];
-				model_face *Face = Model->Data.Faces + FaceIndex;
+				model_face *Face = Model->Data.Faces.E + FaceIndex;
 
 				for (u32 InFaceIndex = 0;
 					InFaceIndex < ArrayCount(Face->VertexID);
@@ -382,7 +382,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 V = Model->Data.Vertices[VertexIndex] + ModelOffset;
+				v3 V = Model->Data.Vertices.E[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
@@ -396,7 +396,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 				++Index)
 			{
 				u32 EdgeIndex = Selected->Elements[Index];
-				model_edge *Edge = Model->Data.Edges + EdgeIndex;
+				model_edge *Edge = Model->Data.Edges.E + EdgeIndex;
 
 				for (u32 InEdgeIndex = 0;
 					InEdgeIndex < ArrayCount(Edge->VertexID);
@@ -433,7 +433,7 @@ ComputeToolPos(work_model *Model, element_id_buffer *UniqIndeces,
 			{
 				u32 VertexIndex = UniqIndeces->Elements[Index];
 
-				v3 V = Model->Data.Vertices[VertexIndex] + ModelOffset;
+				v3 V = Model->Data.Vertices.E[VertexIndex] + ModelOffset;
 				Result += V;
 			}
 
@@ -451,9 +451,9 @@ void
 ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 	model_target_element ElementTarget, v3 RotationOrigin, m4x4 Rotation)
 {
-	v3 *SourceVertices = Model->Source->Vertices;
-	v3 *DisplayVertices = Model->Data.Vertices;
-	vertex_transform_state *TransStates = Model->VertexTrans;
+	v3 *SourceVertices = Model->Data.SourceV.E;
+	v3 *DisplayVertices = Model->Data.Vertices.E;
+	vertex_transform_state *TransStates = Model->Data.VertexTrans;
 	
 	v3 ModelSpaceRotOrigin = RotationOrigin - Model->Offset;
 
@@ -462,7 +462,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Model:
 		{
 			for (u32 Index = 0;
-				Index < Model->Data.VertexCount;
+				Index < Model->Data.Vertices.Count;
 				++Index)
 			{
 				v3 VSource = SourceVertices[Index];
@@ -518,7 +518,7 @@ ApplyRotation(work_model *Model, element_id_buffer *UniqIndeces,
 		} break;
 	}
 
-	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
+	Model->AABB = ComputeMeshAABB(DisplayVertices, Model->Data.Vertices.Count);
 }
 
 #define SCALE_SPEED 0.4f
@@ -527,10 +527,9 @@ void
 ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 	model_target_element TargetElement, b32 IsGlobalSpace)
 {
-	model_data *SourceModel = Model->Source;
-	v3 *SourceVertices = SourceModel->Vertices;
-	v3 *DisplayVertices = Model->Data.Vertices;
-	vertex_transform_state *TransStates = Model->VertexTrans;
+	v3 *SourceVertices = Model->Data.SourceV.E;
+	v3 *DisplayVertices = Model->Data.Vertices.E;
+	vertex_transform_state *TransStates = Model->Data.VertexTrans;
 
 	f32 ScaleFactor = Tool->ScaleParam.w * SCALE_SPEED;
 	u32 AxisID = GetIntAxisID(Tool->InteractAxis);
@@ -544,7 +543,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Model:
 		{
 			for (u32 Index = 0;
-				Index < Model->Data.VertexCount;
+				Index < Model->Data.Vertices.Count;
 				++Index)
 			{
 				v3 VSource = SourceVertices[Index];
@@ -634,7 +633,7 @@ ApplyScale(work_model *Model, scale_tools *Tool, element_id_buffer *UniqIndeces,
 		} break;
 	}
 
-	Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
+	Model->AABB = ComputeMeshAABB(Model->Data.Vertices.E, Model->Data.Vertices.Count);
 }
 
 // TODO: Optimize
@@ -643,7 +642,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 	translate_tools *TransTool, model_target_element ElementTarget, b32 IsGlobalSpace)
 {
 	v3 TransDir = TransTool->TransParam.xyz;
-	v3 *DisplayVertices = Model->Data.Vertices;
+	v3 *DisplayVertices = Model->Data.Vertices.E;
 
 	switch (ElementTarget)
 	{
@@ -656,8 +655,8 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 		case ModelTargetElement_Edge:
 		case ModelTargetElement_Face:
 		{
-			v3 *Source = Model->Source->Vertices;
-			vertex_transform_state *TransState = Model->VertexTrans;
+			v3 *Source = Model->Data.SourceV.E;
+			vertex_transform_state *TransState = Model->Data.VertexTrans;
 			
 			v3 ResultTranslate = TransDir * TransTool->TransParam.w;
 			
@@ -675,7 +674,7 @@ ApplyTranslate(work_model *Model, element_id_buffer *UniqIndeces,
 				DisplayVertices[VertexIndex] += ResultTranslate;
 			}
 
-			Model->AABB = ComputeMeshAABB(Model->Data.Vertices, Model->Data.VertexCount);
+			Model->AABB = ComputeMeshAABB(Model->Data.Vertices.E, Model->Data.Vertices.Count);
 		} break;
 	}
 }
@@ -1238,10 +1237,10 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 		{
 			case ModelTargetElement_Edge:
 			{
-				model_edge *Edge = Model->Data.Edges + ElementID;
+				model_edge *Edge = Model->Data.Edges.E + ElementID;
 				edge_faces_norm RelatedNorm = GetEdgeFacesRelatedNormals(Model, Edge);
-				v3 V0 = Model->Data.Vertices[Edge->V0];
-				v3 V1 = Model->Data.Vertices[Edge->V1];
+				v3 V0 = Model->Data.Vertices.E[Edge->V0];
+				v3 V1 = Model->Data.Vertices.E[Edge->V1];
 
 				Result.Z = Normalize(V1 - V0);
 				Result.Y = NLerp(RelatedNorm.N0, 0.5f, RelatedNorm.N1);
@@ -1250,7 +1249,7 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 
 			case ModelTargetElement_Face:
 			{
-				model_face *Face = Model->Data.Faces + ElementID;
+				model_face *Face = Model->Data.Faces.E + ElementID;
 				face_vertex Vertex = GetFaceVertex(Model, Face);
 
 				v3 OriginZ = V3(0, 0, 1);
@@ -1462,11 +1461,11 @@ inline void
 SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	u32 StartFaceID, page_memory_arena *PageArena)
 {
-	u32 ModelVertexCount = Data->VertexCount;
+	u32 ModelVertexCount = Data->Vertices.Count;
 	f32 tSplit = Split->StartEdge.t;
 
-	v3 *Vertices = Data->Vertices;
-	model_edge *ModelEdges = Data->Edges;
+	v3 *Vertices = Data->Vertices.E;
+	model_edge *ModelEdges = Data->Edges.E;
 
 	u32 StartEdgeID = Split->StartEdge.ID;
 
@@ -1503,7 +1502,7 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 
 		__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
 
-		model_face *Face = Data->Faces + CurrentFaceID;
+		model_face *Face = Data->Faces.E + CurrentFaceID;
 		__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
 		__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
 		__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
