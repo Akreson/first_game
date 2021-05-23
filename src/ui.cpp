@@ -1588,18 +1588,43 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	}
 }
 
+
+inline u32
+GetCommonSplitFaceID(split_buffer_element A, split_buffer_element B)
+{
+	u32 Result = 0;
+
+	if ((A.Faces.ID[0] == B.Faces.ID[0]) || (A.Faces.ID[1] == B.Faces.ID[0]))
+	{
+		Result = B.Faces.ID[0];
+	}
+	else if ((A.Faces.ID[0] == B.Faces.ID[1]) || (A.Faces.ID[1] == B.Faces.ID[1]))
+	{
+		Result = B.Faces.ID[1];
+	}
+
+	return Result;
+}
+
 void
 ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer)
 {
 	PushElementToSplitBuff(PageArena, SplitBuffer, SplitBuffer->Elem[0]);
 
-	
-
+	model_data *Data = &Model->Data;
 	for (u32 ElemIndex = 0;
 		ElemIndex < (SplitBuffer->Count - 1);
 		++ElemIndex)
 	{
+		split_buffer_element A = SplitBuffer->Elem[ElemIndex];
+		split_buffer_element B = SplitBuffer->Elem[ElemIndex + 1];
 
+		u32 FaceID = GetCommonSplitFaceID(A, B);
+		model_face *Face = Data->Faces.E + FaceID;
+
+		model_edge *EdgeA = Data->Edges.E + A.EdgeID;
+		u32 AVertexMatch = MaskOfMatchFaceVertex(Face, EdgeA);
+		// TODO: CONTINUE -----------------------------------------------------
 	}
 }
 
