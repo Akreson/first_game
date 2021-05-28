@@ -476,7 +476,7 @@ PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v
 }
 
 inline u32
-PushModelDataVertex(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
+PushModelDataEdge(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
 {
 	if (Edges->Count == Edges->MaxCount)
 	{
@@ -491,7 +491,7 @@ PushModelDataVertex(page_memory_arena *PageArena, model_data_edge *Edges, model_
 }
 
 inline u32
-PushModelDataVertex(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)
+PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)
 {
 	if (Faces->Count == Faces->MaxCount)
 	{
