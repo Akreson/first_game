@@ -460,7 +460,7 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 	return Rect;
 }
 
-inline void
+inline u32
 PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v3 Elem)
 {
 	if (Vertices->Count == Vertices->MaxCount)
@@ -468,11 +468,14 @@ PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v
 		PagePushArray(PageArena, split_buffer_element, Vertices->MaxCount, Vertices->E, 0);
 		Vertices->MaxCount *= 2;
 	}
-		
-	Vertices->E[Vertices->Count++] = Elem;
+	
+	u32 ID = Vertices->Count++;
+	Vertices->E[ID] = Elem;
+
+	return ID;
 }
 
-inline void
+inline u32
 PushModelDataVertex(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
 {
 	if (Edges->Count == Edges->MaxCount)
@@ -481,10 +484,13 @@ PushModelDataVertex(page_memory_arena *PageArena, model_data_edge *Edges, model_
 		Edges->MaxCount *= 2;
 	}
 
-	Edges->E[Edges->Count++] = Elem;
+	u32 ID = Edges->Count++;
+	Edges->E[ID] = Elem;
+
+	return ID;
 }
 
-inline void
+inline u32
 PushModelDataVertex(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)
 {
 	if (Faces->Count == Faces->MaxCount)
@@ -493,7 +499,10 @@ PushModelDataVertex(page_memory_arena *PageArena, model_data_face *Faces, model_
 		Faces->MaxCount *= 2;
 	}
 
-	Faces->E[Faces->Count++] = Elem;
+	u32 ID = Faces->Count++;
+	Faces->E[ID] = Elem;
+
+	return ID;
 }
 
 void

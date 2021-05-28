@@ -740,5 +740,4 @@ OpenGLRenderCommands(game_render_commands *Commands)
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
-
 }

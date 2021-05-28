@@ -1461,7 +1461,6 @@ inline void
 SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	u32 StartFaceID, page_memory_arena *PageArena)
 {
-	u32 ModelVertexCount = Data->Vertices.Count;
 	f32 tSplit = Split->StartEdge.t;
 
 	v3 *Vertices = Data->Vertices.E;
@@ -1478,7 +1477,7 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	model_edge *Edge = Split->StartEdge.Edge;
 	u32 FromVertexEdgeIndex = 0;
 
-	u32 CreatedVertex = 0;
+	u32 CreatedVertexID = Data->Vertices.Count;
 	b32 LoopNotFull = true;
 	while (LoopNotFull)
 	{
@@ -1495,7 +1494,7 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		v3 V1 = Vertices[ToVertexID];
 
 		Elem.V = Lerp(V0, tSplit, V1);
-		Elem.VertexID = ModelVertexCount + CreatedVertex++;
+		Elem.VertexID = CreatedVertexID++;
 		Elem.FromIndex = FromVertexEdgeIndex;
 
 		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
@@ -1607,11 +1606,12 @@ GetCommonSplitFaceID(split_buffer_element A, split_buffer_element B)
 }
 
 void
-ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer)
+ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer, f32 tSplit)
 {
 	PushElementToSplitBuff(PageArena, SplitBuffer, SplitBuffer->Elem[0]);
 
 	model_data *Data = &Model->Data;
+	v3 *SourveVertex = Data->SourceV.E;
 	for (u32 ElemIndex = 0;
 		ElemIndex < (SplitBuffer->Count - 1);
 		++ElemIndex)
@@ -1624,7 +1624,15 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 		model_edge *EdgeA = Data->Edges.E + A.EdgeID;
 		u32 AVertexMatch = MaskOfMatchFaceVertex(Face, EdgeA);
-		// TODO: CONTINUE -----------------------------------------------------
+
+		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
+		{
+			
+		}
+		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
+		{
+
+		}
 	}
 }
 
@@ -1928,7 +1936,7 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				if (AreEqual(WorldUI->ToExecute, Interaction))
 				{
 					WorldUI->Selected.Count = 0;
-					ApplySplit(&Editor->PageArena, Model, &Tools->SplitBuffer);
+					ApplySplit(&Editor->PageArena, Model, &Tools->SplitBuffer, Split->StartEdge.t);
 				}
 				
 				PushSplitToolSegment(RenderGroup, &Tools->SplitBuffer, Model->Offset, V3(1));
