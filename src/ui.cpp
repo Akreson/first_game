@@ -1623,11 +1623,36 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		model_face *Face = Data->Faces.E + FaceID;
 
 		model_edge *EdgeA = Data->Edges.E + A.EdgeID;
+		model_edge *EdgeB = Data->Edges.E + B.EdgeID;
 		u32 AVertexMatch = MaskOfMatchFaceVertex(Face, EdgeA);
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
+			model_face NewFace = {};
+			model_edge NewEdge = {};
+			model_face ModFace = *Face;
+
+			NewFace.V1 = ModFace.V1;
+			NewFace.V2 = ModFace.V2;
 			
+			if (AVertexMatch == MaskMatchVertex_01)
+			{
+				ModFace.V1 = A.VertexID;
+				ModFace.V2 = B.VertexID;
+
+				NewFace.V0 = A.VertexID;
+				NewFace.V3 = B.VertexID;
+			}
+			else
+			{
+				ModFace.V1 = B.VertexID;
+				ModFace.V2 = A.VertexID;
+
+				NewFace.V0 = B.VertexID;
+				NewFace.V3 = A.VertexID;
+			}
+
+
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
 		{
