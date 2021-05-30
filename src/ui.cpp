@@ -1419,7 +1419,7 @@ InitTools(editor_world_ui *WorldUI, tools *Tools, work_model *Model, page_memory
 			if (!Tools->SplitBuffer.Elem)
 			{
 				Tools->SplitBuffer.MaxCount = 100;
-				PagePushArray(PageArena, split_buffer_element, Tools->SplitBuffer.MaxCount, Tools->SplitBuffer.Elem, 0);
+				PagePushArray(PageArena, split_buffer_element, Tools->SplitBuffer.MaxCount, (void **)&Tools->SplitBuffer.Elem, 0);
 			}
 		} break;
 
@@ -1450,7 +1450,7 @@ PushElementToSplitBuff(page_memory_arena *PageArena, split_buffer *Buffer, split
 {
 	if (Buffer->Count == Buffer->MaxCount)
 	{
-		PagePushArray(PageArena, split_buffer_element, Buffer->MaxCount, Buffer->Elem, 0);
+		PagePushArray(PageArena, split_buffer_element, Buffer->MaxCount, (void **)&Buffer->Elem, 0);
 		Buffer->MaxCount *= 2;
 	}
 	
@@ -1628,12 +1628,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 		model_face ModFace = *Face;
 
-		u32 NewFaceID = PushModelDataFace(PageArena, &Data->Faces);
-		u32 NewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
-
-		model_face *NewFace = Data->Faces.E + NewFaceID;
-		model_edge *NewEdge = Data->Edges.E + NewEdgeID;
-
+		// ---- A START
 		u32 AVertexFromID = EdgeA->VertexID[A.FromIndex];
 		u32 AVertexToID = EdgeA->VertexID[!A.FromIndex];
 
@@ -1644,9 +1639,43 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		vertex_transform_state *StateA1 = &Data->VertexTrans[AVertexToID];
 
 		v3 NewAVertex = Lerp(VertexA0, tSplit, VertexA1);
-		/*PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v3 Elem)
-		PushModelDataEdge(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
-		PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)*/
+		u32 NewAVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewAVertex);
+		Assert(NewAVertexID != A.VertexID);
+
+		vertex_transform_state *NewStateA = Data->VertexTrans + NewAVertexID;
+		*NewStateA = InterpolateTransformState(StateA0, tSplit, StateA1);
+
+		// ---- B START
+		u32 BVertexFromID = EdgeB->VertexID[B.FromIndex];
+		u32 BVertexToID = EdgeB->VertexID[!B.FromIndex];
+
+		v3 VertexB0 = SourceVertex[BVertexFromID];
+		v3 VertexB1 = SourceVertex[BVertexToID];
+
+		vertex_transform_state *StateB0 = &Data->VertexTrans[BVertexFromID];
+		vertex_transform_state *StateB1 = &Data->VertexTrans[BVertexToID];
+
+		v3 NewBVertex = Lerp(VertexB0, tSplit, VertexB1);
+		u32 NewBVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewBVertex);
+		Assert(NewBVertexID != B.VertexID);
+
+		vertex_transform_state *NewStateB = Data->VertexTrans + NewBVertexID;
+		*NewStateB = InterpolateTransformState(StateB0, tSplit, StateB1);
+		// ---- B END
+
+		u32 NewFaceID = PushModelDataFace(PageArena, &Data->Faces);
+		u32 NewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
+
+		model_face *NewFace = Data->Faces.E + NewFaceID;
+		model_edge *NewEdge = Data->Edges.E + NewEdgeID;
+
+		NewEdge->Face0 = FaceID;
+		NewEdge->Face1 = NewFaceID;
+		NewEdge->V0 = NewAVertexID;
+		NewEdge->V1 = NewBVertexID;
+
+		// TODO: new face, vertex id for split A and B edge
+		// TODO: new edge id for split _mod_ and _new_ face
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{

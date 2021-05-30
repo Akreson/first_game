@@ -199,7 +199,6 @@ GetFaceVertex(work_model *Model, model_face *Face)
 	return Result;
 }
 
-
 inline face_normals
 GetFaceNormals(face_vertex Vertex)
 {
@@ -271,6 +270,19 @@ GetFacePlane(work_model *Model, u32 FaceIndex)
 	face_vertex Vertex = GetFaceVertex(Model, Face);
 
 	Result = GetFacePlane(Vertex);
+	return Result;
+}
+
+vertex_transform_state
+InterpolateTransformState(vertex_transform_state *A, f32 t, vertex_transform_state *B)
+{
+	vertex_transform_state Result = {};
+	Result.S.X = Lerp(A->S.X, t, B->S.X);
+	Result.S.Y = Lerp(A->S.Y, t, B->S.Y);
+	Result.S.Z = Lerp(A->S.Z, t, B->S.Z);
+	Result.R = Slerp(A->R, t, B->R);
+	Result.T = Lerp(A->T, t, B->T);
+
 	return Result;
 }
 
@@ -461,11 +473,13 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 }
 
 inline u32
-PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v3 *Elem = 0)
+PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices,
+	vertex_transform_state **Trans, v3 *Elem = 0)
 {
 	if (Vertices->Count == Vertices->MaxCount)
 	{
-		PagePushArray(PageArena, v3, Vertices->MaxCount, Vertices->E, 0);
+		PagePushArray(PageArena, v3, Vertices->MaxCount, (void **)&Vertices->E, 0);
+		PagePushArray(PageArena, v3, Vertices->MaxCount, (void **)Trans, 0);
 		Vertices->MaxCount *= 2;
 	}
 	
@@ -484,7 +498,7 @@ PushModelDataEdge(page_memory_arena *PageArena, model_data_edge *Edges, model_ed
 {
 	if (Edges->Count == Edges->MaxCount)
 	{
-		PagePushArray(PageArena, model_edge, Edges->MaxCount, Edges->E, 0);
+		PagePushArray(PageArena, model_edge, Edges->MaxCount, (void **)Edges->E, 0);
 		Edges->MaxCount *= 2;
 	}
 
@@ -503,7 +517,7 @@ PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_fa
 {
 	if (Faces->Count == Faces->MaxCount)
 	{
-		PagePushArray(PageArena, model_face, Faces->MaxCount, Faces->E, 0);
+		PagePushArray(PageArena, model_face, Faces->MaxCount, (void **)Faces->E, 0);
 		Faces->MaxCount *= 2;
 	}
 
@@ -566,9 +580,9 @@ GeneratingCube(page_memory_arena *Arena, model_data *Data, f32 HalfDim = 0.5f)
 	MatchFaceToEdge(Edges, ArrayCount(Edges), Faces, ArrayCount(Faces));
 
 	u32 StartMaxCount = 100;
-	PagePushArray(Arena, v3, StartMaxCount, Data->Vertices.E, 0);
-	PagePushArray(Arena, model_edge, StartMaxCount, Data->Edges.E, 0);
-	PagePushArray(Arena, model_face, StartMaxCount, Data->Faces.E, 0);
+	PagePushArray(Arena, v3, StartMaxCount, (void **)&Data->Vertices.E, 0);
+	PagePushArray(Arena, model_edge, StartMaxCount, (void **)&Data->Edges.E, 0);
+	PagePushArray(Arena, model_face, StartMaxCount, (void **)&Data->Faces.E, 0);
 
 	Copy(sizeof(v3) * ArrayCount(Vertex), Data->Vertices.E, Vertex);
 	Copy(sizeof(model_edge) * ArrayCount(Edges), Data->Edges.E, Edges);
@@ -589,7 +603,7 @@ InitModelVertexState(game_editor_state *Editor, u32 VertexCount)
 	vertex_transform_state *TransState = 0;
 	page_memory_arena *Arena = &Editor->PageArena;
 
-	PagePushArray(Arena, vertex_transform_state, VertexCount, TransState, 0);
+	PagePushArray(Arena, vertex_transform_state, VertexCount, (void **)&TransState, 0);
 
 	//m4x4 I4x4 = Identity();
 	m3x3 I3x3 = Identity3x3();
@@ -624,7 +638,7 @@ InitWorkModel(game_editor_state *Editor, work_model *Model, v4 Color, v3 Offset)
 	Data->SourceV.Count = Data->Vertices.Count;
 	Data->SourceV.MaxCount = Data->Vertices.MaxCount;
 
-	PagePushArray(Arena, v3, Data->SourceV.MaxCount, Data->SourceV.E, 0);
+	PagePushArray(Arena, v3, Data->SourceV.MaxCount, (void **)&Data->SourceV.E, 0);
 	Copy(sizeof(v3) * Data->Vertices.Count, Data->SourceV.E, Data->Vertices.E);
 
 	return Model;

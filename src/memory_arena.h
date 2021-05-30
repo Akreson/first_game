@@ -39,9 +39,9 @@ enum PageStatus
 #define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ##__VA_ARGS__)
 #define PushArray(Arena, type, Count, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ##__VA_ARGS__)
 
-#define PagePushSize(Arena, Size, Dest, Source) PagePushSize_(Arena, Size, (void **)&Dest, (void *)Source)
-#define PagePushStruct(Arena, type, Dest, Source) PagePushSize_(Arena, sizeof(type), (void **)&Dest, (void *)Source)
-#define PagePushArray(Arena, type, Count, Dest, Source) PagePushSize_(Arena, sizeof(type)*Count, (void **)&Dest, (void *)Source)
+#define PagePushSize(Arena, Size, Dest, Source) PagePushSize_(Arena, Size,Dest, Source)
+#define PagePushStruct(Arena, type, Dest, Source) PagePushSize_(Arena, sizeof(type), Dest, Source)
+#define PagePushArray(Arena, type, Count, Dest, Source) PagePushSize_(Arena, sizeof(type)*Count, Dest, Source)
 
 // NOTE: Just allocate space
 void *
