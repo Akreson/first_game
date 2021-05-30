@@ -465,7 +465,7 @@ PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v
 {
 	if (Vertices->Count == Vertices->MaxCount)
 	{
-		PagePushArray(PageArena, split_buffer_element, Vertices->MaxCount, Vertices->E, 0);
+		PagePushArray(PageArena, v3, Vertices->MaxCount, Vertices->E, 0);
 		Vertices->MaxCount *= 2;
 	}
 	
@@ -484,7 +484,7 @@ PushModelDataEdge(page_memory_arena *PageArena, model_data_edge *Edges, model_ed
 {
 	if (Edges->Count == Edges->MaxCount)
 	{
-		PagePushArray(PageArena, split_buffer_element, Edges->MaxCount, Edges->E, 0);
+		PagePushArray(PageArena, model_edge, Edges->MaxCount, Edges->E, 0);
 		Edges->MaxCount *= 2;
 	}
 
@@ -503,7 +503,7 @@ PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_fa
 {
 	if (Faces->Count == Faces->MaxCount)
 	{
-		PagePushArray(PageArena, split_buffer_element, Faces->MaxCount, Faces->E, 0);
+		PagePushArray(PageArena, model_face, Faces->MaxCount, Faces->E, 0);
 		Faces->MaxCount *= 2;
 	}
 
