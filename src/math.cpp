@@ -495,6 +495,30 @@ operator*(v4 A, v4 B)
 }
 
 inline v4
+operator+(v4 A, v4 B)
+{
+	v4 Result;
+	Result.x = A.x + B.x;
+	Result.y = A.y + B.y;
+	Result.z = A.z + B.z;
+	Result.w = A.w + B.w;
+
+	return Result;
+}
+
+inline v4
+operator-(v4 A, v4 B)
+{
+	v4 Result;
+	Result.x = A.x - B.x;
+	Result.y = A.y - B.y;
+	Result.z = A.z - B.z;
+	Result.w = A.w - B.w;
+
+	return Result;
+}
+
+inline v4
 operator*(v4 A, f32 B)
 {
 	v4 Result;
@@ -503,6 +527,13 @@ operator*(v4 A, f32 B)
 	Result.z = A.z * B;
 	Result.w = A.w * B;
 
+	return Result;
+}
+
+inline v4
+operator*(f32 B, v4 A)
+{
+	v4 Result = A * B;
 	return Result;
 }
 
@@ -642,6 +673,13 @@ Lerp(v3 A, f32 t, v3 B)
 	return Result;
 }
 
+inline v4
+Lerp(v4 A, f32 t, v4 B)
+{
+	v4 Result = (1.0f - t)*A + B * t;
+	return Result;
+}
+
 inline v3
 LerpRange(v3 A, f32 t, v3 Range)
 {
@@ -656,10 +694,42 @@ NLerp(v3 A, f32 t, v3 B)
 	return Result;
 }
 
+inline v4
+NLerp(v4 A, f32 t, v4 B)
+{
+	v4 Result = Normalize(Lerp(A, t, B));
+	return Result;
+}
+
 inline quat
 IdentityQuat(void)
 {
 	quat Result = {0, 0, 0, 1};
+	return Result;
+}
+
+quat
+Slerp(quat A, f32 t, quat B)
+{
+	quat Result;
+
+	f32 DotAB = Dot(A, B);
+	if (DotAB < 0.9995)
+	{
+		DotAB = Clamp(-1.0f, DotAB, 1.0f);
+		f32 Theta0 = acos(DotAB);
+		f32 Theta = Theta0 * t;
+
+		quat C = B - A * DotAB;
+		C = Normalize(C);
+
+		Result = A * Cos(Theta) + C * Sin(Theta);
+	}
+	else
+	{
+		Result = NLerp(A, t, B);
+	}
+
 	return Result;
 }
 

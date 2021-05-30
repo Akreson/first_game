@@ -1611,7 +1611,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 	PushElementToSplitBuff(PageArena, SplitBuffer, SplitBuffer->Elem[0]);
 
 	model_data *Data = &Model->Data;
-	v3 *SourveVertex = Data->SourceV.E;
+	v3 *SourceVertex = Data->SourceV.E;
 	for (u32 ElemIndex = 0;
 		ElemIndex < (SplitBuffer->Count - 1);
 		++ElemIndex)
@@ -1626,35 +1626,48 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		model_edge *EdgeB = Data->Edges.E + B.EdgeID;
 		u32 AVertexMatch = MaskOfMatchFaceVertex(Face, EdgeA);
 
-		model_face NewFace = {};
-		model_edge NewEdge = {};
 		model_face ModFace = *Face;
 
+		u32 NewFaceID = PushModelDataFace(PageArena, &Data->Faces);
+		u32 NewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
+
+		model_face *NewFace = Data->Faces.E + NewFaceID;
+		model_edge *NewEdge = Data->Edges.E + NewEdgeID;
+
+		u32 AVertexFromID = EdgeA->VertexID[A.FromIndex];
+		u32 AVertexToID = EdgeA->VertexID[!A.FromIndex];
+
+		v3 VertexA0 = SourceVertex[AVertexFromID];
+		v3 VertexA1 = SourceVertex[AVertexToID];
+
+		vertex_transform_state *StateA0 = &Data->VertexTrans[AVertexFromID];
+		vertex_transform_state *StateA1 = &Data->VertexTrans[AVertexToID];
+
+		v3 NewAVertex = Lerp(VertexA0, tSplit, VertexA1);
 		/*PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v3 Elem)
-		PushModelDataEdges(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
-		PushModelDataFaces(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)*/
+		PushModelDataEdge(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
+		PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)*/
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
-
-			NewFace.V1 = ModFace.V1;
-			NewFace.V2 = ModFace.V2;
+			NewFace->V1 = ModFace.V1;
+			NewFace->V2 = ModFace.V2;
 			
 			if (AVertexMatch == MaskMatchVertex_01)
 			{
 				ModFace.V1 = A.VertexID;
 				ModFace.V2 = B.VertexID;
 
-				NewFace.V0 = A.VertexID;
-				NewFace.V3 = B.VertexID;
+				NewFace->V0 = A.VertexID;
+				NewFace->V3 = B.VertexID;
 			}
 			else
 			{
 				ModFace.V1 = B.VertexID;
 				ModFace.V2 = A.VertexID;
 
-				NewFace.V0 = B.VertexID;
-				NewFace.V3 = A.VertexID;
+				NewFace->V0 = B.VertexID;
+				NewFace->V3 = A.VertexID;
 			}
 
 		}
