@@ -1626,11 +1626,16 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		model_edge *EdgeB = Data->Edges.E + B.EdgeID;
 		u32 AVertexMatch = MaskOfMatchFaceVertex(Face, EdgeA);
 
+		model_face NewFace = {};
+		model_edge NewEdge = {};
+		model_face ModFace = *Face;
+
+		/*PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices, v3 Elem)
+		PushModelDataEdges(page_memory_arena *PageArena, model_data_edge *Edges, model_edge Elem)
+		PushModelDataFaces(page_memory_arena *PageArena, model_data_face *Faces, model_face Elem)*/
+
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
-			model_face NewFace = {};
-			model_edge NewEdge = {};
-			model_face ModFace = *Face;
 
 			NewFace.V1 = ModFace.V1;
 			NewFace.V2 = ModFace.V2;
@@ -1651,7 +1656,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				NewFace.V0 = B.VertexID;
 				NewFace.V3 = A.VertexID;
 			}
-
 
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
