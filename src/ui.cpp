@@ -1679,30 +1679,52 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
-			NewFace->V1 = ModFace.V1;
 			NewFace->V2 = ModFace.V2;
+			NewFace->V1 = ModFace.V1;
 			
 			if (AVertexMatch == MaskMatchVertex_01)
 			{
-				ModFace.V1 = A.VertexID;
 				ModFace.V2 = B.VertexID;
+				ModFace.V1 = A.VertexID;
 
-				NewFace->V0 = A.VertexID;
 				NewFace->V3 = B.VertexID;
+				NewFace->V0 = A.VertexID;
 			}
 			else
 			{
-				ModFace.V1 = B.VertexID;
 				ModFace.V2 = A.VertexID;
+				ModFace.V1 = B.VertexID;
 
-				NewFace->V0 = B.VertexID;
 				NewFace->V3 = A.VertexID;
+				NewFace->V0 = B.VertexID;
 			}
 
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
 		{
+			NewFace->V1 = ModFace.V1;
+			NewFace->V0 = ModFace.V0;
 
+			if (AVertexMatch == MaskMatchVertex_03)
+			{
+				ModFace.V1 = B.VertexID;
+				ModFace.V0 = A.VertexID;
+
+				NewFace->V2 = B.VertexID;
+				NewFace->V3 = A.VertexID;
+			}
+			else
+			{
+				ModFace.V1 = A.VertexID;
+				ModFace.V0 = B.VertexID;
+
+				NewFace->V2 = A.VertexID;
+				NewFace->V3 = B.VertexID;
+			}
+		}
+		else
+		{
+			Assert(0);
 		}
 	}
 }
