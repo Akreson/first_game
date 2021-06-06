@@ -121,7 +121,7 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 					if (EdgeMatch.Succes)
 					{
 						model_edge *Edge = Model->Edges.E + CompFace->EdgesID[EdgeMatch.Index];
-						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, Edge);
+						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceEdgeVertex(CompFace, Edge);
 					}
 				}
 			}
@@ -145,7 +145,7 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 					if (EdgeMatch.Succes)
 					{
 						model_edge *Edge = Model->Edges.E + EdgeID;
-						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, Edge);
+						Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceEdgeVertex(CompFace, Edge);
 					}
 				}
 			}
@@ -159,7 +159,7 @@ SetFaceRenderParams(game_editor_state *Editor, model_data *Model, u32 FaceIndex)
 				face_edge_match EdgeMatch = MatchFaceEdge(CompFace, IEdgeIndex);
 				if (EdgeMatch.Succes)
 				{
-					Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceVertex(CompFace, IEdge);
+					Result.ActiveEdge[EdgeMatch.Index] = MaskOfMatchFaceEdgeVertex(CompFace, IEdge);
 				}
 			}
 		} break;

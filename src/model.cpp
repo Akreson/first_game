@@ -97,20 +97,15 @@ MatchFaceVertex(model_face *A, model_face *B)
 	return Result;
 }
 
-// TODO: Set _Mask..._ function for other function?
 inline u32
-MaskOfMatchFaceVertex(model_face *A, model_edge *B)
+MaskOfMatchFaceEdgeVertex(__m128i FaceVertex, model_edge *B)
 {
-	// TODO: See if in optimize build with same _A_ value
-	// compiler will propagate _VertexA_ to multimple sequential call
-	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
-
 	__m128i EdgeB = _mm_load_si128((__m128i *)B);
 	__m128i VertexB0 = ShuffleU32_4x(EdgeB, 0);
 	__m128i VertexB1 = ShuffleU32_4x(EdgeB, 1);
 
-	__m128i CmpMask0 = _mm_cmpeq_epi32(VertexA, VertexB0);
-	__m128i CmpMask1 = _mm_cmpeq_epi32(VertexA, VertexB1);
+	__m128i CmpMask0 = _mm_cmpeq_epi32(FaceVertex, VertexB0);
+	__m128i CmpMask1 = _mm_cmpeq_epi32(FaceVertex, VertexB1);
 
 	__m128i OrMask = _mm_or_si128(CmpMask0, CmpMask1);
 
@@ -118,15 +113,63 @@ MaskOfMatchFaceVertex(model_face *A, model_edge *B)
 	return ResultMask;
 }
 
+inline face_edge_match
+MatchFaceEdgeByMask(model_data *Data, model_face *Face, u32 Mask)
+{
+	__m128i MaskAccum = _mm_setzero_si128();
+	__m128i FaceVertex = _mm_load_si128((__m128i *)Face->VertexID);
+
+	model_edge *Edge0 = Data->Edges.E + Face->Edge0;
+	u32 MaskEdge0 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge0);
+	MaskAccum = _mm_or_si128(MaskAccum, _mm_set1_epi32(MaskEdge0));
+
+	model_edge *Edge1 = Data->Edges.E + Face->Edge1;
+	u32 MaskEdge1 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge1);
+	MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge1), 4));
+
+	model_edge *Edge2 = Data->Edges.E + Face->Edge2;
+	u32 MaskEdge2 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge2);
+	MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge2), 8));
+
+	model_edge *Edge3 = Data->Edges.E + Face->Edge3;
+	u32 MaskEdge3 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge3);
+	MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge3), 12));
+
+	__m128i Mask_4x = ShuffleU32_4x(_mm_set1_epi32(Mask), 0);
+	__m128i CmpResult = _mm_cmpeq_epi32(MaskAccum, Mask_4x);
+
+	u32 MatchMask = _mm_movemask_ps(_mm_castsi128_ps(CmpResult));
+	bit_scan_result MaskResult = FindLeastSignificantSetBit(MatchMask);
+
+	face_edge_match Result;
+	Result.Succes = MaskResult.Succes;
+	Result.Index = MaskResult.Index;
+
+	return Result;
+
+	//MaskResult = _mm_slli_si128();
+}
+
+// TODO: Set _Mask..._ function for other function?
+inline u32
+MaskOfMatchFaceEdgeVertex(model_face *A, model_edge *B)
+{
+	// TODO: See if in optimize build with same _A_ value
+	// compiler will propagate _VertexA_ to multimple sequential call
+	__m128i VertexA = _mm_load_si128((__m128i *)A->VertexID);
+
+	u32 ResultMask = MaskOfMatchFaceEdgeVertex(VertexA, B);
+	return ResultMask;
+}
+
 inline face_vertex_match
 MatchFaceVertex(model_face *A, model_edge *B)
 {
-	u32 Mask32 = MaskOfMatchFaceVertex(A, B);
+	u32 Mask32 = MaskOfMatchFaceEdgeVertex(A, B);
 	face_vertex_match Result = GetFaceVertexMatchResult(Mask32);
 
 	return Result;
 }
-
 
 //TODO: define behavior for case when all vertices match?
 inline edge_vertex_match
@@ -367,8 +410,8 @@ GetEdgeFacesRelatedNormals(work_model *Model, model_edge *Edge)
 	face_plane Plane0 = GetFacePlane(Model, Edge->Face0);
 	face_plane Plane1 = GetFacePlane(Model, Edge->Face1);
 
-	u32 Mask0 = MaskOfMatchFaceVertex(Face0, Edge);
-	u32 Mask1 = MaskOfMatchFaceVertex(Face1, Edge);
+	u32 Mask0 = MaskOfMatchFaceEdgeVertex(Face0, Edge);
+	u32 Mask1 = MaskOfMatchFaceEdgeVertex(Face1, Edge);
 
 	if ((Mask0 == MaskMatchVertex_01) || (Mask0 == MaskMatchVertex_12))
 	{

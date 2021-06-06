@@ -1587,7 +1587,6 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 	}
 }
 
-
 inline u32
 GetCommonSplitFaceID(split_buffer_element A, split_buffer_element B)
 {
@@ -1624,9 +1623,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 		model_edge *EdgeA = Data->Edges.E + A.EdgeID;
 		model_edge *EdgeB = Data->Edges.E + B.EdgeID;
-		u32 AVertexMatch = MaskOfMatchFaceVertex(Face, EdgeA);
-
-		model_face ModFace = *Face;
+		u32 AVertexMatch = MaskOfMatchFaceEdgeVertex(Face, EdgeA);
 
 		// ---- A START
 		u32 AVertexFromID = EdgeA->VertexID[A.FromIndex];
@@ -1669,54 +1666,63 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		model_face *NewFace = Data->Faces.E + NewFaceID;
 		model_edge *NewEdge = Data->Edges.E + NewEdgeID;
 
+		*NewFace = *Face;
 		NewEdge->Face0 = FaceID;
 		NewEdge->Face1 = NewFaceID;
 		NewEdge->V0 = NewAVertexID;
 		NewEdge->V1 = NewBVertexID;
 
-		// TODO: new face, vertex id for split A and B edge
+		// TODO: new face, vertex id for split A and B edge,
+		// if edge dont have new A or B vertexId then split
 		// TODO: new edge id for split _mod_ and _new_ face
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
-			NewFace->V2 = ModFace.V2;
-			NewFace->V1 = ModFace.V1;
+			face_edge_match OldReplace = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_12);
+			face_edge_match NewReplace = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_03);
+			Assert(OldReplace.Succes);
+			Assert(NewReplace.Succes);
+
+			Face->EdgesID[OldReplace.Index] = NewEdgeID;
+			NewFace->EdgesID[NewReplace.Index] = NewEdgeID;
+
+			NewFace->V2 = Face->V2;
+			NewFace->V1 = Face->V1;
 			
 			if (AVertexMatch == MaskMatchVertex_01)
 			{
-				ModFace.V2 = B.VertexID;
-				ModFace.V1 = A.VertexID;
+				Face->V2 = B.VertexID;
+				Face->V1 = A.VertexID;
 
 				NewFace->V3 = B.VertexID;
 				NewFace->V0 = A.VertexID;
 			}
 			else
 			{
-				ModFace.V2 = A.VertexID;
-				ModFace.V1 = B.VertexID;
+				Face->V2 = A.VertexID;
+				Face->V1 = B.VertexID;
 
 				NewFace->V3 = A.VertexID;
 				NewFace->V0 = B.VertexID;
 			}
-
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
 		{
-			NewFace->V1 = ModFace.V1;
-			NewFace->V0 = ModFace.V0;
+			NewFace->V1 = Face->V1;
+			NewFace->V0 = Face->V0;
 
 			if (AVertexMatch == MaskMatchVertex_03)
 			{
-				ModFace.V1 = B.VertexID;
-				ModFace.V0 = A.VertexID;
+				Face->V1 = B.VertexID;
+				Face->V0 = A.VertexID;
 
 				NewFace->V2 = B.VertexID;
 				NewFace->V3 = A.VertexID;
 			}
 			else
 			{
-				ModFace.V1 = A.VertexID;
-				ModFace.V0 = B.VertexID;
+				Face->V1 = A.VertexID;
+				Face->V0 = B.VertexID;
 
 				NewFace->V2 = A.VertexID;
 				NewFace->V3 = B.VertexID;
