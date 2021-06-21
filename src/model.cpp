@@ -215,6 +215,12 @@ MatchEdgeVertex(model_edge *A, __m128i B)
 	return Result;
 }
 
+//inline u32
+//GetNextEdgeIDByVertex(model_data *Data, model_face *Face, u32 EdgeID, u32 VertexID)
+//{
+//	model_face *Face = ;
+//}
+
 //inline face_vertex
 //GetFaceVertex(model *Model, model_face *Face)
 //{

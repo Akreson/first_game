@@ -1500,14 +1500,13 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
 
 		__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
+		TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
 
 		model_face *Face = Data->Faces.E + CurrentFaceID;
 		__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
 		__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
 		__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
 		__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
-
-		TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
 
 		__m128i FromVertexID_4x = _mm_set1_epi32(FromVertexID);
 		__m128i TestEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
@@ -1604,7 +1603,7 @@ GetCommonSplitFaceID(split_buffer_element A, split_buffer_element B)
 	return Result;
 }
 
-void
+static void
 ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer, f32 tSplit)
 {
 	PushElementToSplitBuff(PageArena, SplitBuffer, SplitBuffer->Elem[0]);
@@ -1672,9 +1671,8 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		NewEdge->V0 = NewAVertexID;
 		NewEdge->V1 = NewBVertexID;
 
-		// TODO: new face, vertex id for split A and B edge,
-		// if edge dont have new A or B vertexId then split
-		// TODO: new edge id for split _mod_ and _new_ face
+		b32 IsANotSplit = (EdgeA->V0 != A.VertexID) && (EdgeA->V1 != A.VertexID);
+		b32 IsBNotSplit = (EdgeB->V0 != B.VertexID) && (EdgeB->V1 != B.VertexID);
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
@@ -1685,9 +1683,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 			Face->EdgesID[OldReplace.Index] = NewEdgeID;
 			NewFace->EdgesID[NewReplace.Index] = NewEdgeID;
-
-			NewFace->V2 = Face->V2;
-			NewFace->V1 = Face->V1;
 			
 			if (AVertexMatch == MaskMatchVertex_01)
 			{
@@ -1696,6 +1691,46 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				NewFace->V3 = B.VertexID;
 				NewFace->V0 = A.VertexID;
+
+				if (IsANotSplit)
+				{
+					u32 SpitNewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
+					model_edge *SpitNewEdge = Data->Edges.E + SpitNewEdgeID;
+					*SpitNewEdge = *EdgeA;
+
+					u32 CurrFaceIndex = (SpitNewEdge->Face0 == FaceID) ? 0 : 1;
+					SpitNewEdge->FaceID[CurrFaceIndex] = NewFaceID;
+
+					face_edge_match EdgeAMatch = MatchFaceEdge(NewFace, A.EdgeID);
+					Assert(EdgeAMatch.Succes);
+
+					NewFace->EdgesID[EdgeAMatch.Index] = SpitNewEdgeID;
+					SpitNewEdge->V0 = A.VertexID;
+					EdgeA->V1 = A.VertexID;
+				}
+				else
+				{
+					u32 NotCurrFaceIndex = (EdgeA->Face0 != FaceID) ? 0 : 1;
+					u32 SearchInFaceID = EdgeA->FaceID[NotCurrFaceIndex];
+					model_face *SearchInFace = Data->Faces.E + SearchInFaceID;
+
+
+					model_edge *Edge0 = Data->Edges.E + SearchInFace->EdgesID[0];
+					model_edge *Edge1 = Data->Edges.E + SearchInFace->EdgesID[1];
+					model_edge *Edge2 = Data->Edges.E + SearchInFace->EdgesID[2];
+					model_edge *Edge3 = Data->Edges.E + SearchInFace->EdgesID[3];
+
+					// TODO: match vertex and mask start edge
+				}
+
+				if (IsBNotSplit)
+				{
+
+				}
+				else
+				{
+
+				}
 			}
 			else
 			{
@@ -1708,9 +1743,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
 		{
-			NewFace->V1 = Face->V1;
-			NewFace->V0 = Face->V0;
-
 			if (AVertexMatch == MaskMatchVertex_03)
 			{
 				Face->V1 = B.VertexID;
