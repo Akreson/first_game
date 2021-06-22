@@ -1714,11 +1714,30 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 					u32 SearchInFaceID = EdgeA->FaceID[NotCurrFaceIndex];
 					model_face *SearchInFace = Data->Faces.E + SearchInFaceID;
 
+					__m128i CommonVertex_4x = _mm_set1_epi32(A.VertexID);
+					
+					face_edge_match EdgeMatch = MatchFaceEdge(SearchInFace, A.EdgeID);
+					Assert(EdgeMatch.Succes);
 
-					model_edge *Edge0 = Data->Edges.E + SearchInFace->EdgesID[0];
-					model_edge *Edge1 = Data->Edges.E + SearchInFace->EdgesID[1];
-					model_edge *Edge2 = Data->Edges.E + SearchInFace->EdgesID[2];
-					model_edge *Edge3 = Data->Edges.E + SearchInFace->EdgesID[3];
+					__m128i Edge0 = _mm_load_si128((__m128i *)(Data->Edges.E + SearchInFace->EdgesID[0]));
+					__m128i Edge1 = _mm_load_si128((__m128i *)(Data->Edges.E + SearchInFace->EdgesID[1]));
+					__m128i Edge2 = _mm_load_si128((__m128i *)(Data->Edges.E + SearchInFace->EdgesID[2]));
+					__m128i Edge3 = _mm_load_si128((__m128i *)(Data->Edges.E + SearchInFace->EdgesID[3]));
+
+					__m128i Edge01 = _mm_castps_si128(ShuffleF32(_mm_castsi128_ps(Edge0), _mm_castsi128_ps(Edge1), 0, 1, 0, 1));
+					__m128i Edge23 = _mm_castps_si128(ShuffleF32(_mm_castsi128_ps(Edge2), _mm_castsi128_ps(Edge3), 0, 1, 0, 1));
+
+					__m128i Mask01_4x = _mm_and_si128(Edge01, CommonVertex_4x);
+					__m128i Mask23_4x = _mm_and_si128(Edge23, CommonVertex_4x);
+					
+					__m128d Zero_2x = _mm_setzero_pd();
+					u32 Mask01 = _mm_movemask_pd(_mm_cmpneq_pd(_mm_castsi128_pd(Mask01_4x), Zero_2x));
+					u32 Mask23 = _mm_movemask_pd(_mm_cmpneq_pd(_mm_castsi128_pd(Mask23_4x), Zero_2x));
+					u32 Mask = (Mask23 << 2) | Mask01;
+					Mask = ResetBit(Mask, EdgeMatch.Index);
+
+					bit_scan_result FirstCommon = FindLeastSignificantSetBit(Mask);
+					Assert(FirstCommon.Succes);
 
 					// TODO: match vertex and mask start edge
 				}
