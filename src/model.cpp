@@ -215,11 +215,36 @@ MatchEdgeVertex(model_edge *A, __m128i B)
 	return Result;
 }
 
-//inline u32
-//GetNextEdgeIDByVertex(model_data *Data, model_face *Face, u32 EdgeID, u32 VertexID)
-//{
-//	model_face *Face = ;
-//}
+inline u32
+GetCommonEdgeByVertex(model_data_edge *Edges, model_face *SearchInFace, u32 EdgeID, u32 VertexID)
+{
+	__m128i CommonVertex_4x = _mm_set1_epi32(VertexID);
+
+	face_edge_match EdgeMatch = MatchFaceEdge(SearchInFace, EdgeID);
+	Assert(EdgeMatch.Succes);
+
+	__m128i Edge0 = _mm_load_si128((__m128i *)(Edges->E + SearchInFace->EdgesID[0]));
+	__m128i Edge1 = _mm_load_si128((__m128i *)(Edges->E + SearchInFace->EdgesID[1]));
+	__m128i Edge2 = _mm_load_si128((__m128i *)(Edges->E + SearchInFace->EdgesID[2]));
+	__m128i Edge3 = _mm_load_si128((__m128i *)(Edges->E + SearchInFace->EdgesID[3]));
+
+	__m128i Edge01 = _mm_castps_si128(ShuffleF32(_mm_castsi128_ps(Edge0), _mm_castsi128_ps(Edge1), 0, 1, 0, 1));
+	__m128i Edge23 = _mm_castps_si128(ShuffleF32(_mm_castsi128_ps(Edge2), _mm_castsi128_ps(Edge3), 0, 1, 0, 1));
+
+	__m128i Mask01_4x = _mm_and_si128(Edge01, CommonVertex_4x);
+	__m128i Mask23_4x = _mm_and_si128(Edge23, CommonVertex_4x);
+
+	__m128d Zero_2x = _mm_setzero_pd();
+	u32 Mask01 = _mm_movemask_pd(_mm_cmpneq_pd(_mm_castsi128_pd(Mask01_4x), Zero_2x));
+	u32 Mask23 = _mm_movemask_pd(_mm_cmpneq_pd(_mm_castsi128_pd(Mask23_4x), Zero_2x));
+	u32 Mask = (Mask23 << 2) | Mask01;
+	Mask = ResetBit(Mask, EdgeMatch.Index);
+
+	bit_scan_result InFaceMatch = FindLeastSignificantSetBit(Mask);
+	Assert(InFaceMatch.Succes);
+
+	return InFaceMatch.Index;
+}
 
 //inline face_vertex
 //GetFaceVertex(model *Model, model_face *Face)
