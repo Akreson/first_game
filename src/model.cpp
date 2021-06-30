@@ -246,18 +246,31 @@ GetCommonEdgeByVertex(model_data_edge *Edges, model_face *SearchInFace, u32 Edge
 	return InFaceMatch.Index;
 }
 
-//inline face_vertex
-//GetFaceVertex(model *Model, model_face *Face)
-//{
-//	face_vertex Result;
-//
-//	Result.V0 = Model->Vertex[Face->V0];
-//	Result.V1 = Model->Vertex[Face->V1];
-//	Result.V2 = Model->Vertex[Face->V2];
-//	Result.V3 = Model->Vertex[Face->V3];
-//
-//	return Result;
-//}
+inline void
+SplitEdgeByVertex(page_memory_arena *PageArena, model_data *Data, u32 SplitEdgeID,
+	u32 FaceID, u32 NewFaceID, u32 NewVertexID, u32 LeftmostVertexID)
+{
+	model_edge *OldEdge = Data->Edges.E + SplitEdgeID;
+	model_face *NewFace = Data->Faces.E + NewFaceID;
+
+	u32 SplitNewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
+	model_edge *SplitNewEdge = Data->Edges.E + SplitNewEdgeID;
+	*SplitNewEdge = *OldEdge;
+
+	u32 CurrFaceIndex = (SplitNewEdge->Face0 == FaceID) ? 0 : 1;
+	SplitNewEdge->FaceID[CurrFaceIndex] = NewFaceID;
+
+	face_edge_match EdgeMatch = MatchFaceEdge(NewFace, SplitEdgeID);
+	Assert(EdgeMatch.Succes);
+
+	NewFace->EdgesID[EdgeMatch.Index] = SplitNewEdgeID;
+
+	u32 SplitReplaceVerID = (SplitNewEdge->V0 == LeftmostVertexID) ? 0 : 1;
+	SplitNewEdge->VertexID[SplitReplaceVerID] = NewVertexID;
+
+	u32 OldReplaceVerID = (OldEdge->V1 != LeftmostVertexID) ? 1 : 0;
+	OldEdge->VertexID[OldReplaceVerID] = NewVertexID;
+}
 
 inline face_vertex
 GetFaceVertex(work_model *Model, model_face *Face)
@@ -388,7 +401,6 @@ PointToEdgeOnFaceLengthSq(v3 *Vertices, model_edge *Edge, v3 P)
 	f32 ResultLengthSq = LengthSq(PD);
 	return ResultLengthSq;
 }
-
 
 // TODO: Optimize, unroll
 inline point_to_edge_proj

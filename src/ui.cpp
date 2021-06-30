@@ -1694,19 +1694,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				if (IsANotSplit)
 				{
-					u32 SpitNewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
-					model_edge *SpitNewEdge = Data->Edges.E + SpitNewEdgeID;
-					*SpitNewEdge = *EdgeA;
-
-					u32 CurrFaceIndex = (SpitNewEdge->Face0 == FaceID) ? 0 : 1;
-					SpitNewEdge->FaceID[CurrFaceIndex] = NewFaceID;
-
-					face_edge_match EdgeAMatch = MatchFaceEdge(NewFace, A.EdgeID);
-					Assert(EdgeAMatch.Succes);
-
-					NewFace->EdgesID[EdgeAMatch.Index] = SpitNewEdgeID;
-					SpitNewEdge->V0 = A.VertexID;
-					EdgeA->V1 = A.VertexID;
+					SplitEdgeByVertex(PageArena, Data, A.EdgeID, FaceID, NewFaceID, A.VertexID, Face->V0);
 				}
 				else
 				{
