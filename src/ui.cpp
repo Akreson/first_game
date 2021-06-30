@@ -1603,6 +1603,28 @@ GetCommonSplitFaceID(split_buffer_element A, split_buffer_element B)
 	return Result;
 }
 
+inline u32
+GetNextEdgeIDInAdjacentFaceByVertex(model_data *Data, u32 FaceID, u32 StartEdgeID, u32 CommonVertexID)
+{
+	model_edge *StartEdge = Data->Edges.E +  StartEdgeID;
+
+	u32 NotCurrFaceIndex = (StartEdge->Face0 != FaceID) ? 0 : 1;
+	u32 SearchInFaceID = StartEdge->FaceID[NotCurrFaceIndex];
+	model_face *SearchInFace = Data->Faces.E + SearchInFaceID;
+
+	u32 InitInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, SearchInFace, StartEdgeID, CommonVertexID);
+	u32 FirstCommonEdgeID = SearchInFace->EdgesID[InitInFaceIndex];
+
+	model_edge *FirstCommon = Data->Edges.E + FirstCommonEdgeID;
+	u32 NextFaceID = (FirstCommon->Face0 != SearchInFaceID) ? 0 : 1;
+	SearchInFace = Data->Faces.E + NextFaceID;
+
+	u32 NextInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, SearchInFace, FirstCommonEdgeID, CommonVertexID);
+
+	u32 Result = SearchInFace->EdgesID[NextInFaceIndex];
+	return Result;
+}
+
 static void
 ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer, f32 tSplit)
 {
@@ -1698,19 +1720,8 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				}
 				else
 				{
-					u32 NotCurrFaceIndex = (EdgeA->Face0 != FaceID) ? 0 : 1;
-					u32 SearchInFaceID = EdgeA->FaceID[NotCurrFaceIndex];
-					model_face *SearchInFace = Data->Faces.E + SearchInFaceID;
-
-					u32 InitInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, SearchInFace, A.EdgeID, A.VertexID);
-					u32 FirstCommonEdgeID = SearchInFace->EdgesID[InitInFaceIndex];
-
-					model_edge *FirstCommon = Data->Edges.E + FirstCommonEdgeID;
-					u32 NextFaceID = (FirstCommon->Face0 != SearchInFaceID) ? 0 : 1;
-					SearchInFace = Data->Faces.E + NextFaceID;
-
-					u32 NextInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, SearchInFace, FirstCommonEdgeID, A.VertexID);
-					model_edge *NextEdge = Data->Edges.E + SearchInFace->EdgesID[NextInFaceIndex];
+					u32 NextEdgeID = GetNextEdgeIDInAdjacentFaceByVertex(Data, FaceID, A.EdgeID, A.VertexID);
+					model_edge *NextEdge = Data->Edges.E + NextEdgeID;
 					u32 CurrFaceIndex = (NextEdge->Face0 == FaceID) ? 0 : 1;
 					NextEdge->FaceID[CurrFaceIndex] = NewFaceID;
 				}
