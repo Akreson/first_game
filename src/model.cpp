@@ -268,8 +268,26 @@ SplitEdgeByVertex(page_memory_arena *PageArena, model_data *Data, u32 SplitEdgeI
 	u32 SplitReplaceVerID = (SplitNewEdge->V0 == LeftmostVertexID) ? 0 : 1;
 	SplitNewEdge->VertexID[SplitReplaceVerID] = NewVertexID;
 
-	u32 OldReplaceVerID = (OldEdge->V1 != LeftmostVertexID) ? 1 : 0;
+	u32 OldReplaceVerID = (OldEdge->V0 != LeftmostVertexID) ? 0 : 1;
 	OldEdge->VertexID[OldReplaceVerID] = NewVertexID;
+}
+
+inline u32
+GetNextEdgeIDInAdjacentFaceByVertex(model_data *Data, u32 StartOnFaceID, u32 StartEdgeID, u32 CommonVertexID)
+{
+	model_face *StartOnFace = Data->Faces.E + StartOnFaceID;
+
+	u32 InitInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, StartOnFace, StartEdgeID, CommonVertexID);
+	u32 FirstCommonEdgeID = StartOnFace->EdgesID[InitInFaceIndex];
+
+	model_edge *FirstCommon = Data->Edges.E + FirstCommonEdgeID;
+	u32 NextFaceID = (FirstCommon->Face0 != StartOnFaceID) ? 0 : 1;
+	model_face *AdjecentFace = Data->Faces.E + NextFaceID;
+
+	u32 NextInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, AdjecentFace, FirstCommonEdgeID, CommonVertexID);
+
+	u32 Result = StartOnFace->EdgesID[NextInFaceIndex];
+	return Result;
 }
 
 inline face_vertex

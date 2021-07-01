@@ -1603,26 +1603,18 @@ GetCommonSplitFaceID(split_buffer_element A, split_buffer_element B)
 	return Result;
 }
 
-inline u32
-GetNextEdgeIDInAdjacentFaceByVertex(model_data *Data, u32 FaceID, u32 StartEdgeID, u32 CommonVertexID)
+static inline void
+UpdateNewEdgeNewFaceID(model_data *Data, u32 FaceID, u32 NewFaceID, u32 OldEdgeID, u32 CommonVertexID)
 {
-	model_edge *StartEdge = Data->Edges.E +  StartEdgeID;
-
+	model_edge *StartEdge = Data->Edges.E + OldEdgeID;
 	u32 NotCurrFaceIndex = (StartEdge->Face0 != FaceID) ? 0 : 1;
-	u32 SearchInFaceID = StartEdge->FaceID[NotCurrFaceIndex];
-	model_face *SearchInFace = Data->Faces.E + SearchInFaceID;
+	u32 StartOnFaceID = StartEdge->FaceID[NotCurrFaceIndex];
 
-	u32 InitInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, SearchInFace, StartEdgeID, CommonVertexID);
-	u32 FirstCommonEdgeID = SearchInFace->EdgesID[InitInFaceIndex];
+	u32 NextEdgeID = GetNextEdgeIDInAdjacentFaceByVertex(Data, StartOnFaceID, OldEdgeID, CommonVertexID);
 
-	model_edge *FirstCommon = Data->Edges.E + FirstCommonEdgeID;
-	u32 NextFaceID = (FirstCommon->Face0 != SearchInFaceID) ? 0 : 1;
-	SearchInFace = Data->Faces.E + NextFaceID;
-
-	u32 NextInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, SearchInFace, FirstCommonEdgeID, CommonVertexID);
-
-	u32 Result = SearchInFace->EdgesID[NextInFaceIndex];
-	return Result;
+	model_edge *NextEdge = Data->Edges.E + NextEdgeID;
+	u32 CurrFaceIndex = (NextEdge->Face0 == FaceID) ? 0 : 1;
+	NextEdge->FaceID[CurrFaceIndex] = NewFaceID;
 }
 
 static void
@@ -1720,19 +1712,16 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				}
 				else
 				{
-					u32 NextEdgeID = GetNextEdgeIDInAdjacentFaceByVertex(Data, FaceID, A.EdgeID, A.VertexID);
-					model_edge *NextEdge = Data->Edges.E + NextEdgeID;
-					u32 CurrFaceIndex = (NextEdge->Face0 == FaceID) ? 0 : 1;
-					NextEdge->FaceID[CurrFaceIndex] = NewFaceID;
+					UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, A.EdgeID, A.VertexID);
 				}
 
 				if (IsBNotSplit)
 				{
-
+					SplitEdgeByVertex(PageArena, Data, B.EdgeID, FaceID, NewFaceID, B.VertexID, Face->V3);
 				}
 				else
 				{
-
+					UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, B.EdgeID, B.VertexID);
 				}
 			}
 			else
