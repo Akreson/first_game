@@ -1624,6 +1624,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 	model_data *Data = &Model->Data;
 	v3 *SourceVertex = Data->SourceV.E;
+	u32 LastPushedVertexID;
 	for (u32 ElemIndex = 0;
 		ElemIndex < (SplitBuffer->Count - 1);
 		++ElemIndex)
@@ -1649,8 +1650,10 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		vertex_transform_state *StateA1 = &Data->VertexTrans[AVertexToID];
 
 		v3 NewAVertex = Lerp(VertexA0, tSplit, VertexA1);
+
+		// TODO: Check if this vertex already created
 		u32 NewAVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewAVertex);
-		Assert(NewAVertexID != A.VertexID);
+		Assert(NewAVertexID == A.VertexID);
 
 		vertex_transform_state *NewStateA = Data->VertexTrans + NewAVertexID;
 		*NewStateA = InterpolateTransformState(StateA0, tSplit, StateA1);
@@ -1666,8 +1669,9 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		vertex_transform_state *StateB1 = &Data->VertexTrans[BVertexToID];
 
 		v3 NewBVertex = Lerp(VertexB0, tSplit, VertexB1);
+		// TODO: Check if this vertex already created
 		u32 NewBVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewBVertex);
-		Assert(NewBVertexID != B.VertexID);
+		Assert(NewBVertexID == B.VertexID);
 
 		vertex_transform_state *NewStateB = Data->VertexTrans + NewBVertexID;
 		*NewStateB = InterpolateTransformState(StateB0, tSplit, StateB1);
@@ -1685,11 +1689,12 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		NewEdge->V0 = NewAVertexID;
 		NewEdge->V1 = NewBVertexID;
 
-		b32 IsANotSplit = (EdgeA->V0 != A.VertexID) && (EdgeA->V1 != A.VertexID);
-		b32 IsBNotSplit = (EdgeB->V0 != B.VertexID) && (EdgeB->V1 != B.VertexID);
+		u32 ASplitDirID;
+		u32 BSplitDirID;
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
+			// NOTE: Face == NewFace so far
 			face_edge_match OldReplace = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_12);
 			face_edge_match NewReplace = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_03);
 			Assert(OldReplace.Succes);
@@ -1706,23 +1711,8 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				NewFace->V3 = B.VertexID;
 				NewFace->V0 = A.VertexID;
 
-				if (IsANotSplit)
-				{
-					SplitEdgeByVertex(PageArena, Data, A.EdgeID, FaceID, NewFaceID, A.VertexID, Face->V0);
-				}
-				else
-				{
-					UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, A.EdgeID, A.VertexID);
-				}
-
-				if (IsBNotSplit)
-				{
-					SplitEdgeByVertex(PageArena, Data, B.EdgeID, FaceID, NewFaceID, B.VertexID, Face->V3);
-				}
-				else
-				{
-					UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, B.EdgeID, B.VertexID);
-				}
+				ASplitDirID = Face->V0;
+				BSplitDirID = Face->V3;
 			}
 			else
 			{
@@ -1731,10 +1721,22 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				NewFace->V3 = A.VertexID;
 				NewFace->V0 = B.VertexID;
+
+				ASplitDirID = Face->V3;
+				BSplitDirID = Face->V0;
 			}
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
 		{
+			// NOTE: Face == NewFace so far
+			face_edge_match OldReplace = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_01);
+			face_edge_match NewReplace = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_23);
+			Assert(OldReplace.Succes);
+			Assert(NewReplace.Succes);
+
+			Face->EdgesID[OldReplace.Index] = NewEdgeID;
+			NewFace->EdgesID[NewReplace.Index] = NewEdgeID;
+
 			if (AVertexMatch == MaskMatchVertex_03)
 			{
 				Face->V1 = B.VertexID;
@@ -1742,6 +1744,9 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				NewFace->V2 = B.VertexID;
 				NewFace->V3 = A.VertexID;
+
+				ASplitDirID = Face->V3;
+				BSplitDirID = Face->V2;
 			}
 			else
 			{
@@ -1750,11 +1755,35 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				NewFace->V2 = A.VertexID;
 				NewFace->V3 = B.VertexID;
+
+				ASplitDirID = Face->V2;
+				BSplitDirID = Face->V3;
 			}
 		}
 		else
 		{
 			Assert(0);
+		}
+
+		b32 IsANotSplit = (EdgeA->V0 != A.VertexID) && (EdgeA->V1 != A.VertexID);
+		b32 IsBNotSplit = (EdgeB->V0 != B.VertexID) && (EdgeB->V1 != B.VertexID);
+
+		if (IsANotSplit)
+		{
+			SplitEdgeByVertex(PageArena, Data, A.EdgeID, FaceID, NewFaceID, A.VertexID, ASplitDirID);
+		}
+		else
+		{
+			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, A.EdgeID, A.VertexID);
+		}
+
+		if (IsBNotSplit)
+		{
+			SplitEdgeByVertex(PageArena, Data, B.EdgeID, FaceID, NewFaceID, B.VertexID, BSplitDirID);
+		}
+		else
+		{
+			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, B.EdgeID, B.VertexID);
 		}
 	}
 }

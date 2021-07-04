@@ -121,19 +121,21 @@ MatchFaceEdgeByMask(model_data *Data, model_face *Face, u32 Mask)
 
 	model_edge *Edge0 = Data->Edges.E + Face->Edge0;
 	u32 MaskEdge0 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge0);
-	MaskAccum = _mm_or_si128(MaskAccum, _mm_set1_epi32(MaskEdge0));
+	//MaskAccum = _mm_or_si128(MaskAccum, _mm_set1_epi32(MaskEdge0));
 
 	model_edge *Edge1 = Data->Edges.E + Face->Edge1;
 	u32 MaskEdge1 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge1);
-	MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge1), 4));
+	//MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge1), 4));
 
 	model_edge *Edge2 = Data->Edges.E + Face->Edge2;
 	u32 MaskEdge2 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge2);
-	MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge2), 8));
+	//MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge2), 8));
 
 	model_edge *Edge3 = Data->Edges.E + Face->Edge3;
 	u32 MaskEdge3 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge3);
-	MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge3), 12));
+	//MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge3), 12));
+
+	MaskAccum = _mm_set_epi32(MaskEdge3, MaskEdge2, MaskEdge1, MaskEdge0);
 
 	__m128i Mask_4x = ShuffleU32_4x(_mm_set1_epi32(Mask), 0);
 	__m128i CmpResult = _mm_cmpeq_epi32(MaskAccum, Mask_4x);
@@ -244,32 +246,6 @@ GetCommonEdgeByVertex(model_data_edge *Edges, model_face *SearchInFace, u32 Edge
 	Assert(InFaceMatch.Succes);
 
 	return InFaceMatch.Index;
-}
-
-inline void
-SplitEdgeByVertex(page_memory_arena *PageArena, model_data *Data, u32 SplitEdgeID,
-	u32 FaceID, u32 NewFaceID, u32 NewVertexID, u32 LeftmostVertexID)
-{
-	model_edge *OldEdge = Data->Edges.E + SplitEdgeID;
-	model_face *NewFace = Data->Faces.E + NewFaceID;
-
-	u32 SplitNewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
-	model_edge *SplitNewEdge = Data->Edges.E + SplitNewEdgeID;
-	*SplitNewEdge = *OldEdge;
-
-	u32 CurrFaceIndex = (SplitNewEdge->Face0 == FaceID) ? 0 : 1;
-	SplitNewEdge->FaceID[CurrFaceIndex] = NewFaceID;
-
-	face_edge_match EdgeMatch = MatchFaceEdge(NewFace, SplitEdgeID);
-	Assert(EdgeMatch.Succes);
-
-	NewFace->EdgesID[EdgeMatch.Index] = SplitNewEdgeID;
-
-	u32 SplitReplaceVerID = (SplitNewEdge->V0 == LeftmostVertexID) ? 0 : 1;
-	SplitNewEdge->VertexID[SplitReplaceVerID] = NewVertexID;
-
-	u32 OldReplaceVerID = (OldEdge->V0 != LeftmostVertexID) ? 0 : 1;
-	OldEdge->VertexID[OldReplaceVerID] = NewVertexID;
 }
 
 inline u32
@@ -602,7 +578,7 @@ PushModelDataEdge(page_memory_arena *PageArena, model_data_edge *Edges, model_ed
 {
 	if (Edges->Count == Edges->MaxCount)
 	{
-		PagePushArray(PageArena, model_edge, Edges->MaxCount, (void **)Edges->E, 0);
+		PagePushArray(PageArena, model_edge, Edges->MaxCount, (void **)&Edges->E, 0);
 		Edges->MaxCount *= 2;
 	}
 
@@ -621,7 +597,7 @@ PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_fa
 {
 	if (Faces->Count == Faces->MaxCount)
 	{
-		PagePushArray(PageArena, model_face, Faces->MaxCount, (void **)Faces->E, 0);
+		PagePushArray(PageArena, model_face, Faces->MaxCount, (void **)&Faces->E, 0);
 		Faces->MaxCount *= 2;
 	}
 
@@ -633,6 +609,32 @@ PushModelDataFace(page_memory_arena *PageArena, model_data_face *Faces, model_fa
 	}
 
 	return ID;
+}
+
+inline void
+SplitEdgeByVertex(page_memory_arena *PageArena, model_data *Data, u32 SplitEdgeID,
+	u32 FaceID, u32 NewFaceID, u32 NewVertexID, u32 LeftmostVertexID)
+{
+	model_edge *OldEdge = Data->Edges.E + SplitEdgeID;
+	model_face *NewFace = Data->Faces.E + NewFaceID;
+
+	u32 SplitNewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
+	model_edge *SplitNewEdge = Data->Edges.E + SplitNewEdgeID;
+	*SplitNewEdge = *OldEdge;
+
+	u32 CurrFaceIndex = (SplitNewEdge->Face0 == FaceID) ? 0 : 1;
+	SplitNewEdge->FaceID[CurrFaceIndex] = NewFaceID;
+
+	face_edge_match EdgeMatch = MatchFaceEdge(NewFace, SplitEdgeID);
+	Assert(EdgeMatch.Succes);
+
+	NewFace->EdgesID[EdgeMatch.Index] = SplitNewEdgeID;
+
+	u32 SplitReplaceVerID = (SplitNewEdge->V0 == LeftmostVertexID) ? 0 : 1;
+	SplitNewEdge->VertexID[SplitReplaceVerID] = NewVertexID;
+
+	u32 OldReplaceVerID = (OldEdge->V0 != LeftmostVertexID) ? 0 : 1;
+	OldEdge->VertexID[OldReplaceVerID] = NewVertexID;
 }
 
 void
