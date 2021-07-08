@@ -233,8 +233,8 @@ GetCommonEdgeByVertex(model_data_edge *Edges, model_face *SearchInFace, u32 Edge
 	__m128i Edge01 = _mm_castps_si128(ShuffleF32(_mm_castsi128_ps(Edge0), _mm_castsi128_ps(Edge1), 0, 1, 0, 1));
 	__m128i Edge23 = _mm_castps_si128(ShuffleF32(_mm_castsi128_ps(Edge2), _mm_castsi128_ps(Edge3), 0, 1, 0, 1));
 
-	__m128i Mask01_4x = _mm_and_si128(Edge01, CommonVertex_4x);
-	__m128i Mask23_4x = _mm_and_si128(Edge23, CommonVertex_4x);
+	__m128i Mask01_4x = _mm_cmpeq_epi32(Edge01, CommonVertex_4x);
+	__m128i Mask23_4x = _mm_cmpeq_epi32(Edge23, CommonVertex_4x);
 
 	__m128d Zero_2x = _mm_setzero_pd();
 	u32 Mask01 = _mm_movemask_pd(_mm_cmpneq_pd(_mm_castsi128_pd(Mask01_4x), Zero_2x));
@@ -257,7 +257,8 @@ GetNextEdgeIDInAdjacentFaceByVertex(model_data *Data, u32 StartOnFaceID, u32 Sta
 	u32 FirstCommonEdgeID = StartOnFace->EdgesID[InitInFaceIndex];
 
 	model_edge *FirstCommon = Data->Edges.E + FirstCommonEdgeID;
-	u32 NextFaceID = (FirstCommon->Face0 != StartOnFaceID) ? 0 : 1;
+	u32 NextFaceIndex = (FirstCommon->Face0 != StartOnFaceID) ? 0 : 1;
+	u32 NextFaceID = FirstCommon->FaceID[NextFaceIndex];
 	model_face *AdjecentFace = Data->Faces.E + NextFaceID;
 
 	u32 NextInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, AdjecentFace, FirstCommonEdgeID, CommonVertexID);

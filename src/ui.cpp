@@ -1554,6 +1554,7 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
 		u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
 
+		// TODO: Fix bug
 		Assert(CountOfSetBits(OppositeMaskU32) == 1);
 
 		bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
@@ -1790,7 +1791,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		}
 		else
 		{
-			// TODO: Fix bug
 			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, A.EdgeID, A.VertexID);
 		}
 
