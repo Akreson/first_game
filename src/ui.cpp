@@ -1523,8 +1523,6 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
 		Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
 
-		u32 OppositeEdgeIndex = UINT_MAX;
-
 		u32 MaskArr[4];
 		u32 SetBitArr[4];
 
@@ -1554,7 +1552,6 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
 		u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
 
-		// TODO: Fix bug
 		Assert(CountOfSetBits(OppositeMaskU32) == 1);
 
 		bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
@@ -1709,6 +1706,9 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		u32 ASplitDirID;
 		u32 BSplitDirID;
 
+		u32 AUpdateEdgeID;
+		u32 BUpdateEdgeID;
+
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
 			// NOTE: Face == NewFace so far
@@ -1730,6 +1730,16 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				ASplitDirID = Face->V0;
 				BSplitDirID = Face->V3;
+
+				// TODO: Delete
+				face_edge_match AEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_01);
+				Assert(AEdgeIDOnUpdate.Succes);
+
+				face_edge_match BEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_23);
+				Assert(BEdgeIDOnUpdate.Succes);
+
+				AUpdateEdgeID = Face->EdgesID[AEdgeIDOnUpdate.Index];
+				BUpdateEdgeID = Face->EdgesID[BEdgeIDOnUpdate.Index];
 			}
 			else
 			{
@@ -1741,6 +1751,16 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				ASplitDirID = Face->V3;
 				BSplitDirID = Face->V0;
+
+				// TODO: Delete
+				face_edge_match AEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_23);
+				Assert(AEdgeIDOnUpdate.Succes);
+
+				face_edge_match BEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_01);
+				Assert(BEdgeIDOnUpdate.Succes);
+
+				AUpdateEdgeID = Face->EdgesID[AEdgeIDOnUpdate.Index];
+				BUpdateEdgeID = Face->EdgesID[BEdgeIDOnUpdate.Index];
 			}
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
@@ -1764,6 +1784,16 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				ASplitDirID = Face->V3;
 				BSplitDirID = Face->V2;
+
+				// TODO: Delete
+				face_edge_match AEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_03);
+				Assert(AEdgeIDOnUpdate.Succes);
+
+				face_edge_match BEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_12);
+				Assert(BEdgeIDOnUpdate.Succes);
+
+				AUpdateEdgeID = Face->EdgesID[AEdgeIDOnUpdate.Index];
+				BUpdateEdgeID = Face->EdgesID[BEdgeIDOnUpdate.Index];
 			}
 			else
 			{
@@ -1775,6 +1805,16 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 				ASplitDirID = Face->V2;
 				BSplitDirID = Face->V3;
+
+				// TODO: Delete
+				face_edge_match AEdgeOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_12);
+				Assert(AEdgeOnUpdate.Succes);
+
+				face_edge_match BEdgeOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_03);
+				Assert(BEdgeOnUpdate.Succes);
+
+				AUpdateEdgeID = Face->EdgesID[AEdgeOnUpdate.Index];
+				BUpdateEdgeID = Face->EdgesID[BEdgeOnUpdate.Index];
 			}
 		}
 		else
@@ -1785,13 +1825,15 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		b32 IsANotSplit = (EdgeA->V0 != A.VertexID) && (EdgeA->V1 != A.VertexID);
 		b32 IsBNotSplit = (EdgeB->V0 != B.VertexID) && (EdgeB->V1 != B.VertexID);
 
+		// TODO: Fix Bug - incorrect passing edge id on update edge info
+		// TODO: Decide when update face edge info
 		if (IsANotSplit)
 		{
 			SplitEdgeByVertex(PageArena, Data, A.EdgeID, FaceID, NewFaceID, A.VertexID, ASplitDirID);
 		}
 		else
 		{
-			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, A.EdgeID, A.VertexID);
+			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, AUpdateEdgeID, A.VertexID);
 		}
 
 		if (IsBNotSplit)
@@ -1800,7 +1842,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		}
 		else
 		{
-			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, B.EdgeID, B.VertexID);
+			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, BUpdateEdgeID, B.VertexID);
 		}
 	}
 }

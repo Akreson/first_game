@@ -120,20 +120,14 @@ MatchFaceEdgeByMask(model_data *Data, model_face *Face, u32 Mask)
 	__m128i FaceVertex = _mm_load_si128((__m128i *)Face->VertexID);
 
 	model_edge *Edge0 = Data->Edges.E + Face->Edge0;
-	u32 MaskEdge0 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge0);
-	//MaskAccum = _mm_or_si128(MaskAccum, _mm_set1_epi32(MaskEdge0));
-
 	model_edge *Edge1 = Data->Edges.E + Face->Edge1;
-	u32 MaskEdge1 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge1);
-	//MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge1), 4));
-
 	model_edge *Edge2 = Data->Edges.E + Face->Edge2;
-	u32 MaskEdge2 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge2);
-	//MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge2), 8));
-
 	model_edge *Edge3 = Data->Edges.E + Face->Edge3;
+
+	u32 MaskEdge0 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge0);
+	u32 MaskEdge1 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge1);
+	u32 MaskEdge2 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge2);
 	u32 MaskEdge3 = MaskOfMatchFaceEdgeVertex(FaceVertex, Edge3);
-	//MaskAccum = _mm_or_si128(MaskAccum, _mm_slli_si128(_mm_set1_epi32(MaskEdge3), 12));
 
 	MaskAccum = _mm_set_epi32(MaskEdge3, MaskEdge2, MaskEdge1, MaskEdge0);
 
@@ -148,8 +142,6 @@ MatchFaceEdgeByMask(model_data *Data, model_face *Face, u32 Mask)
 	Result.Index = MaskResult.Index;
 
 	return Result;
-
-	//MaskResult = _mm_slli_si128();
 }
 
 // TODO: Set _Mask..._ function for other function?
@@ -263,7 +255,7 @@ GetNextEdgeIDInAdjacentFaceByVertex(model_data *Data, u32 StartOnFaceID, u32 Sta
 
 	u32 NextInFaceIndex = GetCommonEdgeByVertex(&Data->Edges, AdjecentFace, FirstCommonEdgeID, CommonVertexID);
 
-	u32 Result = StartOnFace->EdgesID[NextInFaceIndex];
+	u32 Result = AdjecentFace->EdgesID[NextInFaceIndex];
 	return Result;
 }
 
