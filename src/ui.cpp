@@ -1499,78 +1499,14 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 
 		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
 
-		__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
-		TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
-
 		model_face *Face = Data->Faces.E + CurrentFaceID;
-		__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
-		__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
-		__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
-		__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
 
-		__m128i FromVertexID_4x = _mm_set1_epi32(FromVertexID);
-		__m128i TestEdgeVertexIDIndex = _mm_cmpeq_epi32(FromVertexID_4x, TestEdge);
-
-		u32 TestVertexID = iToMaskU32(TestEdgeVertexIDIndex);
-		u32 TestVertexIDMask0 = TestVertexID & 0x3;
-		u32 TestVertexIDMask1 = TestVertexID & 0xC;
-
-		__m128i TestVertexIDMask0_4x = _mm_set1_epi32(TestVertexIDMask0);
-		__m128i TestVertexIDMask1_4x = _mm_set1_epi32(TestVertexIDMask1);
-
-		Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
-		Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
-		Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
-		Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
-
-		u32 MaskArr[4];
-		u32 SetBitArr[4];
-
-		__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
-		__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
-		__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
-		__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
-
-		u32 Mask0 = iToMaskU32(CmpMask0);
-		u32 Mask1 = iToMaskU32(CmpMask1);
-		u32 Mask2 = iToMaskU32(CmpMask2);
-		u32 Mask3 = iToMaskU32(CmpMask3);
-
-		MaskArr[0] = Mask0;
-		MaskArr[1] = Mask1;
-		MaskArr[2] = Mask2;
-		MaskArr[3] = Mask3;
-
-		SetBitArr[0] = CountOfSetBits(Mask0);
-		SetBitArr[1] = CountOfSetBits(Mask1);
-		SetBitArr[2] = CountOfSetBits(Mask2);
-		SetBitArr[3] = CountOfSetBits(Mask3);
-
-		__m128i Mask_4x = _mm_load_si128((__m128i *)MaskArr);
-		__m128i SetBit_4x = _mm_load_si128((__m128i *)SetBitArr);
-
-		__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
-		u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
-
-		Assert(CountOfSetBits(OppositeMaskU32) == 1);
-
-		bit_scan_result OppositeIndex = FindLeastSignificantSetBit(OppositeMaskU32);
-		Assert(OppositeIndex.Succes);
-
-		__m128i OneMatchMask = _mm_cmpeq_epi32(SetBit_4x, One_4x);
-		__m128i OneMatchEdge = _mm_and_si128(Mask_4x, OneMatchMask);
-
-		__m128i OneMatchTest0 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask0_4x);
-		__m128i OneMatchTest1 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask1_4x);
-
-		u32 OneMatchTestMask = iToMaskU32(_mm_or_si128(OneMatchTest0, OneMatchTest1));
-		bit_scan_result OneMatchTestIndex = FindLeastSignificantSetBit(OneMatchTestMask);
-		Assert(OneMatchTestIndex.Succes);
+		opposite_edge_match MatchResult = GetOppositeWithBindEdgeIndexByVert(ModelEdges, Face, CurrentEdgeID, FromVertexID);
 
 		//TODO: Change?
-		u32 OppositeEdgeID = Face->EdgesID[OppositeIndex.Index];
+		u32 OppositeEdgeID = Face->EdgesID[MatchResult.OppositeIndex];
 		model_edge *Opposite = ModelEdges + OppositeEdgeID;
-		model_edge *Common = ModelEdges + Face->EdgesID[OneMatchTestIndex.Index];
+		model_edge *Common = ModelEdges + Face->EdgesID[MatchResult.BindIndex];
 
 		edge_vertex_match CommonVertex = MatchEdgeVertex(Opposite, Common);
 		Assert(CommonVertex.Succes);
@@ -1602,17 +1538,39 @@ GetEdgeCommonFaceID(model_edge A, model_edge B)
 }
 
 static inline void
-UpdateNewEdgeNewFaceID(model_data *Data, u32 FaceID, u32 NewFaceID, u32 OldEdgeID, u32 CommonVertexID)
+UpdateNewEdgeFaceData(model_data *Data, u32 FaceID, u32 NewFaceID,
+	u32 StartEdgeID, u32 CommonVertexID, u32 StartEdgeVertexMatch)
 {
-	model_edge *StartEdge = Data->Edges.E + OldEdgeID;
+	model_face *Face = Data->Faces.E + FaceID;
+	model_face *NewFace = Data->Faces.E + NewFaceID;
+	face_edge_match FaceEdgeOnUpdate = MatchFaceEdgeByMask(Data, Face, StartEdgeVertexMatch);
+
+	model_edge *StartEdge = Data->Edges.E + StartEdgeID;
 	u32 NotCurrFaceIndex = (StartEdge->Face0 != FaceID) ? 0 : 1;
 	u32 StartOnFaceID = StartEdge->FaceID[NotCurrFaceIndex];
 
-	u32 NextEdgeID = GetNextEdgeIDInAdjacentFaceByVertex(Data, StartOnFaceID, OldEdgeID, CommonVertexID);
+	u32 NextEdgeID = GetNextEdgeIDInAdjacentFaceByVertex(Data, StartOnFaceID, StartEdgeID, CommonVertexID);
+	if (FaceEdgeOnUpdate.Succes)
+	{
+		model_edge *NextEdge = Data->Edges.E + NextEdgeID;
+		u32 CurrFaceIndex = (NextEdge->Face0 == FaceID) ? 0 : 1;
+		NextEdge->FaceID[CurrFaceIndex] = NewFaceID;
 
-	model_edge *NextEdge = Data->Edges.E + NextEdgeID;
-	u32 CurrFaceIndex = (NextEdge->Face0 == FaceID) ? 0 : 1;
-	NextEdge->FaceID[CurrFaceIndex] = NewFaceID;
+		face_edge_match Match = MatchFaceEdge(NewFace, StartEdgeID);
+		Assert(Match.Succes);
+
+		NewFace->EdgesID[Match.Index] = NextEdgeID;
+	}
+	else
+	{
+		u32 NewFaceIndex = (StartEdge->Face0 == FaceID) ? 0 : 1;
+		StartEdge->FaceID[NewFaceIndex] = NewFaceID;
+
+		face_edge_match Match = MatchFaceEdge(Face, StartEdgeID);
+		Assert(Match.Succes);
+
+		Face->EdgesID[Match.Index] = NextEdgeID;
+	}
 }
 
 static void
@@ -1635,7 +1593,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 
 		model_edge *EdgeA = Data->Edges.E + A.EdgeID;
 		model_edge *EdgeB = Data->Edges.E + B.EdgeID;
-		u32 AVertexMatch = MaskOfMatchFaceEdgeVertex(Face, &A.EdgeAtInit);
 
 		// ---- A START
 		// TODO: Check if this statment will make sense in future
@@ -1703,11 +1660,13 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		NewEdge->V0 = AVertexID;
 		NewEdge->V1 = BVertexID;
 
+		// TODO: Update face info of edge that opposite to new edge
+
 		u32 ASplitDirID;
 		u32 BSplitDirID;
 
-		u32 AUpdateEdgeID;
-		u32 BUpdateEdgeID;
+		u32 BVertexMatch;
+		u32 AVertexMatch = MaskOfMatchFaceEdgeVertex(Face, &A.EdgeAtInit);
 
 		if ((AVertexMatch == MaskMatchVertex_01) || (AVertexMatch == MaskMatchVertex_23))
 		{
@@ -1731,15 +1690,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				ASplitDirID = Face->V0;
 				BSplitDirID = Face->V3;
 
-				// TODO: Delete
-				face_edge_match AEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_01);
-				Assert(AEdgeIDOnUpdate.Succes);
-
-				face_edge_match BEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_23);
-				Assert(BEdgeIDOnUpdate.Succes);
-
-				AUpdateEdgeID = Face->EdgesID[AEdgeIDOnUpdate.Index];
-				BUpdateEdgeID = Face->EdgesID[BEdgeIDOnUpdate.Index];
+				BVertexMatch = MaskMatchVertex_23;
 			}
 			else
 			{
@@ -1752,15 +1703,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				ASplitDirID = Face->V3;
 				BSplitDirID = Face->V0;
 
-				// TODO: Delete
-				face_edge_match AEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_23);
-				Assert(AEdgeIDOnUpdate.Succes);
-
-				face_edge_match BEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_01);
-				Assert(BEdgeIDOnUpdate.Succes);
-
-				AUpdateEdgeID = Face->EdgesID[AEdgeIDOnUpdate.Index];
-				BUpdateEdgeID = Face->EdgesID[BEdgeIDOnUpdate.Index];
+				BVertexMatch = MaskMatchVertex_01;
 			}
 		}
 		else if ((AVertexMatch == MaskMatchVertex_03) || (AVertexMatch == MaskMatchVertex_12))
@@ -1785,15 +1728,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				ASplitDirID = Face->V3;
 				BSplitDirID = Face->V2;
 
-				// TODO: Delete
-				face_edge_match AEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_03);
-				Assert(AEdgeIDOnUpdate.Succes);
-
-				face_edge_match BEdgeIDOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_12);
-				Assert(BEdgeIDOnUpdate.Succes);
-
-				AUpdateEdgeID = Face->EdgesID[AEdgeIDOnUpdate.Index];
-				BUpdateEdgeID = Face->EdgesID[BEdgeIDOnUpdate.Index];
+				BVertexMatch = MaskMatchVertex_12;
 			}
 			else
 			{
@@ -1806,15 +1741,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 				ASplitDirID = Face->V2;
 				BSplitDirID = Face->V3;
 
-				// TODO: Delete
-				face_edge_match AEdgeOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_12);
-				Assert(AEdgeOnUpdate.Succes);
-
-				face_edge_match BEdgeOnUpdate = MatchFaceEdgeByMask(Data, Face, MaskMatchVertex_03);
-				Assert(BEdgeOnUpdate.Succes);
-
-				AUpdateEdgeID = Face->EdgesID[AEdgeOnUpdate.Index];
-				BUpdateEdgeID = Face->EdgesID[BEdgeOnUpdate.Index];
+				BVertexMatch = MaskMatchVertex_03;
 			}
 		}
 		else
@@ -1833,7 +1760,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		}
 		else
 		{
-			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, AUpdateEdgeID, A.VertexID);
+			UpdateNewEdgeFaceData(Data, FaceID, NewFaceID, A.EdgeID, A.VertexID, AVertexMatch);
 		}
 
 		if (IsBNotSplit)
@@ -1842,7 +1769,7 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		}
 		else
 		{
-			UpdateNewEdgeNewFaceID(Data, FaceID, NewFaceID, BUpdateEdgeID, B.VertexID);
+			UpdateNewEdgeFaceData(Data, FaceID, NewFaceID, B.EdgeID, B.VertexID, BVertexMatch);
 		}
 	}
 }

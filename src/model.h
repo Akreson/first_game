@@ -187,3 +187,9 @@ struct point_to_edge_proj
 	u32 ID;
 	f32 t;
 };
+
+struct opposite_edge_match
+{
+	u16 OppositeIndex;
+	u16 BindIndex;
+};

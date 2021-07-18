@@ -630,6 +630,135 @@ SplitEdgeByVertex(page_memory_arena *PageArena, model_data *Data, u32 SplitEdgeI
 	OldEdge->VertexID[OldReplaceVerID] = NewVertexID;
 }
 
+inline u32
+GetOppositeEdgeIndex(model_edge *ModelEdges, model_face *Face, u32 EdgeID)
+{
+	model_edge *Edge = ModelEdges + EdgeID;
+	__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
+	TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
+
+	__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
+	__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
+	__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
+	__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
+
+	Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
+	Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
+	Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
+	Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
+
+	u32 SetBitArr[4];
+
+	__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
+	__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
+	__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
+	__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
+
+	u32 Mask0 = iToMaskU32(CmpMask0);
+	u32 Mask1 = iToMaskU32(CmpMask1);
+	u32 Mask2 = iToMaskU32(CmpMask2);
+	u32 Mask3 = iToMaskU32(CmpMask3);
+
+	SetBitArr[0] = CountOfSetBits(Mask0);
+	SetBitArr[1] = CountOfSetBits(Mask1);
+	SetBitArr[2] = CountOfSetBits(Mask2);
+	SetBitArr[3] = CountOfSetBits(Mask3);
+
+	__m128i SetBit_4x = _mm_load_si128((__m128i *)SetBitArr);
+
+	__m128i Zero_4x = _mm_setzero_si128();
+	__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
+	u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
+
+	Assert(CountOfSetBits(OppositeMaskU32) == 1);
+
+	bit_scan_result OppositeInFace = FindLeastSignificantSetBit(OppositeMaskU32);
+	Assert(OppositeInFace.Succes);
+
+	return OppositeInFace.Index;
+}
+
+inline opposite_edge_match
+GetOppositeWithBindEdgeIndexByVert(model_edge *ModelEdges, model_face *Face, u32 EdgeID, u32 CommonVertexID)
+{
+	model_edge *Edge = ModelEdges + EdgeID;
+	__m128i TestEdge = _mm_load_si128((__m128i *)Edge);
+	TestEdge = ShuffleU32(TestEdge, 0, 1, 1, 0);
+
+	__m128i Edge0 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[0]));
+	__m128i Edge1 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[1]));
+	__m128i Edge2 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[2]));
+	__m128i Edge3 = _mm_load_si128((__m128i *)(ModelEdges + Face->EdgesID[3]));
+
+	__m128i CommonVertexID_4x = _mm_set1_epi32(CommonVertexID);
+	__m128i TestEdgeVertexIDIndex = _mm_cmpeq_epi32(CommonVertexID_4x, TestEdge);
+
+	u32 TestVertexID = iToMaskU32(TestEdgeVertexIDIndex);
+	u32 TestVertexIDMask0 = TestVertexID & 0x3;
+	u32 TestVertexIDMask1 = TestVertexID & 0xC;
+
+	__m128i TestVertexIDMask0_4x = _mm_set1_epi32(TestVertexIDMask0);
+	__m128i TestVertexIDMask1_4x = _mm_set1_epi32(TestVertexIDMask1);
+
+	Edge0 = ShuffleU32(Edge0, 0, 1, 0, 1);
+	Edge1 = ShuffleU32(Edge1, 0, 1, 0, 1);
+	Edge2 = ShuffleU32(Edge2, 0, 1, 0, 1);
+	Edge3 = ShuffleU32(Edge3, 0, 1, 0, 1);
+
+	u32 MaskArr[4];
+	u32 SetBitArr[4];
+
+	__m128i CmpMask0 = _mm_cmpeq_epi32(Edge0, TestEdge);
+	__m128i CmpMask1 = _mm_cmpeq_epi32(Edge1, TestEdge);
+	__m128i CmpMask2 = _mm_cmpeq_epi32(Edge2, TestEdge);
+	__m128i CmpMask3 = _mm_cmpeq_epi32(Edge3, TestEdge);
+
+	u32 Mask0 = iToMaskU32(CmpMask0);
+	u32 Mask1 = iToMaskU32(CmpMask1);
+	u32 Mask2 = iToMaskU32(CmpMask2);
+	u32 Mask3 = iToMaskU32(CmpMask3);
+
+	MaskArr[0] = Mask0;
+	MaskArr[1] = Mask1;
+	MaskArr[2] = Mask2;
+	MaskArr[3] = Mask3;
+
+	SetBitArr[0] = CountOfSetBits(Mask0);
+	SetBitArr[1] = CountOfSetBits(Mask1);
+	SetBitArr[2] = CountOfSetBits(Mask2);
+	SetBitArr[3] = CountOfSetBits(Mask3);
+
+	__m128i Mask_4x = _mm_load_si128((__m128i *)MaskArr);
+	__m128i SetBit_4x = _mm_load_si128((__m128i *)SetBitArr);
+
+	__m128i Zero_4x = _mm_setzero_si128();
+	__m128i One_4x = _mm_set1_epi32(1);
+
+	__m128i OppositeMask = _mm_cmpeq_epi32(SetBit_4x, Zero_4x);
+	u32 OppositeMaskU32 = iToMaskU32(OppositeMask);
+
+	Assert(CountOfSetBits(OppositeMaskU32) == 1);
+
+	bit_scan_result OppositeInFace = FindLeastSignificantSetBit(OppositeMaskU32);
+	Assert(OppositeInFace.Succes);
+
+	__m128i OneMatchMask = _mm_cmpeq_epi32(SetBit_4x, One_4x);
+	__m128i OneMatchEdge = _mm_and_si128(Mask_4x, OneMatchMask);
+
+	__m128i OneMatchTest0 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask0_4x);
+	__m128i OneMatchTest1 = _mm_cmpeq_epi32(OneMatchEdge, TestVertexIDMask1_4x);
+
+	u32 OneMatchTestMask = iToMaskU32(_mm_or_si128(OneMatchTest0, OneMatchTest1));
+	bit_scan_result OneMatchTestInFace = FindLeastSignificantSetBit(OneMatchTestMask);
+	Assert(OneMatchTestInFace.Succes);
+
+	opposite_edge_match Result;
+	Result.OppositeIndex = OppositeInFace.Index;
+	Result.BindIndex = OneMatchTestInFace.Index;
+
+	return Result;
+}
+
 void
 GeneratingCube(page_memory_arena *Arena, model_data *Data, f32 HalfDim = 0.5f)
 {
