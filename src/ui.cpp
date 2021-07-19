@@ -1660,8 +1660,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		NewEdge->V0 = AVertexID;
 		NewEdge->V1 = BVertexID;
 
-		// TODO: Update face info of edge that opposite to new edge
-
 		u32 ASplitDirID;
 		u32 BSplitDirID;
 
@@ -1771,6 +1769,12 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		{
 			UpdateNewEdgeFaceData(Data, FaceID, NewFaceID, B.EdgeID, B.VertexID, BVertexMatch);
 		}
+
+		u32 OppsiteUpdateIndex = GetOppositeEdgeIndex(Data->Edges.E, NewFace, NewEdgeID);
+		model_edge *OppositeEdge = Data->Edges.E + NewFace->EdgesID[OppsiteUpdateIndex];
+
+		u32 FaceToUpdateIndex = (OppositeEdge->Face0 == FaceID) ? 0 : 1;
+		OppositeEdge->FaceID[FaceToUpdateIndex] = NewFaceID;
 	}
 }
 
