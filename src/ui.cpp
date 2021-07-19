@@ -1497,8 +1497,6 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		Elem.VertexID = CreatedVertexID++;
 		Elem.FromIndex = FromVertexEdgeIndex;
 
-		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
-
 		model_face *Face = Data->Faces.E + CurrentFaceID;
 
 		opposite_edge_match MatchResult = GetOppositeWithBindEdgeIndexByVert(ModelEdges, Face, CurrentEdgeID, FromVertexID);
@@ -1517,6 +1515,8 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		CurrentFaceID = (Opposite->Face0 == CurrentFaceID) ? Opposite->Face1 : Opposite->Face0;
 
 		LoopNotFull = (StartEdgeID != OppositeEdgeID);
+
+		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
 	}
 }
 

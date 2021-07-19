@@ -75,9 +75,8 @@ struct model_data_edge
 };
 
 // TODO: Separate?
-// Choose how to store rotation (for now m4x4)
-// Is need at all?!
-// TODO: See if will need be opimize!!
+// Choose how to store scale (for now m3x3)
+// TODO: See if it need be optimized!!
 struct vertex_transform_state
 {
 	// TODO: Get rid of rotation?
