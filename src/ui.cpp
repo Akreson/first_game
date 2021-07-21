@@ -1502,7 +1502,6 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		model_face *Face = Data->Faces.E + CurrentFaceID;
 		opposite_edge_match MatchResult = GetOppositeWithBindEdgeIndexByVert(ModelEdges, Face, CurrentEdgeID, FromVertexID);
 
-		//TODO: Change?
 		u32 OppositeEdgeID = Face->EdgesID[MatchResult.OppositeIndex];
 		model_edge *Opposite = ModelEdges + OppositeEdgeID;
 		model_edge *Common = ModelEdges + Face->EdgesID[MatchResult.BindIndex];
@@ -1613,10 +1612,18 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 			vertex_transform_state *StateA1 = &Data->VertexTrans[AVertexToID];
 
 			v3 NewAVertex = Lerp(VertexA0, tSplit, VertexA1);
+			// TODO: push new vertex in source buffer then transform and update in display buffer
+			// TODO: Decide how to implement push vertex API
 			AVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewAVertex);
 
 			vertex_transform_state *NewStateA = Data->VertexTrans + AVertexID;
 			*NewStateA = InterpolateTransformState(StateA0, tSplit, StateA1);
+
+			/*m4x4 CurrScale = ToM4x4(NewStateA->S);
+			m4x4 Rotation = ConvertQuatToM4x4(NewStateA->R);
+			m4x4 Translate = TranslateMat(NewStateA->T);
+
+			Data->Vertices[] = ;*/
 		}
 		Assert(AVertexID == A.VertexID);
 
