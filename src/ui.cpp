@@ -1497,8 +1497,9 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 		Elem.VertexID = CreatedVertexID++;
 		Elem.FromIndex = FromVertexEdgeIndex;
 
-		model_face *Face = Data->Faces.E + CurrentFaceID;
+		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
 
+		model_face *Face = Data->Faces.E + CurrentFaceID;
 		opposite_edge_match MatchResult = GetOppositeWithBindEdgeIndexByVert(ModelEdges, Face, CurrentEdgeID, FromVertexID);
 
 		//TODO: Change?
@@ -1516,7 +1517,6 @@ SetSplitToolData(split_tool *Split, split_buffer *SplitBuffer, model_data *Data,
 
 		LoopNotFull = (StartEdgeID != OppositeEdgeID);
 
-		PushElementToSplitBuff(PageArena, SplitBuffer, Elem);
 	}
 }
 
@@ -2074,14 +2074,14 @@ UpdateModelInteractionTools(game_editor_state *Editor, game_input *Input, render
 				Split->StartEdge.t = IsDown(Input->Shift) ? Split->StartEdge.t : 0.5f;
 				SetSplitToolData(Split, SplitBuffer, &Model->Data, IModel->Face.ID, &Editor->PageArena);
 
+				PushSplitToolSegment(RenderGroup, &Tools->SplitBuffer, Model->Offset, V3(1));
+
 				Interaction = SetSplitSelectIntr(IModel->ID);
 				if (AreEqual(WorldUI->ToExecute, Interaction))
 				{
 					WorldUI->Selected.Count = 0;
 					ApplySplit(&Editor->PageArena, Model, &Tools->SplitBuffer, Split->StartEdge.t);
 				}
-				
-				PushSplitToolSegment(RenderGroup, &Tools->SplitBuffer, Model->Offset, V3(1));
 			}
 		} break;
 	}

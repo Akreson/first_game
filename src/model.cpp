@@ -403,6 +403,7 @@ GetClosestEdgeToPointOnFace(work_model *Model, u32 FaceIndex, v3 P)
 	FaceEdges[2] = Model->Data.Edges.E + Face->Edge2;
 	FaceEdges[3] = Model->Data.Edges.E + Face->Edge3;
 
+	P = P - Model->Offset;
 	f32 SqLengthResult[4];
 	SqLengthResult[0] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices.E, FaceEdges[0], P);
 	SqLengthResult[1] = PointToEdgeOnFaceLengthSq(Model->Data.Vertices.E, FaceEdges[1], P);
