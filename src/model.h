@@ -85,6 +85,7 @@ struct vertex_transform_state
 	v3 T;
 };
 
+// TODO: Collate Vertices and SourceV data struct?
 struct model_data
 {
 	model_data_vertex Vertices;
