@@ -320,7 +320,7 @@ PushModelFace(render_group *Group, v3 *VertexStorage, model_face Face,
 	ModelHiLi.EdgeColor = EdgeColor;
 
 	BeginPushModel(Group, Color, Offset, ModelHiLi);
-	PushFace(Group, VertexStorage, Face);
+	PushFace(Group, VertexStorage, Offset, Face);
 	EndPushModel(Group);
 }
 
