@@ -232,8 +232,10 @@ CreateFaceVertex(v3 Vertex, v3 BarCoords,
 
 // TODO: Fix select edge stretching on small engel to adjacent face
 // TODO: Compress face vertex data?
+
+// TODO: Pass average plane normal for lighting
 void
-PushFace(render_group *Group, v3 *VertexStorage, model_face Face, face_render_params FaceParam = {})
+PushFace(render_group *Group, v3 *VertexStorage, v3 Offset, model_face Face, face_render_params FaceParam = {})
 {
 	game_render_commands *Commands = Group->Commands;
 
@@ -284,6 +286,7 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params 
 	ModelEntry->Offset = Offset;
 	ModelEntry->Color = Color;
 	ModelEntry->EdgeColor = ModelHiLi.EdgeColor;
+	ModelEntry->CameraDir = Group->CameraZ;
 
 	if (ModelHiLi.OutlineIsSet)
 	{

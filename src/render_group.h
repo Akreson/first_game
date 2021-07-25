@@ -170,6 +170,7 @@ struct render_entry_model
 	v4 Color;
 	v3 EdgeColor;
 	v3 Offset;
+	v3 CameraDir;
 	u32 StartOffset;
 	u32 ElementCount;
 };
