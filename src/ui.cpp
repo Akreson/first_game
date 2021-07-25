@@ -1612,18 +1612,17 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 			vertex_transform_state *StateA1 = &Data->VertexTrans[AVertexToID];
 
 			v3 NewAVertex = Lerp(VertexA0, tSplit, VertexA1);
-			// TODO: push new vertex in source buffer then transform and update in display buffer
-			// TODO: Decide how to implement push vertex API
-			AVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewAVertex);
+			AVertexID = PushModelDataVertex(PageArena, &Data->SourceV, &Data->Vertices, &Data->VertexTrans);
 
 			vertex_transform_state *NewStateA = Data->VertexTrans + AVertexID;
 			*NewStateA = InterpolateTransformState(StateA0, tSplit, StateA1);
 
-			/*m4x4 CurrScale = ToM4x4(NewStateA->S);
-			m4x4 Rotation = ConvertQuatToM4x4(NewStateA->R);
+			m4x4 Scale = ToM4x4(NewStateA->S);
+			m4x4 Rotate = ConvertQuatToM4x4(NewStateA->R);
 			m4x4 Translate = TranslateMat(NewStateA->T);
 
-			Data->Vertices[] = ;*/
+			Data->SourceV.E[AVertexID] = NewAVertex;
+			Data->Vertices.E[AVertexID] = NewAVertex * Scale * Rotate * Translate;
 		}
 		Assert(AVertexID == A.VertexID);
 
@@ -1646,10 +1645,17 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 			vertex_transform_state *StateB1 = &Data->VertexTrans[BVertexToID];
 
 			v3 NewBVertex = Lerp(VertexB0, tSplit, VertexB1);
-			BVertexID = PushModelDataVertex(PageArena, &Data->Vertices, &Data->VertexTrans, &NewBVertex);
+			BVertexID = PushModelDataVertex(PageArena, &Data->SourceV, &Data->Vertices, &Data->VertexTrans);
 
 			vertex_transform_state *NewStateB = Data->VertexTrans + BVertexID;
 			*NewStateB = InterpolateTransformState(StateB0, tSplit, StateB1);
+
+			m4x4 Scale = ToM4x4(NewStateB->S);
+			m4x4 Rotate = ConvertQuatToM4x4(NewStateB->R);
+			m4x4 Translate = TranslateMat(NewStateB->T);
+
+			Data->SourceV.E[BVertexID] = NewBVertex;
+			Data->Vertices.E[BVertexID] = NewBVertex * Scale * Rotate * Translate;
 		}
 		Assert(BVertexID == B.VertexID);
 

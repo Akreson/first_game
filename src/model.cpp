@@ -547,23 +547,23 @@ ComputeMeshAABB(v3 *VertexArray, u32 VertexCount)
 }
 
 inline u32
-PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Vertices,
-	vertex_transform_state **Trans, v3 *Elem = 0)
+PushModelDataVertex(page_memory_arena *PageArena, model_data_vertex *Source,
+	model_data_vertex *Display, vertex_transform_state **Trans)
 {
-	if (Vertices->Count == Vertices->MaxCount)
+	Assert(Source->Count == Display->Count);
+
+	if (Source->Count == Source->MaxCount)
 	{
-		PagePushArray(PageArena, v3, Vertices->MaxCount, (void **)&Vertices->E, 0);
-		PagePushArray(PageArena, v3, Vertices->MaxCount, (void **)Trans, 0);
-		Vertices->MaxCount *= 2;
+		PagePushArray(PageArena, v3, Source->MaxCount, (void **)&Source->E, 0);
+		PagePushArray(PageArena, v3, Source->MaxCount, (void **)&Display->E, 0);
+		PagePushArray(PageArena, v3, Source->MaxCount, (void **)Trans, 0);
+		Source->MaxCount *= 2;
+		Display->MaxCount *= 2;
 	}
 	
-	u32 ID = Vertices->Count++;
 
-	if (Elem)
-	{
-		Vertices->E[ID] = *Elem;
-	}
-
+	u32 ID = Source->Count;
+	Display->Count = ++Source->Count;
 	return ID;
 }
 
