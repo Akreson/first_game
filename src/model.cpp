@@ -631,6 +631,34 @@ SplitEdgeByVertex(page_memory_arena *PageArena, model_data *Data, u32 SplitEdgeI
 	OldEdge->VertexID[OldReplaceVerID] = NewVertexID;
 }
 
+u32
+CreateSplitEdgeVertexByT(page_memory_arena *PageArena, model_data *Data, model_edge *Edge, f32 tSplit, u32 FromIndex, u32 ToIndex)
+{
+	u32 VertexFromID = Edge->VertexID[FromIndex];
+	u32 VertexToID = Edge->VertexID[ToIndex];
+
+	v3 Vertex0 = Data->SourceV.E[VertexFromID];
+	v3 Vertex1 = Data->SourceV.E[VertexToID];
+
+	vertex_transform_state *State0 = &Data->VertexTrans[VertexFromID];
+	vertex_transform_state *State1 = &Data->VertexTrans[VertexToID];
+
+	v3 NewVertex = Lerp(Vertex0, tSplit, Vertex1);
+	u32 NewVertexID = PushModelDataVertex(PageArena, &Data->SourceV, &Data->Vertices, &Data->VertexTrans);
+
+	vertex_transform_state *NewState = Data->VertexTrans + NewVertexID;
+	*NewState = InterpolateTransformState(State0, tSplit, State1);
+
+	m4x4 Scale = ToM4x4(NewState->S);
+	m4x4 Rotate = ConvertQuatToM4x4(NewState->R);
+	m4x4 Translate = TranslateMat(NewState->T);
+
+	Data->SourceV.E[NewVertexID] = NewVertex;
+	Data->Vertices.E[NewVertexID] = NewVertex * Scale * Rotate * Translate;
+
+	return NewVertexID;
+}
+
 inline u32
 GetOppositeEdgeIndex(model_edge *ModelEdges, model_face *Face, u32 EdgeID)
 {

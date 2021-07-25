@@ -1572,6 +1572,24 @@ UpdateNewEdgeFaceData(model_data *Data, u32 FaceID, u32 NewFaceID,
 	}
 }
 
+inline u32
+GetVertexIDForSplit(page_memory_arena *PageArena, model_data *Data, model_edge *Edge, f32 tSplit, split_buffer_element Elem)
+{
+	u32 Result;
+
+	// TODO: Check if this statment will make sense in future
+	if (Data->Vertices.Count > Elem.VertexID)
+	{
+		Result = Elem.VertexID;
+	}
+	else
+	{
+		Result = CreateSplitEdgeVertexByT(PageArena, Data, Edge, tSplit, Elem.FromIndex, !Elem.FromIndex);
+	}
+
+	return Result;
+}
+
 static void
 ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitBuffer, f32 tSplit)
 {
@@ -1593,73 +1611,11 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		model_edge *EdgeA = Data->Edges.E + A.EdgeID;
 		model_edge *EdgeB = Data->Edges.E + B.EdgeID;
 
-		// ---- A START
-		// TODO: Check if this statment will make sense in future
-		u32 AVertexID;
-		if (Data->Vertices.Count > A.VertexID)
-		{
-			AVertexID = A.VertexID;
-		}
-		else 
-		{
-			u32 AVertexFromID = EdgeA->VertexID[A.FromIndex];
-			u32 AVertexToID = EdgeA->VertexID[!A.FromIndex];
-
-			v3 VertexA0 = SourceVertex[AVertexFromID];
-			v3 VertexA1 = SourceVertex[AVertexToID];
-
-			vertex_transform_state *StateA0 = &Data->VertexTrans[AVertexFromID];
-			vertex_transform_state *StateA1 = &Data->VertexTrans[AVertexToID];
-
-			v3 NewAVertex = Lerp(VertexA0, tSplit, VertexA1);
-			AVertexID = PushModelDataVertex(PageArena, &Data->SourceV, &Data->Vertices, &Data->VertexTrans);
-
-			vertex_transform_state *NewStateA = Data->VertexTrans + AVertexID;
-			*NewStateA = InterpolateTransformState(StateA0, tSplit, StateA1);
-
-			m4x4 Scale = ToM4x4(NewStateA->S);
-			m4x4 Rotate = ConvertQuatToM4x4(NewStateA->R);
-			m4x4 Translate = TranslateMat(NewStateA->T);
-
-			Data->SourceV.E[AVertexID] = NewAVertex;
-			Data->Vertices.E[AVertexID] = NewAVertex * Scale * Rotate * Translate;
-		}
+		u32 AVertexID = GetVertexIDForSplit(PageArena, Data, EdgeA, tSplit, A);
 		Assert(AVertexID == A.VertexID);
 
-		// ---- B START
-		// TODO: Check if this statment will make sense in future
-		u32 BVertexID;
-		if (Data->Vertices.Count > B.VertexID)
-		{
-			BVertexID = B.VertexID;
-		}
-		else
-		{
-			u32 BVertexFromID = EdgeB->VertexID[B.FromIndex];
-			u32 BVertexToID = EdgeB->VertexID[!B.FromIndex];
-
-			v3 VertexB0 = SourceVertex[BVertexFromID];
-			v3 VertexB1 = SourceVertex[BVertexToID];
-
-			vertex_transform_state *StateB0 = &Data->VertexTrans[BVertexFromID];
-			vertex_transform_state *StateB1 = &Data->VertexTrans[BVertexToID];
-
-			v3 NewBVertex = Lerp(VertexB0, tSplit, VertexB1);
-			BVertexID = PushModelDataVertex(PageArena, &Data->SourceV, &Data->Vertices, &Data->VertexTrans);
-
-			vertex_transform_state *NewStateB = Data->VertexTrans + BVertexID;
-			*NewStateB = InterpolateTransformState(StateB0, tSplit, StateB1);
-
-			m4x4 Scale = ToM4x4(NewStateB->S);
-			m4x4 Rotate = ConvertQuatToM4x4(NewStateB->R);
-			m4x4 Translate = TranslateMat(NewStateB->T);
-
-			Data->SourceV.E[BVertexID] = NewBVertex;
-			Data->Vertices.E[BVertexID] = NewBVertex * Scale * Rotate * Translate;
-		}
+		u32 BVertexID = GetVertexIDForSplit(PageArena, Data, EdgeB, tSplit, B);
 		Assert(BVertexID == B.VertexID);
-
-		// ---- B END
 
 		u32 NewFaceID = PushModelDataFace(PageArena, &Data->Faces);
 		u32 NewEdgeID = PushModelDataEdge(PageArena, &Data->Edges);
@@ -1763,8 +1719,6 @@ ApplySplit(page_memory_arena *PageArena, work_model *Model, split_buffer *SplitB
 		b32 IsANotSplit = (EdgeA->V0 != A.VertexID) && (EdgeA->V1 != A.VertexID);
 		b32 IsBNotSplit = (EdgeB->V0 != B.VertexID) && (EdgeB->V1 != B.VertexID);
 
-		// TODO: Fix Bug - incorrect passing edge id on update edge info
-		// TODO: Decide when update face edge info
 		if (IsANotSplit)
 		{
 			SplitEdgeByVertex(PageArena, Data, A.EdgeID, FaceID, NewFaceID, A.VertexID, ASplitDirID);
