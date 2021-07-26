@@ -216,12 +216,13 @@ GetEdgeFaceParams(face_render_params FaceParam)
 #undef IsHaveMatch(A, B)
 
 internal inline render_model_face_vertex
-CreateFaceVertex(v3 Vertex, v3 BarCoords,
+CreateFaceVertex(v3 Vertex, v3 Normal, v3 BarCoords,
 	v3 ActiveMask = V3(0), v3 HotMask = V3(0), v2 FaceSelParam = V2(0))
 {
 	render_model_face_vertex Result;
 
 	Result.Vertex = Vertex;
+	Result.Normal = Normal;
 	Result.BarCoords = BarCoords;
 	Result.ActiveMask = ActiveMask;
 	Result.HotMask = HotMask;
@@ -262,14 +263,15 @@ PushFace(render_group *Group, v3 *VertexStorage, v3 Offset, model_face Face, fac
 	f32 Hot03 = StateEdgeArray[EdgesParam.Hot03];
 	f32 Hot23 = StateEdgeArray[EdgesParam.Hot23];
 
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], V3(1, 1, 0));
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V1], V3(0, 1, 0));
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1),
+	v3 Normal = V3(1, 0, 0);
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], Normal, V3(1, 1, 0));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V1], Normal, V3(0, 1, 0));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], Normal, V3(0, 1, 1),
 		V3(Active12, 1, Active01), V3(Hot12, 1, Hot01), SelectionType);
 
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], V3(1, 0, 1));
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], V3(0, 1, 1));
-	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V3], V3(0, 0, 1),
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], Normal, V3(1, 0, 1));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], Normal, V3(0, 1, 1));
+	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V3], Normal, V3(0, 0, 1),
 		V3(Active23, Active03, 1), V3(Hot23, Hot03, 1), SelectionType);
 
 	Commands->VertexBufferSize += (u32)((FaceVertex - StartFaceVertex)) * sizeof(render_model_face_vertex);

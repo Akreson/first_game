@@ -195,6 +195,7 @@ struct render_entry_model_face
 struct render_model_face_vertex
 {
 	v3 Vertex;
+	v3 Normal;
 	v3 BarCoords;
 	v3 ActiveMask;
 	v3 HotMask;

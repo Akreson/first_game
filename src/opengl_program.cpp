@@ -119,22 +119,25 @@ CompileModelProgram(model_program *Prog)
 {
 	const char *VertexCode = R"FOO(
 	layout (location = 0) in vec3 aPos;
-	layout (location = 1) in vec3 aBarCoord;
-	layout (location = 2) in vec3 aActiveMask;
-	layout (location = 3) in vec3 aHotMask;
-	layout (location = 4) in vec2 aFaceSelectionParam;
+	layout (location = 1) in vec3 aNormal;
+	layout (location = 2) in vec3 aBarCoord;
+	layout (location = 3) in vec3 aActiveMask;
+	layout (location = 4) in vec3 aHotMask;
+	layout (location = 5) in vec2 aFaceSelectionParam;
 
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
 	out vec3 BarCoord;
+	flat out vec3 Normal;
 	flat out vec3 HotMask;
 	flat out vec3 ActiveMask;
-	flat out vec2 FaceSelectionParam;	
+	flat out vec2 FaceSelectionParam;
 
 	void main()
 	{
 		BarCoord = aBarCoord;
+		Normal = aNormal;
 		HotMask = aHotMask;
 		ActiveMask = aActiveMask;
 		FaceSelectionParam = aFaceSelectionParam;
@@ -150,10 +153,12 @@ CompileModelProgram(model_program *Prog)
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
-	uniform vec4 Color;
+	uniform vec4 FaceColor;
 	uniform vec3 EdgeColor;
+	uniform vec3 CameraDir;
 
 	in vec3 BarCoord;
+	flat in vec3 Normal;
 	flat in vec3 HotMask;
 	flat in vec3 ActiveMask;
 	flat in vec2 FaceSelectionParam;
@@ -249,10 +254,10 @@ CompileModelProgram(model_program *Prog)
 		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
 		
 		// NOTE: Face color calc
-		vec3 FinalFaceColor = mix(Color.rgb, (ActiveColor*Color.rgb), FaceSelectionParam.x);
+		vec3 FinalFaceColor = mix(FaceColor.rgb, (ActiveColor*FaceColor.rgb), FaceSelectionParam.x);
 		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), FaceSelectionParam.y);
 
-		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvEdgeFactor), Color.a);
+		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvEdgeFactor), FaceColor.a);
 	}
 	)FOO";
 
@@ -260,7 +265,8 @@ CompileModelProgram(model_program *Prog)
 	Prog->ID = ProgID;
 
 	glUseProgram(ProgID);
-	Prog->ModelColorID = glGetUniformLocation(ProgID, "Color");
+	Prog->ModelColorID = glGetUniformLocation(ProgID, "FaceColor");
+	Prog->CameraDirID = glGetUniformLocation(ProgID, "CameraDir");
 	Prog->ModelProjID = glGetUniformLocation(ProgID, "Proj");
 	Prog->ModelTransformID = glGetUniformLocation(ProgID, "ModelTransform");
 
@@ -274,17 +280,21 @@ CompileModelProgram(model_program *Prog)
 }
 
 internal void
-UseProgramBegin(model_program *Prog, v4 Color, v3 EdgeColor, m4x4 *ProjMat, m4x4 *ModelMat)
+UseProgramBegin(model_program *Prog, render_entry_model *ModelEntry, m4x4 *ProjMat, m4x4 *ModelMat)
 {
 	glUseProgram(Prog->ID);
 
+	v4 Color = ModelEntry->Color;
 	glUniform4f(Prog->ModelColorID, Color.r, Color.g, Color.b, Color.a);
 	glUniformMatrix4fv(Prog->ModelProjID, 1, GL_FALSE, &ProjMat->E[0][0]);
 	glUniformMatrix4fv(Prog->ModelTransformID, 1, GL_FALSE, &ModelMat->E[0][0]);
 
 	// TODO: Delete later
+	v3 EdgeColor = ModelEntry->EdgeColor;
 	glUniform3f(Prog->ModelEdgeColor, EdgeColor.r, EdgeColor.g, EdgeColor.b);
 
+	v3 CameraDir = ModelEntry->CameraDir;
+	glUniform3f(Prog->CameraDirID, CameraDir.r, CameraDir.g, CameraDir.b);
 }
 
 internal void

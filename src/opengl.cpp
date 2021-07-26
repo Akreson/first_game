@@ -306,14 +306,21 @@ OpenGLInit(f32 ScreenWidth, f32 ScreenHeight)
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)0);
+
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 3));
+
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 6));
+
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 9));
+
 	glEnableVertexAttribArray(4);
-	glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 12));
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 12));
+
+	glEnableVertexAttribArray(5);
+	glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, sizeof(render_model_face_vertex), (void*)(sizeof(f32) * 15));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -534,8 +541,7 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
-				UseProgramBegin(&OpenGL.ModelProg, ModelEntry->Color, ModelEntry->EdgeColor,
-					&Commands->ForwardPersCamera, &ModelTransform);
+				UseProgramBegin(&OpenGL.ModelProg, ModelEntry, &Commands->ForwardPersCamera, &ModelTransform);
 
 				glDrawArrays(GL_TRIANGLES,
 					ModelEntry->StartOffset / sizeof(render_model_face_vertex),
