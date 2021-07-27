@@ -89,10 +89,10 @@ struct vertex_transform_state
 struct model_data
 {
 	model_data_vertex Vertices;
+	model_data_vertex SourceV;
+
 	model_data_edge Edges;
 	model_data_face Faces;
-
-	model_data_vertex SourceV;
 
 	vertex_transform_state *VertexTrans;
 };

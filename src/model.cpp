@@ -260,15 +260,14 @@ GetNextEdgeIDInAdjacentFaceByVertex(model_data *Data, u32 StartOnFaceID, u32 Sta
 }
 
 inline face_vertex
-GetFaceVertex(work_model *Model, model_face *Face)
+GetFaceVertex(v3 *Vertices, v3 Offset, model_face *Face)
 {
 	face_vertex Result;
 
-	v3 ModelOffset = Model->Offset;
-	Result.V0 = Model->Data.Vertices.E[Face->V0] + ModelOffset;
-	Result.V1 = Model->Data.Vertices.E[Face->V1] + ModelOffset;
-	Result.V2 = Model->Data.Vertices.E[Face->V2] + ModelOffset;
-	Result.V3 = Model->Data.Vertices.E[Face->V3] + ModelOffset;
+	Result.V0 = Vertices[Face->V0] + Offset;
+	Result.V1 = Vertices[Face->V1] + Offset;
+	Result.V2 = Vertices[Face->V2] + Offset;
+	Result.V3 = Vertices[Face->V3] + Offset;
 
 	return Result;
 }
@@ -290,17 +289,17 @@ GetFaceNormals(face_vertex Vertex)
 }
 
 inline face_normals
-GetFaceNormals(work_model *Model, model_face *Face)
+GetFaceNormals(v3 *Vertices, v3 Offset, model_face *Face)
 {
 	face_normals Result;
 
-	face_vertex Vertex = GetFaceVertex(Model, Face);
+	face_vertex Vertex = GetFaceVertex(Vertices, Offset, Face);
 	Result = GetFaceNormals(Vertex);
 	return Result;
 }
 
 inline v3
-GetPlaneAvgNormal(face_vertex Vertex)
+GetFaceAvgNormal(face_vertex Vertex)
 {
 	v3 Result;
 
@@ -310,11 +309,11 @@ GetPlaneAvgNormal(face_vertex Vertex)
 }
 
 inline v3
-GetPlaneAvgNormal(work_model *Model, model_face *Face)
+GetFaceAvgNormal(v3 *Vertices, v3 Offset, model_face *Face)
 {
 	v3 Result;
 	
-	face_normals Normals = GetFaceNormals(Model, Face);
+	face_normals Normals = GetFaceNormals(Vertices, Offset, Face);
 	Result = NLerp(Normals.N0, 0.5f, Normals.N1);
 	return Result;
 }
@@ -341,7 +340,7 @@ GetFacePlane(work_model *Model, u32 FaceIndex)
 	face_plane Result;
 
 	model_face *Face = Model->Data.Faces.E + FaceIndex;
-	face_vertex Vertex = GetFaceVertex(Model, Face);
+	face_vertex Vertex = GetFaceVertex(Model->Data.Vertices.E, Model->Offset, Face);
 
 	Result = GetFacePlane(Vertex);
 	return Result;
@@ -1078,7 +1077,7 @@ RayModelFacesIntersect(work_model *Model, ray_params Ray, element_ray_result *Fa
 		v3 IntersetPoint;
 
 		model_face *Face = Model->Data.Faces.E + FaceIndex;
-		face_vertex Vertex = GetFaceVertex(Model, Face);
+		face_vertex Vertex = GetFaceVertex(Model->Data.Vertices.E, Model->Offset, Face);
 
 		face_plane Plane = GetFacePlane(Vertex);
 

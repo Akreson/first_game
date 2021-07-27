@@ -1250,10 +1250,10 @@ SetAxisForTool(work_model *Model, element_id_buffer *Selected, u32 ElementTarget
 			case ModelTargetElement_Face:
 			{
 				model_face *Face = Model->Data.Faces.E + ElementID;
-				face_vertex Vertex = GetFaceVertex(Model, Face);
+				face_vertex Vertex = GetFaceVertex(Model->Data.Vertices.E, Model->Offset, Face);
 
 				v3 OriginZ = V3(0, 0, 1);
-				Result.Z = GetPlaneAvgNormal(Vertex);
+				Result.Z = GetFaceAvgNormal(Vertex);
 
 				f32 ZDotResult = Abs(Dot(Result.Z, OriginZ));
 				if (ZDotResult == 1.0f)
