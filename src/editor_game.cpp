@@ -323,6 +323,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 			model_face Face = Model->Data.Faces.E[FaceIndex];
 			face_render_params FaceParam = {};
 			
+			// TODO: Highlight whole edge or part that relate to active face
 			if (IsActive)
 			{	
 				FaceParam = SetFaceRenderParams(Editor, &Model->Data, FaceIndex);

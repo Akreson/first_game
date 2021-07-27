@@ -253,8 +253,15 @@ CompileModelProgram(model_program *Prog)
 		vec3 FinalEdgeColor = mix(EdgeColor, ActiveColor, ActiveEdgeFactor);
 		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
 		
+		// TODO: Move calc to vertex shader if nothing else happen?
+		float ToCameraFactor = dot(CameraDir, Normal) * 2.5f;
+		ToCameraFactor = clamp(ToCameraFactor, 0.0f, 1.0f);
+
 		// NOTE: Face color calc
-		vec3 FinalFaceColor = mix(FaceColor.rgb, (ActiveColor*FaceColor.rgb), FaceSelectionParam.x);
+		vec4 FaceColorToCamera = FaceColor;
+		FaceColorToCamera.rgb *= ToCameraFactor;
+
+		vec3 FinalFaceColor = mix(FaceColorToCamera.rgb, (ActiveColor*FaceColorToCamera.rgb), FaceSelectionParam.x);
 		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), FaceSelectionParam.y);
 
 		FragColor = vec4(mix(FinalFaceColor, FinalEdgeColor, InvEdgeFactor), FaceColor.a);

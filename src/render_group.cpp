@@ -263,7 +263,7 @@ PushFace(render_group *Group, v3 *VertexStorage, v3 Offset, model_face Face, fac
 	f32 Hot03 = StateEdgeArray[EdgesParam.Hot03];
 	f32 Hot23 = StateEdgeArray[EdgesParam.Hot23];
 
-	v3 Normal = V3(1, 0, 0);
+	v3 Normal = GetFaceAvgNormal(VertexStorage, Offset, &Face);
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V0], Normal, V3(1, 1, 0));
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V1], Normal, V3(0, 1, 0));
 	*FaceVertex++ = CreateFaceVertex(VertexStorage[Face.V2], Normal, V3(0, 1, 1),
