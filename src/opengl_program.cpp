@@ -128,6 +128,7 @@ CompileModelProgram(model_program *Prog)
 	uniform mat4 Proj;
 	uniform mat4 ModelTransform;
 
+	out vec3 ModelSpacePos;
 	out vec3 BarCoord;
 	flat out vec3 Normal;
 	flat out vec3 HotMask;
@@ -136,13 +137,16 @@ CompileModelProgram(model_program *Prog)
 
 	void main()
 	{
+		vec4 PosModelSpace = ModelTransform * vec4(aPos.xyz, 1.0f);
+
+		ModelSpacePos = PosModelSpace.xyz;
 		BarCoord = aBarCoord;
 		Normal = aNormal;
 		HotMask = aHotMask;
 		ActiveMask = aActiveMask;
 		FaceSelectionParam = aFaceSelectionParam;
 
-		gl_Position = Proj * ModelTransform * vec4(aPos.xyz, 1.0f);
+		gl_Position = Proj * PosModelSpace;
 	}
 
 	)FOO";
@@ -155,8 +159,9 @@ CompileModelProgram(model_program *Prog)
 
 	uniform vec4 FaceColor;
 	uniform vec3 EdgeColor;
-	uniform vec3 CameraDir;
+	uniform vec3 CameraPos;
 
+	in vec3 ModelSpacePos;
 	in vec3 BarCoord;
 	flat in vec3 Normal;
 	flat in vec3 HotMask;
@@ -254,8 +259,15 @@ CompileModelProgram(model_program *Prog)
 		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
 		
 		// TODO: Move calc to vertex shader if nothing else happen?
-		float ToCameraFactor = dot(CameraDir, Normal) * 2.5f;
-		ToCameraFactor = clamp(ToCameraFactor, 0.0f, 1.0f);
+		// float ToCameraFactor = dot(CameraPos, Normal) * 1.5f;
+		// ToCameraFactor = clamp(ToCameraFactor, 0.7f, 1.0f);
+
+		vec3 ToCameraPos = normalize(CameraPos - ModelSpacePos);
+		float DiffFactor = dot(ToCameraPos, Normal) * 1.2f;
+		DiffFactor = clamp(DiffFactor, 0.6f, 1.0f);
+
+		// TODO: temp
+		float ToCameraFactor = DiffFactor;
 
 		// NOTE: Face color calc
 		vec4 FaceColorToCamera = FaceColor;
@@ -273,7 +285,7 @@ CompileModelProgram(model_program *Prog)
 
 	glUseProgram(ProgID);
 	Prog->ModelColorID = glGetUniformLocation(ProgID, "FaceColor");
-	Prog->CameraDirID = glGetUniformLocation(ProgID, "CameraDir");
+	Prog->CameraPosID = glGetUniformLocation(ProgID, "CameraPos");
 	Prog->ModelProjID = glGetUniformLocation(ProgID, "Proj");
 	Prog->ModelTransformID = glGetUniformLocation(ProgID, "ModelTransform");
 
@@ -300,8 +312,8 @@ UseProgramBegin(model_program *Prog, render_entry_model *ModelEntry, m4x4 *ProjM
 	v3 EdgeColor = ModelEntry->EdgeColor;
 	glUniform3f(Prog->ModelEdgeColor, EdgeColor.r, EdgeColor.g, EdgeColor.b);
 
-	v3 CameraDir = ModelEntry->CameraDir;
-	glUniform3f(Prog->CameraDirID, CameraDir.r, CameraDir.g, CameraDir.b);
+	v3 CameraPos = ModelEntry->CameraPos;
+	glUniform3f(Prog->CameraPosID, CameraPos.r, CameraPos.g, CameraPos.b);
 }
 
 internal void

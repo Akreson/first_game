@@ -288,7 +288,7 @@ BeginPushModel(render_group *Group, v4 Color, v3 Offset, model_highlight_params 
 	ModelEntry->Offset = Offset;
 	ModelEntry->Color = Color;
 	ModelEntry->EdgeColor = ModelHiLi.EdgeColor;
-	ModelEntry->CameraDir = Group->CameraZ;
+	ModelEntry->CameraPos = Group->CameraWorldPos;
 
 	if (ModelHiLi.OutlineIsSet)
 	{

@@ -910,7 +910,7 @@ AddModel(game_editor_state *Editor)
 }
 
 work_model *
-AddCubeModel(game_editor_state *Editor, v3 Offset = V3(0), v4 Color = V4(0.3f, 0.3f, 0.3f, 1.0f))
+AddCubeModel(game_editor_state *Editor, v3 Offset = V3(0), v4 Color = V4(0.5f, 0.5f, 0.5f, 1.0f))
 {
 	work_model *Model = AddModel(Editor);
 	GeneratingCube(&Editor->PageArena, &Model->Data);

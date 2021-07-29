@@ -170,7 +170,7 @@ struct render_entry_model
 	v4 Color;
 	v3 EdgeColor;
 	v3 Offset;
-	v3 CameraDir;
+	v3 CameraPos;
 	u32 StartOffset;
 	u32 ElementCount;
 };
@@ -225,6 +225,7 @@ struct render_group
 	v2 ScreenDim;
 	
 	v3 CameraZ;
+	v3 CameraWorldPos;
 
 	m4x4 InvCamera;
 	m4x4 InvPerspective;

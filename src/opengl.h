@@ -286,7 +286,7 @@ struct model_program
 	GLuint ModelVBO; //
 
 	GLuint ModelColorID;
-	GLuint CameraDirID;
+	GLuint CameraPosID;
 	GLuint ModelProjID;
 	GLuint ModelTransformID;
 	GLuint ModelEdgeColor;
