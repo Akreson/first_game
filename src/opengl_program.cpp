@@ -157,6 +157,7 @@ CompileModelProgram(model_program *Prog)
 	const char *FragmentCode = R"FOO(
 	out vec4 FragColor;
 
+	uniform vec3 SpotLightDir;
 	uniform vec4 FaceColor;
 	uniform vec3 EdgeColor;
 	uniform vec3 CameraPos;
@@ -259,19 +260,19 @@ CompileModelProgram(model_program *Prog)
 		FinalEdgeColor = mix(FinalEdgeColor, FinalEdgeColor*HotFaceColor, HotEdgeFactor);
 		
 		// TODO: Move calc to vertex shader if nothing else happen?
-		// float ToCameraFactor = dot(CameraPos, Normal) * 1.5f;
-		// ToCameraFactor = clamp(ToCameraFactor, 0.7f, 1.0f);
-
 		vec3 ToCameraPos = normalize(CameraPos - ModelSpacePos);
-		float DiffFactor = dot(ToCameraPos, Normal) * 1.2f;
-		DiffFactor = clamp(DiffFactor, 0.6f, 1.0f);
+		float CameraLightFactor = dot(ToCameraPos, Normal);
+		//CameraLightFactor = clamp(CameraLightFactor, 0.6f, 1.0f);
 
-		// TODO: temp
-		float ToCameraFactor = DiffFactor;
+		float SpotLightFactor = dot(SpotLightDir, Normal);
+		//SpotLightFactor = clamp(SpotLightFactor, 0.6f, 1.0f);
+
+		//float FragmentLightFactor = (CameraLightFactor + SpotLightFactor) * 0.5;
+		float FragmentLightFactor = SpotLightFactor;
 
 		// NOTE: Face color calc
 		vec4 FaceColorToCamera = FaceColor;
-		FaceColorToCamera.rgb *= ToCameraFactor;
+		FaceColorToCamera.rgb *= FragmentLightFactor;
 
 		vec3 FinalFaceColor = mix(FaceColorToCamera.rgb, (ActiveColor*FaceColorToCamera.rgb), FaceSelectionParam.x);
 		FinalFaceColor = mix(FinalFaceColor, (FinalFaceColor*HotFaceColor), FaceSelectionParam.y);
@@ -284,6 +285,7 @@ CompileModelProgram(model_program *Prog)
 	Prog->ID = ProgID;
 
 	glUseProgram(ProgID);
+	Prog->SpotLightDirID = glGetUniformLocation(ProgID, "SpotLightDir");
 	Prog->ModelColorID = glGetUniformLocation(ProgID, "FaceColor");
 	Prog->CameraPosID = glGetUniformLocation(ProgID, "CameraPos");
 	Prog->ModelProjID = glGetUniformLocation(ProgID, "Proj");
@@ -299,7 +301,7 @@ CompileModelProgram(model_program *Prog)
 }
 
 internal void
-UseProgramBegin(model_program *Prog, render_entry_model *ModelEntry, m4x4 *ProjMat, m4x4 *ModelMat)
+UseProgramBegin(model_program *Prog, render_entry_model *ModelEntry, m4x4 *ProjMat, m4x4 *ModelMat, v3 SpotLightDir)
 {
 	glUseProgram(Prog->ID);
 
@@ -314,6 +316,8 @@ UseProgramBegin(model_program *Prog, render_entry_model *ModelEntry, m4x4 *ProjM
 
 	v3 CameraPos = ModelEntry->CameraPos;
 	glUniform3f(Prog->CameraPosID, CameraPos.r, CameraPos.g, CameraPos.b);
+
+	glUniform3f(Prog->SpotLightDirID, SpotLightDir.r, SpotLightDir.g, SpotLightDir.b);
 }
 
 internal void

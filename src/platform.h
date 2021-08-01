@@ -277,6 +277,9 @@ struct game_render_commands
 	m4x4_inv CameraTransform;
 	m4x4 ForwardPersCamera;
 
+	// NOTE: Only for editor
+	v3 EditorSpotLightDir;
+
 	v2 ScreenDim;
 
 	u8 *PushBufferBase;

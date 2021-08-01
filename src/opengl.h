@@ -285,6 +285,7 @@ struct model_program
 	GLuint ModelVAO; // TODO: Delete?
 	GLuint ModelVBO; //
 
+	GLuint SpotLightDirID;
 	GLuint ModelColorID;
 	GLuint CameraPosID;
 	GLuint ModelProjID;

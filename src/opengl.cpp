@@ -541,7 +541,8 @@ OpenGLRenderCommands(game_render_commands *Commands)
 				glBindVertexArray(OpenGL.VertexBufferVAO);
 				glBindBuffer(GL_ARRAY_BUFFER, OpenGL.VertexBufferVBO);
 
-				UseProgramBegin(&OpenGL.ModelProg, ModelEntry, &Commands->ForwardPersCamera, &ModelTransform);
+				UseProgramBegin(&OpenGL.ModelProg, ModelEntry, &Commands->ForwardPersCamera, &ModelTransform,
+					Commands->EditorSpotLightDir);
 
 				glDrawArrays(GL_TRIANGLES,
 					ModelEntry->StartOffset / sizeof(render_model_face_vertex),

@@ -298,6 +298,7 @@ UpdateAndRender(game_memory *Memory, game_input *Input, game_render_commands *Re
 	SetCameraTrasform(&RenderGroup, 0.41f, &CameraTansform);
 	RenderGroup.CameraZ = GetRow(CameraR, 2);
 	RenderGroup.CameraWorldPos = CameraOt;
+	SetEditorSpotLightDir(&RenderGroup, CameraR);
 
 	WorldUI->MouseRay = CreateRay(CameraOt, Unproject(&RenderGroup, WorldUI->MouseP));
 

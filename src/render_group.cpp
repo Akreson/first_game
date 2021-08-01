@@ -40,6 +40,16 @@ SetCameraTrasform(render_group *Group, f32 FocalLength, m4x4_inv *CameraViewTran
 	//Group->CameraZ = GetRow(CameraViewTransform->Forward, 2);
 }
 
+inline void
+SetEditorSpotLightDir(render_group *Group, m4x4 CameraR)
+{
+	m4x4 Transform = XRotation(-0.7f) * YRotation(-1.4f);
+	m4x4 Result = Transform * CameraR;
+
+	Group->Commands->EditorSpotLightDir = GetRow(Result, 2);
+	//Group->Commands->EditorSpotLightDir = V3(0, 1, 0);
+}
+
 inline v2
 FromScreenToClipSpace(render_group *Group, v2 Pos)
 {
