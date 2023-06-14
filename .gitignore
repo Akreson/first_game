@@ -1,0 +1,6 @@
+*.vcxproj
+*.filters
+*.user
+FontAssetCreate/*.vcxproj
+FontAssetCreate/*.filters
+FontAssetCreate/*.user
