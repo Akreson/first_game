@@ -112,7 +112,7 @@ EndTempMemory(temp_memory TempMem)
 	--Arena->CountOfTempMem;
 }
 
-// TODO: Assert page is it base
+// TODO: Assert page if it base
 internal inline u32
 GetPageIndex(void *Ptr, void *PageBase, u32 PageSize)
 {
@@ -342,7 +342,9 @@ PagePushSize_(page_memory_arena *Arena, u32 Size, void **Dest, void *Source = 0)
 	else
 	{
 		PageIndex = AllocatePagePool(Arena, UsedPagesBySize);
-		*Dest = GetPageBaseFromPageIndex(Arena, PageIndex);
+		void *PoolStart = GetPageBaseFromPageIndex(Arena, PageIndex);
+		Assert(IsAligned(PoolStart, Arena->PageSize));
+		*Dest = PoolStart;
 	}
 
 	u32 PagesInPool = Arena->PoolAllocInfo[PageIndex];

@@ -104,7 +104,7 @@ IsAligned(void *Ptr, u32 Alignment)
 {
 	Assert(IsPowerOf2(Alignment));
 
-	b32 Result = (umm)Ptr & (Alignment - 1);
+	b32 Result = ((umm)Ptr & (Alignment - 1)) == 0;
 	return Result;
 }
 
@@ -167,7 +167,7 @@ MemSet(u32 *Dest, u32 Size, u32 Value)
 }
 
 inline void
-ZeroSize(void *Ptr, u32 Size)
+ZeroSize(void *Ptr, u64 Size)
 {
 	MemSet((u8 *)Ptr, Size, 0);
 }
